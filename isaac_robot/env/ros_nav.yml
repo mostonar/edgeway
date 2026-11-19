@@ -1,0 +1,20 @@
+# Minimal spec for the ros_nav env (Nav2, IPE, demo scripts).
+#   conda env create -f env/ros_nav.yml
+# Full pinned export from the lab PC: env/ros_nav.lock.yml (reference only;
+# it pins CPU-specific packages and may not solve on other machines).
+name: ros_nav
+channels:
+  - conda-forge
+  - robostack-humble
+dependencies:
+  - python=3.14
+  - ros-humble-desktop=0.10.0
+  - ros-humble-navigation2=1.1.20
+  - ros-humble-nav2-bringup=1.1.20
+  - ros-humble-slam-toolbox=2.6.10
+  - requests
+  - pyyaml
+  - numpy
+  - pip
+  - pip:
+      - websocket-client==1.9.2

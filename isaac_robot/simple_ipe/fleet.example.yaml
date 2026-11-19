@@ -1,0 +1,65 @@
+# Fleet config for the IPE. Copy to fleet.yaml and set cse_url (and ws.url if binding: ws).
+#   cp fleet.example.yaml fleet.yaml
+# One ROS domain = one robot. Each IPE looks up its ROS_DOMAIN_ID in `robots` and uses
+#   AE name = <ae_prefix>_<name>, CSE = cse_url of that robot's site.
+# `prim` must match the robot prim names in the Isaac scene.
+#
+# Per site:
+#   binding     : http (default) | ws (needs: pip install websocket-client)
+#   ws.url      : CSE WebSocket URL when binding: ws (ACME default port 8180, wss:// for TLS).
+#                 Target CSE name is taken from the end of cse_url; set ws.cse_rn if different.
+# Access (ACP on telemetry/command; the robot itself and CAdmin always get 63):
+#   cmn_ae      : telemetry 51 (CREATE, RETRIEVE, NOTIFY, DISCOVERY)
+#   tel_readers : telemetry 51, same as cmn_ae (e.g. training / detection AEs)
+#   judge_ae    : telemetry 34 (RETRIEVE, DISCOVERY) + command 35 (CREATE, RETRIEVE, DISCOVERY)
+#   cmd_writers : extra AEs with command 35
+# Container labels (telemetry/status/command), for Discovery instead of fixed paths:
+#   site:<site>, robot:<name>, ae:<AE>, type:<container>, <site>:<container>
+#   e.g. all site C telemetry: <cse_url>?fu=1&ty=3&lbl=siteC:telemetry
+
+topic_prefix: "AMR/"          # Isaac sensor topics (AMR/imu_front, AMR/joints)
+
+sites:
+  siteA:
+    ae_prefix: "siteA"
+    binding: http
+    #cse_url: "http://127.0.0.1:8081/<CSE_NAME>"   # local ACME
+    cse_url: "https://<MEC_HOST>/<SANDBOX>/mep-a/meep-acme-mn-cse/acme-cse-mn-mep-a-<SANDBOX>"
+    tls_verify: false
+    #ws:
+    #  url: "ws://<MEC_HOST>:8180/"
+    cmn_ae: "CMN-AE-1"
+    tel_readers: ["CTRAINING-AE-1", "CANALYSIS-AE-1"]
+    judge_ae: "CJUDGE-AE-1"
+  siteB:
+    ae_prefix: "siteB"
+    binding: http
+    #cse_url: "http://127.0.0.1:8081/<CSE_NAME>"   # local ACME
+    cse_url: "https://<MEC_HOST>/<SANDBOX>/mep-b/meep-acme-mn-cse/acme-cse-mn-mep-b-<SANDBOX>"
+    tls_verify: false
+    #ws:
+    #  url: "ws://<MEC_HOST>:8180/"
+    cmn_ae: "CMN-AE-2"
+    tel_readers: ["CTRAINING-AE-2", "CANALYSIS-AE-2"]
+    judge_ae: "CJUDGE-AE-2"
+  siteC:
+    ae_prefix: "siteC"
+    binding: http
+    #cse_url: "http://127.0.0.1:8081/<CSE_NAME>"   # local ACME
+    cse_url: "https://<MEC_HOST>/<SANDBOX>/mep-c/meep-acme-mn-cse/acme-cse-mn-mep-c-<SANDBOX>"
+    tls_verify: false
+    #ws:
+    #  url: "ws://<MEC_HOST>:8180/"
+    cmn_ae: "CMN-AE-3"
+    tel_readers: ["CTRAINING-AE-3", "CANALYSIS-AE-3"]
+    judge_ae: "CJUDGE-AE-3"
+
+robots:                       # ROS_DOMAIN_ID: robot
+  1: {site: siteA, name: AMR_1, prim: site_a_AMR_1}
+  2: {site: siteA, name: AMR_2, prim: site_a_AMR_2}
+  3: {site: siteA, name: AMR_3, prim: site_a_AMR_3}
+  4: {site: siteA, name: AMR_4, prim: site_a_AMR_4}
+  5: {site: siteB, name: AMR_1, prim: site_b_AMR_1}
+  6: {site: siteB, name: AMR_2, prim: site_b_AMR_2}
+  7: {site: siteC, name: AMR_1, prim: site_c_AMR_1}
+  8: {site: siteC, name: AMR_2, prim: site_c_AMR_2}

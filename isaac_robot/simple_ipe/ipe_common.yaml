@@ -1,0 +1,25 @@
+# IPE parameters shared by all robots (same robot asset -> same joint names and IMU mounting).
+# Used by run_ipe.sh; per-robot site/CSE settings are in fleet.yaml.
+/**:
+  ros__parameters:
+    fleet_file: "fleet.yaml"
+    window_s: 1.0
+    nav_action: "/navigate_to_pose"
+
+    joint_drive: "back_wheel_drive"
+    joint_swivel: "back_wheel_swivel"
+    joint_roller_fl: "front_left_roller"
+    joint_roller_fr: "front_right_roller"
+    joint_roller_rl: "back_left_roller"
+    joint_roller_rr: "back_right_roller"
+    joint_lift: "lift_joint"
+
+    imu_quat_front: [0.0, 0.6755, 0.0, 0.7373]
+    imu_quat_left:  [-0.4778, 0.4777, 0.5213, 0.5214]
+    imu_quat_right: [0.4778, 0.4777, -0.5213, 0.5214]
+
+    # Container retention sized for data collection (~15 KB per CIN)
+    telemetry_mni: 10000
+    telemetry_mbs: 200000000     # 200 MB
+    status_mni: 10000
+    status_mbs: 20000000         # 20 MB
