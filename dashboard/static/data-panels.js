@@ -84,7 +84,7 @@
     if(state&&Object.hasOwn(stateNames,state))return 'working';
     return 'unknown';
   }
-  let overviewTimer,overviewVersion=0,robotPage=0,alertPage=0;
+  let overviewTimer;
   function payloadOf(event){
     let v=event.content??event.map_content??event.preview;
     if(typeof v==='string'){try{v=JSON.parse(v);}catch{return null;}}
@@ -122,7 +122,6 @@
       return catalogue.get(id)||(records.has(mock)?catalogue.get(mock):null)||{id,name:id};
     });
     const robotList=get('factory-robots');robotList.replaceChildren();
-    const alerts=[];
     for(const robot of robots){
       const events=[...(records.get(robot.id)?.values()||[])].sort((a,b)=>b.id-a.id);
       // Only hydrate the latest status candidate when its list preview was truncated.
@@ -166,52 +165,15 @@
         row.append(action);
       }
       robotList.append(row);
-      if(issue)alerts.push(issue); // Current inspection only; never resurrect historical alerts.
     }
     get('factory-counts').replaceChildren();
-    const alertList=get('factory-alerts');alertList.replaceChildren();
-    for(const e of alerts.sort((a,b)=>b.id-a.id)){
-      const button=make('button',undefined,'factory-alert');button.type='button';button.dataset.eventId=e.id;
-      button.append(make('span',e.display?.title||'Alerts'),make('small',e.robot_id.replace(/^site([ABC])_AMR_(\d+).*$/,'$1-$2')));
-      const status=make('small','','factory-alert-status');button.append(status);
-      button.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('edgeway:event-request',{detail:{id:e.id}})));
-      alertList.append(button);
-    }
-    alertList.parentElement.hidden=!alerts.length;
-    fitOverview();
-    overviewVersion++;
   }
-  function fitOverview(){
-    const robotList=get('factory-robots');
-    for(const row of robotList.children)row.hidden=false;
-    get('robots-page').parentElement.hidden=true;
-    get('robots-page').textContent='';
-    for(const [prefix,id,fallbackHeight] of [['alerts','factory-alerts',58]]){
-      const list=get(id),items=[...list.children].filter(e=>e.classList.contains(prefix==='robots'?'factory-robot':'factory-alert'));
-      const pager=get(prefix+'-page').parentElement;
-      const style=items.length?getComputedStyle(items[0]):null;
-      const rowHeight=style?(parseFloat(style.height)||fallbackHeight)+(parseFloat(style.marginBottom)||0):fallbackHeight;
-      const gap=parseFloat(getComputedStyle(list.parentElement).rowGap)||0;
-      const fullHeight=list.clientHeight+(pager.hidden?0:pager.offsetHeight+gap);
-      pager.hidden=items.length<=Math.max(1,Math.floor(fullHeight/rowHeight));
-      const capacity=Math.max(1,Math.floor(list.clientHeight/rowHeight)),pages=Math.max(1,Math.ceil(items.length/capacity));
-      let page=prefix==='robots'?robotPage:alertPage;page=Math.min(page,pages-1);
-      if(prefix==='robots')robotPage=page;else alertPage=page;
-      items.forEach((e,i)=>e.hidden=i<page*capacity||i>=(page+1)*capacity);
-      get(prefix+'-page').textContent=items.length?(page+1)+' / '+pages:'0 / 0';
-      get(prefix+'-prev').disabled=page===0;get(prefix+'-next').disabled=page>=pages-1;
-    }
-  }
-  for(const prefix of ['robots','alerts'])for(const [suffix,delta] of [['prev',-1],['next',1]]){
-    get(prefix+'-'+suffix).addEventListener('click',()=>{if(prefix==='robots')robotPage+=delta;else alertPage+=delta;fitOverview();refreshOverviewOperations();});
-  }
-  new ResizeObserver(fitOverview).observe(document.querySelector('.overview-lists'));
   get('factory-values-open').onclick=()=>{get('factory-values-title').textContent=get('factory-overview-title').textContent+' · Data';get('latest-data').open=true;get('factory-values-dialog').showModal();};
   get('factory-values-close').onclick=()=>get('factory-values-dialog').close();
   async function refreshOverviewOperations(){
     if(operationsBusy||document.hidden)return;
     const factory=window.edgewayFactory;
-    const rows=[...get('factory-alerts').querySelectorAll('[data-event-id]:not([hidden])')];
+    const rows=[...get('factory-robots').querySelectorAll('.robot-issue-open[data-event-id]')];
     const issues=[...robotIssues.values()].filter(e=>window.edgewayFactoryOf?.(e.robot_id)===factory);
     const ids=[...new Set([...rows.map(e=>Number(e.dataset.eventId)),...issues.map(e=>e.id)])];
     if(!ids.length)return;
@@ -226,16 +188,12 @@
         issueOperations.set(item.event_id,item);
       }
       if(changed)renderOverview();
-      for(const row of get('factory-alerts').querySelectorAll('[data-event-id]')){
-        const item=issueOperations.get(Number(row.dataset.eventId));
-        if(item?.type)row.querySelector('.factory-alert-status').textContent=item.status;
-      }
     }catch{}finally{operationsBusy=false;}
   }
   window.addEventListener('edgeway:catalogue',({detail})=>{for(const r of detail.robots||[])catalogue.set(r.id,r);renderOverview();});
   for(const type of ['edgeway:event-records','edgeway:events-loaded'])window.addEventListener(type,({detail})=>rememberOverview(detail.events));
   window.addEventListener('edgeway:telemetry-received',({detail})=>rememberOverview([detail.event]));
-  window.addEventListener('edgeway:factory-change',()=>{robotPage=0;alertPage=0;get('factory-values-dialog').close();renderOverview();});
+  window.addEventListener('edgeway:factory-change',()=>{get('factory-values-dialog').close();renderOverview();});
   setInterval(()=>{renderOverview();refreshOverviewOperations();},2000);
 
   let valuesGeneration=0;
