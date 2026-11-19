@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network status test · EdgeWay</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/fonts.css">
+  <link rel="stylesheet" href="/tests/network-status.css">
+  <script src="/tests/network-status.js" defer></script>
+</head>
+<body>
+  <svg class="symbol-source" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="network-disconnected" viewBox="0 0 24 24">
+      <path d="M3 8.4a14 14 0 0 1 18 0M6 12a9.4 9.4 0 0 1 12 0M9 15.7a4.8 4.8 0 0 1 6 0"/>
+      <circle cx="12" cy="19.1" r="1.15" fill="currentColor" stroke="none"/>
+      <path d="M3.7 3.7 20.3 20.3" stroke="#e9f1ff" stroke-width="3.8"/>
+      <path d="M3.7 3.7 20.3 20.3"/>
+    </symbol>
+    <symbol id="network-recovered" viewBox="0 0 24 24">
+      <path d="M2.5 7.7a13 13 0 0 1 16 0M5.1 11a8.6 8.6 0 0 1 10.8 0M7.8 14.4a4.3 4.3 0 0 1 5.4 0"/>
+      <circle cx="10.5" cy="18" r="1.1" fill="currentColor" stroke="none"/>
+      <path d="m14.3 18.7 2.5 2.5 4.8-5.25" stroke-width="2"/>
+    </symbol>
+    <symbol id="position-stale" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/><path d="M12 7.7v4.7l3.1 1.8"/>
+    </symbol>
+  </svg>
+  <header class="test-topbar"><a href="/" class="test-back">← Dashboard</a><span>EdgeWay · SESLab</span></header>
+  <main class="test-content">
+    <header class="test-intro">
+      <p class="test-context">Factory C / Test screen</p>
+      <h1>Robot network status</h1>
+      <p>Switch between the three sample states for C-2.</p>
+    </header>
+    <fieldset id="network-test-controls" class="test-controls">
+      <legend>Sample state</legend>
+      <label><input type="radio" name="network-test-state" value="stale" checked><span>Stale position</span></label>
+      <label><input type="radio" name="network-test-state" value="disconnected"><span>Network disconnected</span></label>
+      <label><input type="radio" name="network-test-state" value="recovered"><span>Network recovered</span></label>
+    </fieldset>
+    <div class="test-grid">
+      <section class="test-panel" aria-labelledby="test-map-title">
+        <h2 id="test-map-title">Floor Plan</h2>
+        <div class="sample-map">
+          <svg class="map-graphic" width="390" height="600" viewBox="0 0 390 600" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="test-map-description">
+            <title id="test-map-description">Factory C map with a sample robot at its last known position</title>
+            <image href="/factory-maps/siteC.png" width="390" height="600"/>
+            <g transform="translate(0 23)">
+              <path class="map-trail" d="M109 306 C 111 266 109 221 109 166"/>
+              <circle class="robot-position" cx="109" cy="166" r="34"/>
+              <g transform="translate(109 166)">
+                <rect class="robot-body" x="-12" y="-26" width="24" height="52" rx="6"/>
+                <path class="robot-detail" d="M-9-15H9M-9 13H9M-5-21H5"/>
+                <rect class="robot-center" x="-7" y="-4" width="14" height="10" rx="2"/>
+                <path class="robot-light" d="M-5 22H5"/>
+              </g>
+              <path class="map-leader" d="M136 187l13 17"/>
+              <rect class="map-name-bg" x="144" y="205" width="45" height="24" rx="6"/>
+              <text class="map-name" x="166.5" y="221" text-anchor="middle">C-2</text>
+              <g id="map-network-badge" class="network-map-badge" data-tone="neutral" visibility="hidden">
+                <rect x="186" y="205" width="27" height="24" rx="6"/>
+                <use id="map-network-icon" class="network-icon" x="189" y="206.5" width="21" height="21"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </section>
+      <section class="test-panel test-overview" aria-labelledby="test-overview-title">
+        <h2 id="test-overview-title">Factory Overview</h2>
+        <div class="test-robot" role="status" aria-atomic="true">
+          <span id="test-status-icon" class="network-chip" data-tone="neutral" aria-hidden="true"><svg class="network-icon" viewBox="0 0 24 24"><use id="test-status-glyph" href="#position-stale" width="24" height="24"/></svg></span>
+          <div><strong>C-2</strong><p id="test-state-label" data-tone="neutral">Stale position</p><p id="test-state-detail" class="test-detail">Last known position · 24 s ago</p></div>
+        </div>
+        <h3>Map Symbols</h3>
+        <ul class="test-legend">
+          <li><span class="network-chip" data-tone="disconnected" aria-hidden="true"><svg class="network-icon" viewBox="0 0 24 24"><use href="#network-disconnected" width="24" height="24"/></svg></span>Network disconnected</li>
+          <li><span class="network-chip" data-tone="recovered" aria-hidden="true"><svg class="network-icon" viewBox="0 0 24 24"><use href="#network-recovered" width="24" height="24"/></svg></span>Network recovered</li>
+        </ul>
+        <section class="test-event-log" aria-labelledby="test-event-log-title">
+          <h3 id="test-event-log-title">Event Log</h3>
+          <p id="test-event-empty" class="test-detail" role="status">Select Network recovered to show a sample event.</p>
+          <button id="test-recovery-event" class="test-event-row" type="button" aria-haspopup="dialog" aria-controls="test-recovery-details" hidden>
+            <span class="network-chip" data-tone="recovered" aria-hidden="true"><svg class="network-icon" viewBox="0 0 24 24"><use href="#network-recovered" width="24" height="24"/></svg></span>
+            <span class="test-event-text"><strong>Network recovered</strong><span><span id="test-event-robot"></span> · <time id="test-event-time"></time></span></span>
+            <span class="test-event-arrow" aria-hidden="true">›</span>
+          </button>
+        </section>
+      </section>
+    </div>
+  </main>
+  <dialog id="test-recovery-details" class="test-detail-dialog" aria-labelledby="test-recovery-title">
+    <div class="test-dialog-header">
+      <div><p class="test-context">Sample event</p><h2 id="test-recovery-title">Network recovered</h2></div>
+      <form method="dialog"><button type="submit" autofocus>Close</button></form>
+    </div>
+    <dl class="test-event-fields">
+      <div><dt>Robot</dt><dd id="test-detail-robot"></dd></div>
+      <div><dt>Outage duration</dt><dd><time id="test-detail-outage-duration"></time></dd></div>
+      <div><dt>Lost data count</dt><dd id="test-detail-lost-count"></dd></div>
+    </dl>
+  </dialog>
+</body>
+</html>

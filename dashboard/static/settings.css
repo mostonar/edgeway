@@ -1,0 +1,244 @@
+input,textarea {font:inherit;color:inherit} input:focus-visible,textarea:focus-visible {outline:3px solid var(--focus);outline-offset:2px}
+.page-nav {display:flex;gap:8px;align-items:center}.page-nav a {padding:10px 14px;text-decoration:none;border-radius:8px;color:var(--muted)}.page-nav a[aria-current="page"] {background:var(--soft);color:var(--accent);font-weight:700}
+.settings-main {max-width:1280px;margin:0 auto;padding:34px 28px 24px}.page-intro {display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}.page-intro h1 {font-size:30px;letter-spacing:-1px;margin:5px 0 10px}.page-intro p {margin:0;color:var(--muted)}.page-intro .eyebrow,.step-label {color:var(--accent);font-size:13px;font-weight:700;letter-spacing:1.2px}.version-tag {padding:7px 11px;border:1px solid var(--line);border-radius:7px;font-size:14px;white-space:nowrap;color:var(--muted)}
+.settings-section {background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px}.settings-section h2 {font-size:21px;margin:0}.settings-section h3 {font-size:16px;margin:0}.section-title,.connection-card,.connection-actions,.sample-toolbar,.preview-heading,.editor-footer {display:flex;align-items:center;justify-content:space-between;gap:18px}.section-title {margin-bottom:12px}.step-label {margin:0 0 7px}.hint,.muted {color:var(--muted);font-size:14px;line-height:1.7}.hint {margin:8px 0 16px}.mono,code {font-family:var(--headline);overflow-wrap:anywhere}.mono {font-size:15px}.connection-card h2 {font-size:16px}.connection-card .hint {margin-bottom:0}.connection-actions {flex-direction:column;align-items:flex-end;gap:8px}
+.settings-page label {display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:600;min-width:0}.settings-page input,.settings-page select,.settings-page textarea {width:100%;min-width:0;border:1px solid #cbd7dc;border-radius:7px;padding:10px 11px;background:#fff;font-weight:400}.settings-page input,.settings-page select {height:42px}.settings-page input::placeholder {color:#7b8b93}.settings-page label .hint {margin:0;font-weight:400}
+.primary,.secondary {border-radius:7px;padding:10px 15px;font:inherit;font-size:15px;font-weight:600;white-space:nowrap;min-height:40px}.primary {background:var(--accent);border:1px solid var(--accent);color:white}.primary:hover {background:#105750}.secondary {background:#fff;border:1px solid #cbd7dc;color:var(--ink)}.secondary:hover {background:#f4f8f7}.danger {color:#a44234}.button-row {display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.binding-form {display:grid;grid-template-columns:1fr 1fr 1fr 1.6fr auto;gap:13px;align-items:start;margin:23px 0}.binding-form>button {margin-top:24px}.binding-picker {width:260px}.bindings-list {border-top:1px solid var(--line)}.binding-item {display:grid;grid-template-columns:minmax(160px,1fr) minmax(180px,1.3fr) auto;gap:16px;align-items:center;padding:17px 0;border-bottom:1px solid var(--line)}.binding-item:last-child {border-bottom:0}.binding-item h3 {display:flex;align-items:center;gap:9px;flex-wrap:wrap}.binding-item p {margin:6px 0 0}.binding-item .button-row {justify-content:flex-end}.status-badge {padding:4px 7px;font-size:13px;border-radius:5px;font-weight:500;background:#f0f2f3;color:var(--muted)}.status-badge[data-state="active"] {background:var(--soft);color:var(--accent)}.status-badge[data-state="failed"],.status-badge[data-state="unknown"] {background:#fff0e8;color:#984d28}.binding-error {color:#a44234!important;overflow-wrap:anywhere}.feedback {padding:13px 17px;border:1px solid #99c9bc;background:#eff8f4;border-radius:8px;margin-bottom:18px;font-size:15px;overflow-wrap:anywhere}.feedback[data-error="true"] {border-color:#e0b6ad;background:#fff4ee;color:#8d352a}
+.sample-toolbar {margin:20px 0 14px}.data-workbench {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr);gap:23px}.sample-column label {margin-bottom:8px}.sample-column textarea {height:330px;resize:vertical;font-family:var(--headline);font-size:14px;line-height:1.65;background:#f8fafb}.field-toolbar {display:flex;gap:10px;align-items:flex-end;margin-bottom:13px}.field-toolbar label {flex:1}.field-rows {display:flex;flex-direction:column;gap:10px;margin-bottom:12px}.field-row {display:grid;grid-template-columns:minmax(100px,1.5fr) minmax(80px,1fr) 65px 76px 32px;gap:7px;align-items:end}.field-row input {padding:9px 7px}.remove-field {height:40px;border:0;background:transparent;font-size:23px;color:var(--muted)}.preview-heading {margin:22px 0 12px}.value-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.value-card {padding:15px;border-radius:8px;border:1px solid var(--line);background:#f9fbfb;min-width:0}.value-card .value-label {font-size:14px;color:var(--muted);margin:0 0 9px}.value-card .value-number {font-size:24px;font-weight:700;overflow-wrap:anywhere;margin:0;line-height:1.4}.value-card .value-unit {font-size:14px;color:var(--muted);margin-left:6px}.value-card .value-path {font-size:13px;color:var(--muted);margin:7px 0 0;overflow-wrap:anywhere}.value-card .value-issue {font-size:13px;color:#985422;margin:6px 0 0}.editor-footer {border-top:1px solid var(--line);padding-top:18px;margin-top:20px}.empty-copy {color:var(--muted);padding:24px 0;text-align:center;font-size:15px}.camera-form {display:grid;grid-template-columns:200px minmax(0,1fr) auto;gap:14px;align-items:end;margin:18px 0}.camera-test-container {height:370px;margin-top:18px;border:1px solid var(--line);border-radius:8px;overflow:hidden}.camera-test-container iframe,.camera-shell iframe {width:100%;height:100%;border:0}.settings-footer {font-size:14px;text-align:center;color:var(--muted);line-height:1.8;padding:8px 0 20px}
+.camera-shell {height:100vh;display:flex;flex-direction:column;background:#f5f7f8}.camera-shell .camera-message {padding:10px 14px;font-size:14px;color:var(--muted);border-bottom:1px solid var(--line);margin:0;line-height:1.7}.camera-shell .camera-frame {flex:1;min-height:0}.camera-placeholder {padding:24px;text-align:center;color:var(--muted);font-size:15px;line-height:1.8}
+.data-panel-body {overflow:auto;padding:16px}.data-panel-body h3 {font-size:15px;margin:0 0 8px}.data-panel-body .binding-values {margin-bottom:18px}.data-panel-body .value-grid {grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}.data-panel-body .value-card {padding:11px}.data-panel-body .value-number {font-size:21px}.data-panel-body .hint {margin:8px 0}.dashboard-camera {flex:1;min-height:0}.dashboard-camera iframe {width:100%;height:100%;border:0}.camera-controls {display:flex;gap:8px;align-items:center}.camera-controls button {min-height:28px;padding:4px 8px;font-size:13px}.topbar .settings-link {font-size:14px;text-decoration:none;padding:8px;border:1px solid var(--line);border-radius:6px}
+@media(max-width:1050px){.binding-form {grid-template-columns:1fr 1fr}.binding-form>button {margin-top:0;align-self:end}.binding-item {grid-template-columns:1fr 1fr}.binding-item>.button-row {grid-column:1/-1;justify-content:flex-start}.data-workbench {grid-template-columns:1fr}.sample-column textarea {height:210px}.camera-form {grid-template-columns:1fr 2fr}.camera-form>button {grid-column:1/-1;justify-self:start}}
+@media(max-width:600px){.settings-main {padding:22px 14px}.settings-section {padding:18px 15px}.topbar {height:66px;padding:0 16px;gap:8px}.topbar .brand {font-size:21px}.page-nav a {font-size:14px;padding:8px}.page-intro h1 {font-size:25px}.page-intro>.version-tag {display:none}.connection-card {align-items:flex-start;flex-direction:column;gap:14px}.connection-actions {flex-direction:row;align-items:center;width:100%;justify-content:space-between}.binding-form {grid-template-columns:1fr 1fr;gap:14px 10px}.binding-form .path-label {grid-column:1/-1}.binding-form>button {grid-column:1/-1}.binding-item {grid-template-columns:1fr;gap:7px}.section-title {align-items:flex-start;flex-wrap:wrap}.binding-picker {width:100%}.field-row {grid-template-columns:1fr 1fr 55px 66px 26px;gap:5px}.field-row label {font-size:12px}.field-row input {font-size:13px}.camera-form {grid-template-columns:1fr}.sample-toolbar,.editor-footer {align-items:flex-start;flex-direction:column;gap:10px}.camera-test-container {height:280px}.value-grid {grid-template-columns:1fr 1fr}.camera-form .camera-url-label {grid-column:auto}}
+.control-fields {border:0;padding:0;margin:18px 0 0;min-width:0}.control-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px}.settings-page .control-toggle {flex-direction:row;align-items:center;gap:10px;margin-top:18px}.settings-page .control-toggle input {width:18px;height:18px;flex:none}.control-fields:disabled {opacity:.65}#control-addresses {overflow-wrap:anywhere}#control-list .binding-item>* {min-width:0}@media(max-width:600px){.control-grid {grid-template-columns:minmax(0,1fr)}#control-form .button-row button {white-space:normal;max-width:100%}}
+/* Green visual direction: shared surfaces, fewer framed boxes, restrained blue identity. */
+.settings-page .topbar {border-bottom:1px solid var(--line)}
+.settings-page .page-nav {margin-left:auto;display:flex;gap:5px}
+.settings-page .page-nav a {border-radius:22px;padding:9px 15px;text-decoration:none;font-size:15px}
+.settings-page .page-nav a[aria-current=page] {background:#dfeadd;color:var(--accent)}
+.settings-main {max-width:1240px;padding:36px 32px 28px}
+.page-intro {margin-bottom:28px;align-items:flex-end}
+.page-intro h1 {color:var(--deep);font-weight:650;font-size:32px;letter-spacing:-1px;margin:7px 0 9px}
+.page-intro .eyebrow {color:#626d5b;font-size:12px;letter-spacing:1.4px}
+.page-intro p {font-size:15px}
+.back-to-monitor {color:var(--blue);font-size:15px;text-decoration:none;white-space:nowrap;padding-bottom:4px}
+.settings-shortcuts {display:flex;gap:7px;flex-wrap:wrap;margin:0 0 26px}
+.settings-shortcuts a {border-radius:22px;padding:9px 16px;color:#4d6554;background:#e7eee4;text-decoration:none;font-size:14px}
+.settings-shortcuts a:hover {background:#dce8d8;color:var(--accent)}
+.settings-section {border:0;border-radius:24px;padding:28px 30px;margin-bottom:20px;scroll-margin-top:18px}
+.settings-section h2 {font-weight:650;font-size:22px;letter-spacing:-.5px}
+.settings-section h3 {font-weight:600}
+.step-label {letter-spacing:.3px;font-size:13px;font-weight:500;color:#5e7765;margin-bottom:7px}
+.connection-card {background:var(--deep);color:#f3f7ef;border-radius:24px}
+.connection-card .hint,.connection-card .muted {color:#d0dfd2}
+.connection-card #cse-state {color:#e9eedb}
+.connection-card h2 {font-size:17px;color:#f3f7ef}
+.connection-card .secondary {background:#ffffff12;color:#f3f7ef;border-color:#ffffff40}
+.connection-card .mono {font-size:16px}
+.primary,.secondary {border-radius:22px;padding:10px 17px;min-height:40px;font-weight:500}
+.primary {background:var(--accent);border-color:var(--accent)}
+.primary:hover {background:#0e1d25}
+.secondary {background:transparent;border-color:#c8d8c9}
+.secondary:hover {background:#edf4e9}
+.topbar .settings-link {text-decoration:none;font-size:14px;border:1px solid #c8d8c9;border-radius:22px;padding:9px 15px;color:var(--deep)}
+.settings-page input,.settings-page select,.settings-page textarea {background:#f7faf5;border-color:#d5e0d2;border-radius:11px;font-size:15px}
+.settings-page label {font-weight:500}
+.hint,.muted {color:var(--muted)}
+.settings-section>.hint {max-width:950px;line-height:1.9}
+.binding-form {gap:14px}
+.binding-item {padding:20px 0;border-color:#e6ece2}
+.binding-item .button-row {gap:6px}
+.binding-item .secondary {font-size:13px;min-height:34px;padding:7px 12px}
+.status-badge {border-radius:20px;background:#edf1ea;color:#617168;padding:5px 9px}
+.status-badge[data-state=active] {background:#e0ecdb;color:#003d2d}
+.binding-error {color:#963e2a!important}
+.feedback {border:0;border-radius:15px;padding:16px 20px;background:#deeddc;color:#255735}
+.feedback[data-error=true] {background:#f7e6dd;color:#8d352a}
+.field-row input {background:#f7faf5}
+.sample-column textarea {background:#f3f7ef;border:0;border-radius:14px;padding:15px}
+.value-card {background:#eff5eb;border:0;border-radius:16px;padding:17px}
+.value-card .value-number {color:var(--deep)}
+.editor-footer {border-color:#e1e9dc}
+.control-fields {padding:10px 0 0}
+.control-fields legend {padding:0;font-size:14px;color:#52745b}
+.control-grid {gap:19px;margin-bottom:18px}
+.settings-page .control-toggle {font-weight:500}
+.settings-page input[type=checkbox] {accent-color:var(--accent)}
+.control-toggle {background:#eef5e8;padding:13px 16px;border-radius:13px;width:fit-content;max-width:100%}
+#control-feedback {margin-bottom:0}
+#control-addresses {font-size:13px}
+.camera-test-container {border:0;border-radius:18px}
+.settings-footer {font-size:13px}
+@media(max-width:700px){.settings-main{padding:25px 13px}.settings-section{padding:23px 19px;border-radius:21px}.settings-page .topbar{padding:0 18px;height:70px;gap:12px}.settings-page .brand{font-size:25px}.settings-page .team-name{display:none}.settings-page .page-nav a{padding:8px 11px;font-size:14px}.page-intro h1{font-size:27px}.back-to-monitor{display:none}.settings-shortcuts{gap:6px;margin-bottom:20px}.settings-shortcuts a{font-size:13px;padding:9px 12px}.connection-card .mono{font-size:14px}.control-grid{gap:16px}.settings-page label{font-size:14px}.binding-form{gap:15px 10px}.field-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 42px 53px 24px}.field-row label{font-size:12px}.field-row input{font-size:13px;padding:8px 5px}.settings-page .section-title .secondary{font-size:13px;padding:8px 12px}}
+
+.settings-section h2 {scroll-margin-top:24px}
+/* Centered identity and shared Pretendard typography as the monitor. */
+.settings-page .centered-topbar {display:grid;height:106px;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);padding:0 30px;border:0;gap:20px}
+.settings-page .centered-topbar .page-nav {grid-column:3;grid-row:1;justify-self:end;margin:0;gap:5px}
+.settings-page .masthead .brand {font-size:39px}
+.settings-page .masthead .team-name {display:block;font-size:16px;letter-spacing:1.4px}
+.settings-page .settings-section {border-radius:36px}
+.settings-page .connection-card {background:#003d2d}
+.settings-page .page-intro h1,.settings-page .settings-section h2,.settings-page label {font-weight:400}
+.settings-page .settings-main {padding-top:20px}
+.settings-page .value-card {border-radius:23px}
+.settings-page input,.settings-page textarea,.settings-page select {border-radius:16px}
+.settings-page .control-toggle {border-radius:21px}
+@media(max-width:700px){.settings-page .centered-topbar{height:112px;padding:0 17px;gap:8px}.settings-page .masthead .brand{font-size:32px}.settings-page .masthead .team-name{font-size:14px}.settings-page .centered-topbar .page-nav{flex-direction:column;gap:3px}.settings-page .page-nav a{font-size:12px;padding:6px 8px}.settings-page .settings-section{border-radius:30px}.settings-page .header-location>span{font-size:14px}}
+
+/* Shared rounded inputs and olive/teal surfaces. */
+.settings-page .page-intro h1,.settings-page .settings-section h2 {font-weight:650}
+.settings-page label {font-weight:550}
+.settings-page input:not([type=checkbox]),.settings-page select {border-radius:999px;padding-left:16px;padding-right:16px;background:#f5f7ef;border-color:var(--line)}
+.settings-page textarea {border-radius:22px;background:#f5f7ef;border-color:var(--line)}
+.settings-page .page-nav a[aria-current=page],.settings-shortcuts a {background:#e9eedb;color:var(--accent)}
+.settings-shortcuts a:hover {background:#dcece6;color:var(--teal)}
+.primary:hover {background:#0e1d25}
+.mono,code,pre,#detail-raw,.sample-column textarea {font-family:var(--headline)}
+
+/* Carry the colored surfaces and larger type into settings. */
+.settings-page .settings-section {background:var(--surface)}
+.settings-page .connection-card {background:var(--accent)}
+.settings-page input:not([type=checkbox]),.settings-page select,.settings-page textarea {background:#b8d1dd;border-color:#0f7b5d;font-size:15px}
+.settings-page .page-nav a[aria-current=page],.settings-shortcuts a {background:#9fc5a8}
+.settings-page .value-card,.settings-page .control-toggle {background:#9fc5a8}
+.settings-page .sample-column textarea {background:#b8d1dd}
+.secondary {border-color:#0f7b5d}
+.secondary:hover {background:#b8d1dd}
+.settings-page .hint,.settings-page .muted {font-size:14px}
+.settings-page label {font-size:14px}
+.settings-page .settings-section h2 {font-size:22px}
+.settings-page .connection-card .hint {color:#9fc5a8}
+@media(max-width:700px){.settings-page .field-row {grid-template-columns:minmax(0,1fr) minmax(0,1fr) 46px 55px 24px}.settings-page .field-row label,.settings-page .field-row input {font-size:12px}.settings-page .field-row input {padding-left:7px;padding-right:7px}.settings-page .masthead .team-name{font-size:14px}}
+
+/* The same semantic colors for settings and controls. */
+.topbar .settings-link {color:var(--deep);border-color:var(--line);background:var(--mint-soft)}
+.settings-page .page-nav a {color:var(--muted)}
+.settings-page .page-nav a[aria-current=page],.settings-shortcuts a {color:var(--deep);background:var(--mint-soft)}
+.settings-shortcuts a:hover {background:var(--mint)}
+.settings-page .page-intro h1 {color:var(--ink)}
+.settings-page .page-intro p,.settings-page .page-intro .eyebrow,.settings-page .back-to-monitor,.settings-footer {color:var(--muted)}
+.settings-page .settings-section {background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.settings-page .settings-section.connection-card {background:var(--mint-soft)}
+.settings-page .connection-card,.settings-page .connection-card h2,.settings-page .connection-card .hint,.settings-page .connection-card .muted,.settings-page .connection-card #cse-state {color:var(--deep)}
+.settings-page .connection-card .secondary {color:var(--deep);border-color:#82cfa4;background:var(--mint)}
+.settings-page input:not([type=checkbox]),.settings-page select,.settings-page textarea,.settings-page .sample-column textarea {background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.settings-page input::placeholder {color:#64746b}
+.settings-page .step-label,.control-fields legend,.status-badge {color:var(--muted)}
+.settings-page .binding-item,.editor-footer {border-color:var(--line)}
+.settings-page .control-toggle,.settings-page .value-card {background:var(--mint-soft)}
+.settings-page .status-badge[data-state=active],.feedback {background:var(--mint);color:var(--deep)}
+.settings-page .status-badge[data-state=failed],.settings-page .status-badge[data-state=unknown],.feedback[data-error=true] {background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning-accent)}
+.primary {background:var(--primary);border-color:var(--primary);color:var(--ink);font-weight:650}
+.primary:hover {background:#005c3d;border-color:#005c3d}
+.secondary {color:var(--ink);border-color:var(--line);background:var(--mint-soft)}
+.secondary:hover {background:var(--mint)}
+.danger {color:#991b1b}
+.camera-shell {background:#1f2937}
+.camera-shell .camera-message,.camera-shell .camera-placeholder {color:#e5e7eb}
+
+/* Shared guide geometry and text scale. */
+.settings-page .settings-section,.settings-page .settings-section.connection-card {background:#ffffff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 8px rgba(0,112,74,.08)}
+.settings-page .settings-section h2 {font-size:18px;color:var(--ink)}
+.settings-page .settings-section h3,.settings-page label,.settings-page input:not([type=checkbox]),.settings-page select,.settings-page textarea {font-size:14px}
+.settings-page .hint,.settings-page .muted,.settings-footer {font-size:12px;color:var(--muted)}
+.settings-page .connection-card h2 {color:var(--ink)}
+.settings-page .connection-card .hint,.settings-page .connection-card .muted {color:var(--muted)}
+.settings-page .value-card,.settings-page .control-toggle,.settings-page textarea,.camera-test-container {border-radius:12px}
+.primary {color:#ffffff;font-size:14px}
+.secondary {font-size:14px;background:#ffffff}
+.settings-page .status-badge[data-state=active] {background:var(--primary);color:#ffffff}
+.settings-page .status-badge[data-state=failed] {background:#b91c1c;color:#ffffff;border-color:#ef4444}
+.settings-page .status-badge[data-state=unknown] {background:#f59e0b;color:var(--ink)}
+
+/* Slightly darker copy on tinted surfaces, while white-card metadata uses #5A7569. */
+.settings-page .page-intro p,.settings-page .page-intro .eyebrow,.settings-page .back-to-monitor,.settings-footer,.settings-page input::placeholder {color:#496256}
+
+/* Match the monitor's UX Pilot surfaces and restrained forest accent. */
+.settings-page .settings-main {padding-top:32px}
+.settings-page .settings-section,.settings-page .settings-section.connection-card {border:1px solid #e6ece8;border-radius:24px;box-shadow:0 2px 3px #1e393206}
+.settings-page .settings-section.connection-card {background:#1e3932}
+.settings-page .connection-card,.settings-page .connection-card h2,.settings-page .connection-card .hint,.settings-page .connection-card .muted,.settings-page .connection-card #cse-state {color:#e5f1e9}
+.settings-page .connection-card .secondary {background:#ffffff10;color:#ffffff;border-color:#ffffff40}
+.settings-page input:not([type=checkbox]),.settings-page textarea {border-radius:10px;background:#f7faf8}
+.settings-page .primary,.settings-page .secondary {border-radius:10px}
+.settings-page .page-intro h1 {color:#1e3932}
+.settings-page .value-card,.settings-page .control-toggle {background:#f0f7f3}
+@media(max-width:760px){.settings-page .settings-section{border-radius:20px}.settings-page .settings-main{padding-top:22px}}
+
+/* Task-based settings: one workspace at a time, optional technical details. */
+.settings-page .centered-topbar {height:84px}
+.settings-page .settings-main {max-width:1240px;padding-top:24px}
+.settings-page .page-intro {margin-bottom:18px}
+.settings-page .page-intro h1 {font-size:27px;margin:0 0 7px}
+.settings-page .page-intro .eyebrow {display:none}
+.settings-page .connection-card {padding:18px 24px;margin-bottom:20px;gap:16px;align-items:center}
+.connection-card>div:first-child {display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:22px;align-items:center;flex:1;min-width:0}
+.settings-page .connection-card h2 {font-size:15px}
+.settings-page .connection-card #cse-url {font-size:13px;margin:0;overflow-wrap:anywhere}
+.settings-page .connection-card #cse-state {margin:7px 0 0;font-size:13px;grid-column:2}
+.connection-details {grid-column:1/-1;font-size:12px;margin-top:10px}
+.connection-details summary {cursor:pointer;color:#d3e3db;width:fit-content}
+.connection-details[open] {padding-top:5px}
+.settings-page .connection-details .mono {font-size:12px}
+.settings-page .settings-shortcuts {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:20px}
+.settings-page .settings-shortcuts a {display:flex;flex-direction:column;gap:5px;background:transparent;border:1px solid #dce5df;border-radius:16px;padding:14px 18px;color:#52655c}
+.settings-shortcuts strong {font-size:16px;font-weight:650}
+.settings-shortcuts span {font-size:12px;font-weight:400}
+.settings-page .settings-shortcuts a:hover {background:#e8f0eb}
+.settings-page .settings-shortcuts a[aria-current=page] {background:#00704a;border-color:#00704a;color:white;box-shadow:0 3px 8px #00704a14}
+.settings-page .settings-pane {padding:24px 28px;min-height:260px}
+.settings-page .settings-pane .step-label {display:none}
+.settings-page .settings-pane .section-title {margin-bottom:18px}
+.settings-page .settings-pane h2 {font-size:20px}
+.settings-disclosure {border:1px solid #e0e8e3;border-radius:14px;padding:13px 16px;margin:14px 0;background:#f7faf8;min-width:0}
+.settings-disclosure>summary {cursor:pointer;font-size:14px;font-weight:600;color:#1e3932}
+.settings-disclosure>summary span {font-size:12px;color:var(--muted);font-weight:400;margin-left:10px}
+.settings-disclosure[open]>summary {margin-bottom:14px}
+.settings-disclosure.help-disclosure {border:0;background:transparent;padding:0;margin:12px 0}
+.help-disclosure>summary {font-size:13px;color:var(--muted);font-weight:400}
+.settings-page .registration-disclosure .binding-form {margin-bottom:4px}
+.settings-page .bindings-list {border-top:0}
+.settings-page .binding-item {padding:17px 0}
+.settings-page .binding-item>* {min-width:0}
+.settings-page .data-workbench {display:flex;flex-direction:column;gap:10px}
+.settings-page .sample-column {order:2}
+.settings-page .sample-column textarea {height:220px}
+.settings-page .field-row {grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 90px 100px 32px;gap:12px}
+.settings-page .editor-footer {position:sticky;bottom:0;background:white;padding:16px 0 8px;z-index:2}
+.settings-page .control-fields {margin-top:12px;padding-top:0}
+.settings-page .control-grid {gap:15px}
+.settings-page .settings-footer {padding-top:0}
+@media(max-width:700px) {
+ .settings-page .settings-main {padding:20px 13px}
+ .settings-page .connection-card {padding:18px;align-items:stretch}
+ .connection-card>div:first-child {grid-template-columns:1fr;gap:5px}
+ .settings-page .connection-card #cse-state {grid-column:1;margin:0}
+ .settings-page .connection-actions {width:auto;align-self:flex-start}
+ .settings-page .settings-shortcuts {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .settings-page .settings-shortcuts a {padding:12px 14px}
+ .settings-shortcuts strong {font-size:15px}
+ .settings-shortcuts span {font-size:11px}
+ .settings-page .settings-pane {padding:20px 17px}
+ .settings-disclosure>summary span {display:block;margin:6px 0 0 16px}
+ .settings-page .binding-form {grid-template-columns:minmax(0,1fr)}
+ .settings-page .binding-form>* {grid-column:1}
+ .settings-page .field-row {grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:10px;padding:12px;border-radius:12px;background:#f7faf8}
+ .settings-page .field-row label {font-size:13px}
+ .settings-page .field-row input {font-size:14px;padding:8px 10px}
+ .field-row label:nth-child(3) {grid-column:1;grid-row:2}
+ .field-row label:nth-child(4) {grid-column:2;grid-row:2}
+ .field-row .remove-field {grid-column:3;grid-row:1/3;align-self:center}
+ .settings-page .field-toolbar {flex-wrap:wrap}
+ .settings-page .field-toolbar label {min-width:180px}
+ .settings-page .editor-footer {position:static}
+}
+.settings-page .connection-details {border:0;padding-top:0}
+.settings-page .masthead .team-name {display:block}
+
+/* EDGEWAY_CAMERA_FRAME_FIT_V1 */
+html:has(body.camera-shell){height:100%;overflow:hidden}
+body.camera-shell{margin:0!important;padding:0!important;width:100%;height:100dvh;min-height:0;overflow:hidden}
+.camera-shell .camera-frame{width:100%;height:100%;min-height:0;overflow:hidden}
+.camera-shell .camera-frame iframe{display:block;width:100%;height:100%;border:0}
+.camera-shell .camera-message[hidden]{display:none!important}

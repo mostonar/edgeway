@@ -1,0 +1,10 @@
+.fj-heading-button{margin-left:auto;font-size:12px;padding:5px 10px;white-space:nowrap}.fj-dialog{width:min(640px,calc(100vw - 28px));max-height:85vh;padding:24px;border:1px solid var(--line,#cddbd7);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#183934)}.fj-dialog::backdrop{background:#12292788}.fj-dialog header{display:flex;justify-content:space-between;align-items:center;gap:12px}.fj-dialog h2{margin:0;font-size:20px}.fj-zone{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line,#ddd)}.fj-zone p{margin:4px 0;font-size:13px;overflow-wrap:anywhere}.fj-zone button{white-space:nowrap}.fj-zone-list{max-height:55vh;overflow:auto}.fj-state{white-space:pre-line;overflow-wrap:anywhere;font-size:13px;line-height:1.6}@media(max-width:550px){.fj-zone{grid-template-columns:1fr}.fj-zone button{justify-self:start}}
+
+/* Smaller inline legend; reserve more height for Factory A's four robot cards. */
+.ew-map-legend{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 8px;flex:none;margin-top:0;padding-top:3px;border-top:1px solid #d8e1d1;color:var(--ink,#213c31)}
+.ew-map-legend>h3{flex:none;margin:0;font-size:10px;font-weight:600;line-height:18px;white-space:nowrap}
+.ew-map-legend-body{flex:1 1 240px;min-width:0}
+.ew-map-legend-grid{display:flex;flex-wrap:wrap;align-items:center;gap:1px 7px;margin:0;padding:0;list-style:none}
+.ew-map-legend-grid li{display:inline-flex;align-items:center;gap:3px;min-width:0;max-width:100%;min-height:18px;font-size:10px;line-height:1.15}
+.ew-map-legend-grid canvas{width:16px;height:16px;flex:0 0 16px}
+.ew-map-legend-grid span{min-width:0;white-space:normal;overflow-wrap:anywhere}

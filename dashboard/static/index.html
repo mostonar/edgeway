@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EdgeWay · Robot Event Monitor</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/fonts.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/settings.css">
+  <script src="/robot-state.js" defer></script>
+  <script src="/data-panels.js" defer></script>
+  <script src="/event-log-summary.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/admin-actions.js" defer></script>
+  <link rel="stylesheet" href="/floorplan.css">
+  <script src="/floorplan.js" defer></script>
+  <link rel="stylesheet" href="/floor-judgement.css">
+  <script src="/floor-judgement.js" defer></script>
+</head>
+<body class="dashboard-page">
+  <a class="skip-link" href="#events-title">Skip to event log</a>
+  <header class="topbar centered-topbar">
+    <div class="header-location"><h1>Robot Operations</h1><label class="fp-factory-select" for="fp-scenario"><span class="sr-only">Select factory</span><select id="fp-scenario" aria-label="Select factory"><option value="scenario-1">Factory A</option><option value="scenario-2">Factory B</option><option value="scenario-3">Factory C</option></select></label></div>
+    <div class="masthead"><a class="brand" href="/" aria-label="EdgeWay Home">EdgeWay</a><span class="team-name">SESLab</span></div>
+    <div class="topbar-meta"><span id="today" hidden></span><span id="stream-state" class="connection" data-state="waiting"><span class="status-dot" aria-hidden="true"></span><span id="stream-label">Connecting</span></span><button id="reset-records-open" class="secondary" type="button">Clean records</button><a class="settings-link" href="/settings">Connections</a></div>
+  </header>
+  <div class="monitor-shell">
+    <nav class="monitor-rail" aria-label="Select view">
+      <p class="rail-caption">Monitor</p>
+      <a href="#monitor-main" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 14l4-5 4 3 6-7"/></svg><span>Dashboard</span></a>
+      <a href="#events-title" aria-label="Event Log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M3 6h1M3 12h1M3 18h1"/></svg><span>Event Log</span></a>
+      <a href="#camera-title" aria-label="Site Camera"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="12" height="12" rx="3"/><path d="m15 10 6-3v10l-6-3"/></svg><span>Site Camera</span></a>
+      <a href="#map-title" aria-label="Floor Plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5ZM9 3v16m6-14v16"/></svg><span>Floor Plan</span></a>
+      <a class="rail-settings" href="/settings" aria-label="Connections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18m7-18v18m7-18v18M2 8h6m1 8h6m1-10h6"/></svg><span>Connections</span></a>
+    </nav>
+  <main id="monitor-main" class="workspace" aria-label="EdgeWay Operations dashboard" tabindex="-1">
+    <div id="focus-toolbar" class="focus-toolbar" hidden>
+      <div><h2 id="focus-title" tabindex="-1"></h2></div>
+      <button id="exit-focus" class="secondary" type="button">Dashboard <kbd>Esc</kbd></button>
+    </div>
+    <section class="panel camera-panel" aria-labelledby="camera-title"><div class="panel-heading"><h2 id="camera-title">Site Camera <small>Shared viewer</small></h2><div class="camera-controls"><span id="camera-view-state" class="camera-view-state" role="status">Viewer ready</span><button id="dashboard-camera-start" type="button" class="secondary">Open video</button><button id="dashboard-camera-stop" type="button" class="secondary">Close</button><button type="button" class="panel-expand" data-focus-target="camera" aria-label="Expand site camera" title="Expand site camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div><div id="dashboard-camera" class="dashboard-camera"><div class="camera-placeholder"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="10" y="18" width="31" height="28" rx="8"/><path d="m41 27 13-7v24l-13-7"/></svg><strong>Camera not connected</strong><span>Connect a web viewer to watch the live feed here.</span><a href="/settings#camera-settings-title">Camera settings <span aria-hidden="true">↗</span></a></div></div></section>
+    <section class="panel map-panel" aria-labelledby="map-title"><div class="panel-heading"><h2 id="map-title">Floor Plan</h2><span id="fp-mode" class="map-replay-badge">Live data</span><span id="fp-scene-label" class="fp-scene-label">Loading map</span><button type="button" class="panel-expand" data-focus-target="map" aria-label="Expand floor plan" title="Expand floor plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div><div id="floorplan-replay" class="floorplan-replay">
+      <div id="fp-filters" class="fp-filterbar fp-advanced" aria-label="Trial filters">
+        <label>Robot<select id="fp-robot"><option value="">All</option></select></label>
+        <label>Condition<select id="fp-cond"><option value="">All</option></select></label>
+        <label>Load<select id="fp-load"><option value="">All</option></select></label>
+        <label>Speed<select id="fp-spd"><option value="">All</option></select></label>
+        <label>Motion<select id="fp-scn"><option value="">All</option></select></label>
+        <button id="fp-filter-reset" type="button" class="secondary">Reset filters</button>
+      </div>
+      <div class="floorplan-controls fp-advanced"><button id="fp-mobile-tools" type="button" class="secondary" aria-expanded="false" aria-controls="fp-filters fp-toolbar">Filters & tools</button><button id="fp-prev" type="button" class="secondary fp-advanced" aria-label="Previous trial">Previous</button><label for="floorplan-run"><span class="sr-only">Robot details</span><select id="floorplan-run" disabled><option>Waiting for live coordinates</option></select></label><button id="fp-next" type="button" class="secondary fp-advanced" aria-label="Next trial">Next</button></div>
+      <div id="fp-toolbar" class="fp-toolbar fp-advanced">
+        <div><button id="fp-center" type="button" class="secondary">Current position</button><label><input id="fp-follow" type="checkbox"> Follow robot</label></div>
+        <div><label><input id="fp-grid" type="checkbox" checked> Grid</label><label><input id="fp-trail" type="checkbox" checked> Trail</label><label title="A visual estimate extending the recent velocity by 3 seconds, not a planned route."><input id="fp-prediction" type="checkbox" checked> Estimated path</label><label><input id="fp-coordinates" type="checkbox"> Coordinates</label><button id="fp-record-event" type="button" class="secondary">Record event</button><button id="fp-settings-open" type="button" class="secondary">Map settings</button><button id="fp-csv" type="button" class="secondary">CSV</button><button id="fp-png" type="button" class="secondary">Save image</button></div>
+      </div>
+      <div class="floorplan-plot"><canvas id="floorplan-canvas" role="img" tabindex="0" aria-label="Recorded robot path. Drag or use the arrow keys to pan."></canvas><div id="floorplan-empty" class="floorplan-empty" role="status">Waiting for live coordinates</div><span id="fp-pointer" class="fp-pointer fp-advanced"></span><button id="fp-robot-link" class="fp-robot-link" type="button" disabled>Select robot</button><button id="fp-return" type="button" class="fp-return" hidden>Return to robot</button><span id="fp-prediction-label" class="fp-prediction-label" hidden></span><span id="fp-motion-state" class="fp-motion-state"></span><button id="fp-compact-status" class="fp-compact-status" type="button" aria-expanded="false" aria-controls="fp-motion-state fp-prediction-label fp-link-status">Received position</button><span id="fp-link-status" class="fp-link-status" role="status">Select a robot to view related events.</span></div>
+      <div class="fp-map-footer"><p id="floorplan-readout" class="floorplan-readout">No coordinates received</p><details class="fp-robot-details"><summary>Robot details</summary><div id="fp-robot-detail">No robot selected.</div></details><div class="fp-zoom-controls" aria-label="Map zoom"><button id="fp-zoom-out" type="button" class="secondary" aria-label="Zoom out">−</button><label class="sr-only" for="fp-zoom-range">Zoom level</label><input id="fp-zoom-range" type="range" min="-2" max="3" step="0.01" value="0" aria-label="Zoom level"><output id="fp-zoom-value" for="fp-zoom-range">100%</output><button id="fp-zoom-in" type="button" class="secondary" aria-label="Zoom in">＋</button><button id="fp-fit" type="button" class="secondary">Fit map</button></div></div>
+      <div class="fp-summary fp-advanced"><span id="fp-summary"></span><span id="fp-source"></span></div>
+      <div id="fp-fleet" class="fp-fleet fp-advanced" aria-label="Received robots" hidden></div><p id="fp-feedback" class="fp-feedback fp-advanced" role="status"></p>
+      <p class="floorplan-note">Live coordinates · Units unverified · Teal line: recorded trail · Markers: event location and time · Red dashed line: 3-second motion estimate, not a planned route · Drag or use arrow keys to pan</p>
+    </div></section>
+    <section class="status-strip" aria-label="Connection and data summary" hidden>
+      <div class="status-tile"><span>Subscriptions</span><strong id="summary-subscriptions">—</strong><small>For the current CSE</small></div>
+      <div class="status-tile"><span>Stored events</span><strong id="summary-events">—</strong><small>Records from all robots</small></div>
+      <div class="status-tile"><span>CSE Connection</span><strong id="summary-cse">Checking</strong><small>Independent of robot operating state</small></div>
+      <div class="status-tile"><span>Last received</span><strong id="summary-received">—</strong><small id="summary-received-date">Checking received records</small></div>
+    </section>
+    <section class="panel events-panel" aria-labelledby="events-title">
+      <div class="panel-heading events-heading"><div class="panel-title"><h2 id="events-title" tabindex="-1">Event Log</h2><span id="event-count" class="count" hidden>0</span></div><div class="filter-group"><label class="sr-only" for="robot-filter">Robot</label><select id="robot-filter"><option value="">Loading robots</option></select></div><div class="panel-heading-actions"><button type="button" class="panel-expand" data-focus-target="events" aria-label="Expand event log" title="Expand event log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div>
+      <span class="acme-status" id="acme-state" hidden>ACME Checking</span>
+      <div id="error-banner" class="notice" hidden><span id="error-text"></span><button id="retry" type="button">Retry</button></div>
+      <div id="new-banner" class="new-banner" hidden><button id="show-new" type="button">Show new logs</button></div>
+      <div id="timeline-scroll" class="timeline-scroll" tabindex="0" aria-label="Event log scroll area">
+        <div id="empty-state" class="empty-state"><div class="empty-mark" aria-hidden="true">···</div><h3 id="empty-title">Loading records</h3><p id="empty-description">Reading stored records.</p></div>
+        <table class="event-table" aria-label="Robot event log"><thead><tr><th scope="col">Time</th><th scope="col">Source</th><th scope="col">Event</th></tr></thead><tbody id="timeline"></tbody></table>
+        <button id="load-more" type="button" class="load-more" hidden>Load older records</button>
+      </div>
+      <footer class="events-footer" hidden><span id="last-received">No records received</span><span>Reception time</span></footer>
+    </section>
+    <section class="panel admin-panel" aria-labelledby="admin-title">
+      <div class="panel-heading"><h2 id="admin-title">Factory Overview</h2><button type="button" class="panel-expand" data-focus-target="admin" aria-label="Expand factory overview" title="Expand factory overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div>
+      <div class="admin-content">
+        <div class="overview-topline"><p id="factory-overview-title" class="overview-title">Factory A Overview</p><button id="factory-values-open" type="button" class="secondary">Data</button></div>
+        <div id="factory-counts" class="factory-counts" title="Based on the latest received states"></div>
+        <div class="overview-lists">
+          <section class="overview-list-section"><h3 class="overview-subtitle">Robots</h3><div id="factory-robots" class="factory-robots" aria-label="All robot states in this factory"></div><div class="overview-pager"><button id="robots-prev" type="button" aria-label="Previous robot page">‹</button><span id="robots-page" aria-live="polite"></span><button id="robots-next" type="button" aria-label="Next robot page">›</button></div></section>
+          <section class="overview-list-section"><h3 class="overview-subtitle" title="Based on the latest 50 records per robot">Recent Alerts</h3><div id="factory-alerts" class="factory-alerts"></div><div class="overview-pager"><button id="alerts-prev" type="button" aria-label="Previous alert page">‹</button><span id="alerts-page" aria-live="polite"></span><button id="alerts-next" type="button" aria-label="Next alert page">›</button></div></section>
+        </div>
+        <section id="map-symbol-legend" class="ew-map-legend" aria-labelledby="map-symbol-legend-title">
+          <h3 id="map-symbol-legend-title">Map Symbols</h3>
+          <div class="ew-map-legend-body">
+            <ul class="ew-map-legend-grid">
+              <li><canvas data-map-symbol="suspected" width="76" height="76" aria-hidden="true"></canvas><span>Suspected robot fault</span></li>
+              <li><canvas data-map-symbol="floor_suspected" width="76" height="76" aria-hidden="true"></canvas><span>Suspected floor anomaly</span></li>
+              <li><canvas data-map-symbol="inspection" width="76" height="76" aria-hidden="true"></canvas><span>Robot fault</span></li>
+              <li><canvas data-map-symbol="cross_check" width="76" height="76" aria-hidden="true"></canvas><span>Cross-check</span></li>
+              <li><canvas data-map-symbol="pickup" width="76" height="76" aria-hidden="true"></canvas><span>Pickup</span></li>
+              <li><canvas data-map-symbol="carrying" width="76" height="76" aria-hidden="true"></canvas><span>Carrying</span></li>
+              <li><canvas data-map-symbol="dropoff" width="76" height="76" aria-hidden="true"></canvas><span>Drop-off</span></li>
+              <li><canvas data-map-symbol="attention" width="76" height="76" aria-hidden="true"></canvas><span>Floor anomaly</span></li>
+              <li><canvas data-map-symbol="zone" width="76" height="76" aria-hidden="true"></canvas><span>Judgement zone</span></li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+  </div>
+  <div id="announcer" class="sr-only" role="status" aria-atomic="true"></div>
+  <dialog id="floor-clear-dialog" aria-labelledby="floor-clear-title" aria-describedby="floor-clear-description">
+    <div class="detail-heading"><h2 id="floor-clear-title">Send a floor anomaly clear request?</h2></div>
+    <p id="floor-clear-description">Send a request to the Judgement AE to clear the selected floor anomaly area.</p>
+    <form method="dialog" class="records-reset-actions">
+      <button type="submit" value="cancel" class="secondary" autofocus>Cancel</button>
+      <button type="submit" value="send">Send request</button>
+    </form>
+  </dialog>
+  <dialog id="records-reset-dialog" aria-labelledby="records-reset-title" aria-describedby="records-reset-description">
+    <div class="detail-heading"><h2 id="records-reset-title">Clean all dashboard records?</h2></div>
+    <p id="records-reset-description">Clear the event log, received robot positions, movement dots, received event markers, floor-suspect markers and judged floor areas for <strong>all factories (A, B and C)</strong>.</p>
+    <p id="records-reset-count"></p>
+    <p>Maps, robot dimensions, connections and control history are kept. Cleared raw records are archived for recovery; the same records will not reappear when polled again.</p>
+    <p>New records received after this preview remain and live updates continue. The dashboard will reload after cleaning.</p>
+    <p id="records-reset-status" role="status" aria-live="polite"></p>
+    <div class="records-reset-actions"><button id="records-reset-cancel" type="button" class="secondary" autofocus>Cancel</button><button id="records-reset-confirm" type="button" disabled>Clean all records</button></div>
+  </dialog>
+  <dialog id="factory-values-dialog" aria-labelledby="factory-values-title"><div class="detail-heading"><h2 id="factory-values-title">Factory data</h2><button id="factory-values-close" type="button" class="close-button" aria-label="Close data">×</button></div>
+        <details id="latest-data"><summary>Latest data by robot</summary><div id="data-values" class="data-panel-body"><p class="hint">Loading display settings.</p></div></details>
+  </dialog>
+  <dialog id="log-dialog" aria-labelledby="log-dialog-title">
+    <div class="detail-heading"><h2 id="log-dialog-title">Event Details & Actions</h2><button id="close-log" class="close-button" type="button" aria-label="Close event details">×</button></div>
+    <span id="selection-badge" class="selection-badge" hidden></span>
+        <p id="selection-empty" class="hint" role="status">Select an event log entry to view its details.</p>
+        <section id="selection-content" aria-label="Selected event details" hidden>
+          <div class="event-brief">
+          <div class="selected-meta"><span id="selected-target"></span><time id="selected-time"></time></div>
+          <p id="selected-log" class="selected-log" aria-live="polite"></p>
+          <p id="selected-description" class="hint"></p>
+          <dl id="selected-payload" class="selected-payload" aria-label="Selected event data"></dl>
+          <details id="selected-extra" hidden><summary>Additional fields</summary><pre id="selected-extra-body"></pre></details>
+          <dl id="context-fields" class="context-fields" hidden></dl>
+          <div id="selected-values" class="value-grid"></div>
+          <p id="context-note" class="context-note" hidden></p>
+          </div>
+          <section id="operator-panel" class="operator-panel" aria-label="Operator actions" hidden>
+            <div class="operator-heading"><strong id="operator-event-id"></strong><span id="operator-status" class="status-badge"></span></div>
+            <p id="operator-help" class="hint"></p>
+            <div id="operator-form">
+              <label>Operator<input id="operator-name" maxlength="80" placeholder="Name or operator ID" autocomplete="name"></label>
+              <label>Reason<textarea id="operator-note" maxlength="1000" rows="1" placeholder="Enter your observations and reason for this action"></textarea></label>
+              <div id="operator-buttons" class="operator-buttons"></div>
+            </div>
+            <p id="operator-feedback" class="hint" role="status" aria-live="polite"></p>
+            <details id="operator-history-box"><summary>Action history <span id="operator-history-count">0</span></summary><ol id="operator-history"></ol></details>
+          </section>
+          <button id="show-raw" type="button" class="secondary">View raw data</button>
+        </section>
+  </dialog>
+  <dialog id="event-dialog" aria-labelledby="detail-title">
+    <div class="detail-heading"><div><p class="eyebrow">Original record</p><h2 id="detail-title">Received record</h2></div><button id="close-detail" class="close-button" type="button" aria-label="Close details">×</button></div>
+    <p id="detail-time" class="detail-time"></p><p class="content-label">Received content</p><pre id="detail-content"></pre>
+    <details id="technical-details"><summary>Technical details and raw notification</summary><dl id="detail-metadata"></dl><p class="content-label">oneM2M Raw notification</p><pre id="detail-raw"></pre></details>
+  </dialog>
+  <dialog id="fp-settings" aria-labelledby="fp-settings-title">
+    <div class="fp-dialog-heading"><h2 id="fp-settings-title">Map settings</h2><button id="fp-settings-close" type="button" class="secondary">Close</button></div>
+    <p><a href="/tests/network-status">Network status test</a></p>
+    <p class="hint">Files are read only in this browser and are not added to server event or command records. Select imported record files again when needed. Scenario backgrounds and coordinate settings are saved in this browser.</p>
+    <fieldset><legend>Scenario background</legend><p class="hint">Switch between three scenarios using the background selector. Images, scale, origin and obstacles are saved separately. Robots in the same scenario must share a coordinate frame.</p><label>Scenario name<input id="fp-scenario-name" maxlength="40"></label><button id="fp-scenario-save" type="button">Save name</button><p class="hint">Use scenario-1, scenario-2 or scenario-3 as scenario_id. If omitted, robot IDs starting with siteA_, siteB_ or siteC_ map to Factory A, B or C. Other robots default to Factory A. This is independent of motion classes such as idle or straight.</p></fieldset><div class="fp-dialog-actions"><button id="fp-to-geometry" type="button" class="secondary">Obstacles & dimensions</button><button id="fp-to-symbols" type="button" class="secondary">Event locations</button></div>
+    <fieldset id="fp-geometry-fields"><legend>Obstacles & robot dimensions</legend>
+      <p id="fp-geometry-scope" class="hint"></p>
+      <p class="hint">Use the same origin and units as the robot pose. Portrait maps rotate 90° on screen: +X points up and +Y points left. Dimensions use the original coordinate units, without automatic conversion to meters. Angles are measured counterclockwise from +X in degrees (°).</p>
+      <label class="fp-confirm"><input id="fp-template" type="checkbox"> Show placeholder shelves (not measured)</label>
+      <h3>Add or edit obstacle</h3>
+      <p class="hint">Enter the rectangle center and its unrotated dimensions. Maximum 100 obstacles. Adding the first obstacle hides placeholder shelves.</p>
+      <div class="fp-geometry-grid">
+        <label>Name<input id="fp-ob-name" type="text" maxlength="60" placeholder="e.g. Shelf A"></label>
+        <label>Type<select id="fp-ob-kind"><option value="obstacle">Obstacle</option><option value="shelf">Shelf</option><option value="wall">Wall</option></select></label>
+        <label>Center X<input id="fp-ob-x" type="number" step="any"></label><label>Center Y<input id="fp-ob-y" type="number" step="any"></label>
+        <label>Width (X direction)<input id="fp-ob-width" type="number" step="any" min="0"></label><label>Height (Y direction)<input id="fp-ob-height" type="number" step="any" min="0"></label>
+        <label>Rotation (°)<input id="fp-ob-angle" type="number" step="any" value="0" min="-360" max="360"></label>
+      </div>
+      <div class="fp-dialog-actions"><button id="fp-ob-save" type="button">Add obstacle</button><button id="fp-ob-cancel" type="button" class="secondary" hidden>Cancel edit</button></div>
+      <div id="fp-ob-list" class="fp-ob-list" aria-label="Saved obstacles"></div>
+      <h3>Robot dimensions</h3>
+      <p class="hint">Recorded X and Y define the robot center. Length is front to back; width is side to side. Use a fixed heading if the units of the received heading are unknown.</p>
+      <label class="fp-confirm"><input id="fp-body-enabled" type="checkbox"> Show robot footprint using these dimensions</label>
+      <div class="fp-geometry-grid">
+        <label>Length (front to back)<input id="fp-body-length" type="number" min="0" step="any"></label><label>Width (side to side)<input id="fp-body-width" type="number" min="0" step="any"></label>
+        <label>Heading source<select id="fp-body-heading"><option value="fixed">Fixed angle</option><option value="yaw-rad">Received yaw (radians)</option><option value="yaw-deg">Received yaw (degrees)</option></select></label>
+        <label>Fixed angle / yaw offset (°)<input id="fp-body-angle" type="number" min="-360" max="360" step="any" value="0"></label>
+      </div>
+      <p class="hint">If yaw is missing, a dashed circle indicates unknown heading. Footprints visualize size only; they do not detect collisions or avoid obstacles.</p>
+      <button id="fp-body-save" type="button">Save robot dimensions</button>
+      <p id="fp-geometry-message" class="fp-dialog-message" role="status"></p>
+    </fieldset>
+    <fieldset id="fp-symbol-fields"><legend>Robot event locations</legend>
+      <p id="fp-symbol-scope" class="hint"></p>
+      <label class="fp-confirm"><input id="fp-stops" type="checkbox" checked> Show stops detected from coordinates</label>
+      <p class="hint">Mark a stop when valid coordinates stay within 0.01 original units for at least 1 second. Gaps longer than 0.25 seconds or missing coordinates are not bridged. The marker appears after confirmation and does not infer rotation or stop commands. Select a marker to view the confirmation time.</p>
+      <label class="fp-confirm"><input id="fp-robot-image" type="checkbox" checked> Show robot image</label>
+      <p class="hint">Record events such as pickup at their location and time. Markers stay at the event location as the robot moves. Manual markers and received events are labeled separately.</p>
+      <h3>Record at current position and time</h3><p class="hint">Use a button below to mark the current robot position. A valid position is required.</p><div id="fp-state-cards" class="fp-state-cards" aria-label="Record event at current position"></div>
+      <h3>Enter or edit location and time</h3>
+      <div class="fp-geometry-grid">
+        <label>Event type<select id="fp-symbol-kind"><option value="collision">Collision</option><option value="pickup">Pickup</option><option value="carrying">Carrying point</option><option value="dropoff">Drop-off</option><option value="blocked">Waiting point</option></select></label>
+        <label>Display name<input id="fp-symbol-name" type="text" maxlength="40" placeholder="Optional"></label>
+        <label>Position X<input id="fp-symbol-x" type="number" step="any"></label><label>Position Y<input id="fp-symbol-y" type="number" step="any"></label>
+      </div>
+      <label class="fp-confirm"><input id="fp-symbol-timed" type="checkbox" checked> Link event time</label>
+      <label>Elapsed trial time (s)<input id="fp-symbol-time" type="number" min="0" step="any"></label>
+      <div class="fp-dialog-actions fp-symbol-actions"><button id="fp-symbol-current" type="button" class="secondary">Use current position</button><button id="fp-symbol-place" type="button" class="secondary">Pick on map</button><button id="fp-symbol-save" type="button">Add marker</button><button id="fp-symbol-cancel" type="button" class="secondary" hidden>Cancel edit</button></div>
+      <p class="hint">Enter coordinates or select a point on the map. Esc cancels placement. Select a marker to edit it or jump to its linked time. Markers appear from their event time and remain at that location in the same trial. Maximum 100 markers.</p>
+      <div id="fp-symbol-list" class="fp-ob-list" aria-label="Manual markers"></div>
+      <p id="fp-symbol-message" class="fp-dialog-message" role="status"></p>
+    </fieldset>
+    <fieldset><legend>Received coordinates</legend><p id="fp-received-status" class="hint" role="status">Waiting for coordinates · robot, t_sim and pose.x/y are required.</p><button id="fp-clear-tests" type="button" class="secondary">Clear test records</button><p id="fp-clear-status" class="hint" role="status"></p><p class="hint">Clear test coordinates and events across all scenarios. Provided records, ordinary data, robot connections and map settings are retained. Records linked to robot control history are excluded. Removed raw records are archived for recovery.</p><p class="hint">Coordinates are separated by source, factory and robot. A run_id groups recorded trials; without one, only the latest observation is used, including after simulation reset. Reported wall time orders status and telemetry. Latest records are restored on reload.</p></fieldset>
+    <fieldset><legend>Background map</legend><p id="fp-map-preset-info" class="hint"></p><button id="fp-map-preset" type="button" class="secondary">Apply factory coordinates</button><p class="hint">Use the original PNG. Resized previews from Discord do not match the pixel scale in the YAML file.</p>
+      <label>Map image (PNG·JPEG·PGM, Maximum 16 MB)<input id="fp-image" type="file" accept=".png,.jpg,.jpeg,.pgm"></label>
+      <label>Map YAML (optional)<input id="fp-yaml" type="file" accept=".yaml,.yml"></label>
+      <p class="hint">Reads resolution and origin [x, y, yaw] from the YAML file. The origin is the bottom-left of the map and yaw is in radians. For other drawings, enter the values below manually.</p>
+      <div class="fp-map-fields"><label>Coordinate units / pixel<input id="fp-resolution" type="number" min="0.000001" step="any" value="0.05"></label><label>Origin X<input id="fp-origin-x" type="number" step="any" value="0"></label><label>Origin Y<input id="fp-origin-y" type="number" step="any" value="0"></label><label>Map rotation (rad)<input id="fp-origin-yaw" type="number" step="any" value="0"></label></div>
+      <label class="fp-confirm"><input id="fp-frame-confirm" type="checkbox"> I confirm that the map and robot pose use the same coordinate frame and units.</label>
+      <div class="fp-dialog-actions"><button id="fp-map-apply" type="button">Apply map</button><button id="fp-map-remove" type="button" class="secondary">Use server map</button></div>
+      <p id="fp-map-info" class="hint">No map linked. Compare reference points to verify alignment with the physical space.</p>
+    </fieldset>
+    <p id="fp-dialog-message" role="status" class="fp-dialog-message"></p>
+  </dialog>
+</body>
+</html>

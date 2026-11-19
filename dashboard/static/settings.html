@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Connection & Display Settings · EdgeWay</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/fonts.css"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/settings.css">
+  <script src="/settings.js" defer></script>
+  <script src="/control-settings.js" defer></script>
+  <script src="/factory-c-address.js" defer></script>
+</head>
+<body class="settings-page">
+  <a class="skip-link" href="#settings-main">Skip to settings</a>
+  <header class="topbar centered-topbar"><div class="header-location"><span>Connections</span></div><div class="masthead"><a class="brand" href="/">EdgeWay</a><span class="team-name">SESLab</span></div><nav class="page-nav" aria-label="Main navigation"><a href="/">Operations dashboard</a><a href="/settings" aria-current="page">Connections</a></nav></header>
+  <main id="settings-main" class="settings-main">
+    <div class="page-intro"><div><p class="eyebrow">EDGEWAY CONNECTIONS</p><h1>Connections</h1><p>Manage connections and choose what appears on the dashboard.</p></div><a class="back-to-monitor" href="/">Back to dashboard <span aria-hidden="true">↗</span></a></div>
+    <section class="settings-section connection-card" aria-labelledby="connection-title">
+      <div><h2 id="connection-title">Server connection</h2><p id="cse-url" class="mono">Loading</p><p id="cse-state" class="hint" role="status" aria-live="polite">Checking connection</p><details class="connection-details"><summary>Connection details</summary><p class="hint">Notification URL <span id="notify-url" class="mono"></span></p><span id="cse-id" class="muted"></span></details></div>
+      <div class="connection-actions"><button id="check-connection" class="secondary" type="button">Check connection</button></div>
+    </section>
+    <nav class="settings-shortcuts" aria-label="Settings navigation">
+      <a href="#subscriptions-title"><strong>Robot Connections</strong><span>Subscriptions and data reception</span></a>
+      <a href="#control-title"><strong>Operator Controls</strong><span>Command and result paths</span></a>
+      <a href="#fields-title"><strong>Display Settings</strong><span>Values shown on the dashboard</span></a>
+      <a href="#camera-settings-title"><strong>Camera</strong><span>Viewer URL and connection test</span></a>
+    </nav>
+    <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+
+    <section id="settings-subscriptions" class="settings-section settings-pane" data-settings-pane="subscriptions-title" aria-labelledby="subscriptions-title">
+      <div class="section-title"><div><p class="step-label">Data connection</p><h2 id="subscriptions-title">Robot subscriptions</h2></div><button id="refresh-bindings" class="secondary" type="button">Refresh list</button></div>
+      <details id="subscription-create" class="settings-disclosure registration-disclosure"><summary>Add robot subscription <span>Robot ID and data path</span></summary>
+      <p class="hint">Enter a data path to create the required AE and CNT resources and subscribe. Existing resources are reused. Created resources remain if registration fails.</p>
+      <form id="binding-form" class="binding-form">
+        <label>Robot ID<input id="robot-id" name="robot_id" placeholder="forklift_b" maxlength="80" required pattern="[A-Za-z0-9_-]+"></label>
+        <label>Display name<input id="robot-name" name="name" placeholder="Forklift B" maxlength="80" required></label>
+        <label>Data type<select id="binding-channel" name="channel"><option value="status">Status · status</option><option value="telemetry">Sensor · telemetry</option><option value="log">Log · log</option><option value="custom">Other · custom</option></select></label>
+        <label class="path-label">CNT path<input id="resource-path" name="resource_path" placeholder="forklift_b/status" required><span class="hint">Path below the CSE</span></label>
+        <button class="primary" type="submit">Subscribe</button>
+      </form>
+      </details>
+      <div id="bindings-list" class="bindings-list" aria-live="polite"><p class="hint">Loading subscriptions.</p></div>
+    </section>
+    <section id="settings-control" class="settings-section settings-pane" data-settings-pane="control-title" aria-labelledby="control-title">
+      <div class="section-title"><div><p class="step-label">Robot control connection</p><h2 id="control-title">Command & result paths</h2></div><button id="control-reload" type="button" class="secondary">Reload saved settings</button></div>
+      <details class="settings-disclosure help-disclosure"><summary>Control connection guide</summary><p class="hint">Agree on paths for each robot with the IPE team. Save disabled settings in advance, or enable control and save to create a missing command path and verify the result subscription. Saving or checking paths does not send robot commands.</p></details>
+      <p id="control-source" class="hint"></p>
+      <div id="control-list" class="bindings-list"></div>
+      <form id="control-form">
+        <fieldset id="control-fields" class="control-fields" disabled>
+          <legend class="hint">Per-robot settings</legend>
+          <div class="control-grid">
+            <label>Robot ID<input id="control-robot" list="control-robots" maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Robot1" required><datalist id="control-robots"></datalist></label>
+            <label>Response timeout (s)<input id="control-timeout" type="number" min="1" max="300" value="30" required></label>
+            <label>Command CNT path<input id="control-command" placeholder="Robot1/commands" maxlength="728" required><span class="hint">IPE reads commands here</span></label>
+            <label>Result CNT path<input id="control-result" list="control-result-paths" placeholder="Robot1/results" maxlength="728" required><datalist id="control-result-paths"></datalist><span class="hint">IPE writes execution results here</span></label>
+          </div>
+          <div class="button-row"><button id="control-defaults" type="button" class="secondary">Use default paths</button><button id="control-subscription" type="button" class="secondary">Fill result subscription</button></div>
+          <p id="control-addresses" class="hint mono"></p>
+          <label class="control-toggle"><input id="control-enabled" type="checkbox"><span>Enable operator controls for this robot</span></label>
+          <details class="settings-disclosure help-disclosure"><summary>Path setup and completion responses</summary><p class="hint">Agree on command paths with the IPE team. Missing AE and CNT resources are created when control is enabled and saved. Existing resources are reused. Created resources remain if saving fails. Subscribe to the result path under Robot Connections with the same robot ID. A connection check does not verify IPE execution. An actual completion response is required to mark an action complete.</p></details>
+          <div class="button-row"><button id="control-check" type="button" class="secondary">Check paths</button><button id="control-save" type="submit" class="primary">Save control settings</button></div>
+        </fieldset>
+      </form>
+      <p id="control-feedback" class="hint" role="status" aria-live="polite">Loading control settings.</p>
+    </section>
+    <section id="settings-fields" class="settings-section settings-pane" data-settings-pane="fields-title" aria-labelledby="fields-title">
+      <div class="section-title"><div><p class="step-label">Dashboard values</p><h2 id="fields-title">Received data display</h2></div><label class="binding-picker">Subscription<select id="field-binding"><option value="">Register a subscription first</option></select></label></div>
+      <p class="hint">Raw data is preserved. These settings only change how values appear on the dashboard.</p>
+      <div id="field-editor" hidden>
+        <div class="sample-toolbar"><span id="sample-info" class="muted">Waiting for data</span><button id="reload-sample" type="button" class="secondary">Fetch latest data</button></div>
+        <div class="data-workbench">
+          <details class="sample-column settings-disclosure"><summary>Raw data · Edit JSON sample</summary><label for="sample-json">Preview JSON</label><textarea id="sample-json" spellcheck="false" aria-describedby="sample-help"></textarea><p id="sample-help" class="hint">Edit the sample to test the display settings. CSE and stored raw records are not changed.</p></details>
+          <div class="field-column"><div class="field-toolbar"><label>Choose received field<select id="available-paths"><option value="">No received fields</option></select></label><button id="add-selected" class="secondary" type="button">Add selected</button></div>
+            <div id="field-rows" class="field-rows"></div>
+            <div class="button-row"><button id="add-field" class="secondary" type="button">Add field</button><button id="preset-fields" class="secondary" type="button">Use preset fields</button></div>
+            <p class="hint">Example: <code>state</code>, <code>pose.x</code>, <code>pose.x[-1]</code>. <code>[-1]</code>selects the last array element. Use a scale of 0.01 to convert cm to m.</p>
+          </div>
+        </div>
+        <div class="preview-heading"><h3>Value preview</h3><span id="preview-source" class="muted"></span></div><div id="field-preview" class="value-grid"></div>
+        <div class="editor-footer"><span id="mapping-state" class="muted">Saved settings</span><div class="button-row"><button id="preview-fields" class="secondary" type="button">Preview</button><button id="save-fields" class="primary" type="button">Save display settings</button></div></div>
+      </div>
+      <p id="field-empty" class="empty-copy">Register a subscription to view received fields and display settings.</p>
+    </section>
+    <section id="settings-camera" class="settings-section settings-pane" data-settings-pane="camera-settings-title" aria-labelledby="camera-settings-title">
+      <div class="section-title"><div><p class="step-label">Video test</p><h2 id="camera-settings-title">Camera connection</h2></div><span class="version-tag">Web viewer test</span></div>
+      <details class="settings-disclosure help-disclosure"><summary>Supported viewer URLs</summary><p class="hint">Use a web viewer URL that opens in a browser. An Isaac Sim server IP and WebRTC signaling port alone are not enough; prepare a viewer compatible with your version first.</p></details>
+      <form id="camera-form" class="camera-form"><label>Camera name<input id="camera-name" value="Site Camera" maxlength="60" required></label><label class="camera-url-label">Web viewer URL<input id="camera-url" type="url" placeholder="http://127.0.0.1:8210"></label><button type="submit" class="primary">Save URL</button></form>
+      <div class="button-row"><button id="camera-test" type="button" class="secondary">Test saved URL</button><button id="camera-stop" type="button" class="secondary">Stop test</button><a id="camera-external" target="_blank" rel="noopener noreferrer" hidden>Open in new tab ↗</a></div>
+      <p class="hint">Loading the page does not confirm video playback. Check the video and connection status directly.</p>
+      <div id="camera-test-container" class="camera-test-container" hidden></div>
+    </section>
+    <footer class="settings-footer">Check both subscription status and last reception time. Display settings and camera URLs persist after restart.</footer>
+  </main>
+</body>
+</html>

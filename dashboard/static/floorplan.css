@@ -1,0 +1,167 @@
+.map-replay-badge{margin-left:12px;color:var(--muted);font-size:11px;white-space:nowrap}
+.floorplan-replay{flex:1;min-height:0;display:grid;grid-template-rows:auto minmax(35px,1fr) auto auto;gap:5px;padding:0 16px 10px}
+.floorplan-controls{display:flex;align-items:center;gap:8px;min-width:0}
+.floorplan-controls label{flex:1;min-width:0;margin:0}
+.floorplan-controls select{width:100%;min-width:0;max-width:100%;font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.floorplan-plot{position:relative;min-height:0;overflow:hidden;background:var(--surface);border-radius:6px}
+.floorplan-plot canvas{display:block;width:100%;height:100%}
+.floorplan-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:8px;color:var(--muted);font-size:12px;background:var(--surface)}
+.floorplan-playback{display:flex;align-items:center;gap:8px;min-width:0}
+.floorplan-playback button{padding:4px 9px;font-size:12px;min-width:55px;white-space:nowrap}
+.floorplan-playback input{flex:1;width:0;min-width:30px;margin:0;accent-color:var(--accent)}
+.floorplan-playback output{font-variant-numeric:tabular-nums;font-size:11px;white-space:nowrap;color:var(--muted)}
+.floorplan-readout{font-size:11px;line-height:1.4;color:var(--muted);margin:0;min-height:16px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.floorplan-note{display:none;font-size:12px;color:var(--muted);margin:0}
+.is-focused .floorplan-replay{grid-template-rows:auto minmax(160px,1fr) auto auto auto;padding:8px 24px 22px;gap:12px}
+.is-focused .floorplan-controls select{font-size:14px;padding:9px 12px}
+.is-focused .floorplan-readout,.is-focused .floorplan-playback output{font-size:14px}
+.is-focused .floorplan-playback button{padding:9px 14px;font-size:14px}
+.is-focused .floorplan-note{display:block}
+@media(min-width:768px){
+ .map-panel:not(.is-focused) .floorplan-replay{grid-template-columns:minmax(0,1fr) minmax(130px,42%);grid-template-rows:auto auto minmax(0,1fr);gap:6px 12px}
+ .map-panel:not(.is-focused) .floorplan-plot{grid-column:1;grid-row:1 / 4}
+ .map-panel:not(.is-focused) .floorplan-controls{grid-column:2;grid-row:1}
+ .map-panel:not(.is-focused) .floorplan-controls select{height:29px;min-height:29px;padding:3px 5px;font-size:11px}
+ .map-panel:not(.is-focused) .floorplan-playback{grid-column:2;grid-row:2;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 6px}
+ .map-panel:not(.is-focused) .floorplan-playback button{height:28px;min-height:28px;padding:3px 7px;min-width:48px}
+ .map-panel:not(.is-focused) .floorplan-playback input{width:100%}
+ .map-panel:not(.is-focused) .floorplan-playback output{grid-column:1 / -1}
+ .map-panel:not(.is-focused) .floorplan-readout{grid-column:2;grid-row:3;font-size:11px}
+}
+@media(max-width:767px){
+ .dashboard-page .map-panel:not(.is-focused){height:330px;min-height:330px}
+ .floorplan-replay{padding:0 12px 12px}
+ .floorplan-playback button{min-height:36px}
+ .floorplan-playback input{min-height:32px}
+ .is-focused .floorplan-replay{padding:0 12px 12px;gap:8px;grid-template-rows:auto minmax(90px,1fr) auto auto auto}
+ .is-focused .floorplan-readout,.is-focused .floorplan-playback output{font-size:12px}
+}
+/* Detailed inspection tools are shown in the existing focus view. */
+.fp-advanced{display:none}
+.is-focused .fp-advanced{display:flex}
+.is-focused .floorplan-replay{display:flex;flex-direction:column;overflow:auto;gap:8px;padding:4px 20px 14px}
+.is-focused .floorplan-plot{flex:1;min-height:160px}
+.is-focused .floorplan-controls{flex:none}
+.is-focused .fp-filterbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:8px;align-items:end;flex:none}
+.fp-filterbar label{display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:11px;min-width:0}
+.fp-filterbar select,.floorplan-playback select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-width:0;max-width:100%}
+.fp-toolbar{justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;flex:none}
+.fp-toolbar>div{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.fp-toolbar label,.fp-loop{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap}
+.fp-toolbar input,.fp-loop input,#fp-settings input[type=checkbox]{width:auto;min-width:0;flex:none;accent-color:var(--accent)}
+.is-focused .floorplan-replay button.secondary{padding:5px 9px;font-size:12px;min-height:30px;white-space:nowrap}
+.is-focused .floorplan-playback{flex:none}
+.is-focused .floorplan-playback output{font-size:12px}
+.is-focused .floorplan-controls select{padding:6px 8px;font-size:13px}
+.fp-summary{justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.fp-summary span{min-width:0}
+.fp-feedback{font-size:12px;color:var(--warning);margin:0}
+.fp-feedback:empty{display:none}
+.fp-pointer{position:absolute;right:10px;top:8px;font-size:11px;color:var(--ink);background:var(--surface);pointer-events:none}
+.floorplan-plot canvas{touch-action:none;cursor:grab}
+.floorplan-plot canvas:active{cursor:grabbing}
+#fp-settings{width:min(690px,calc(100vw - 28px));max-height:85dvh;padding:22px;border:1px solid var(--line);border-radius:16px;color:var(--ink);background:var(--surface);overflow:auto}
+#fp-settings::backdrop{background:#14231c66}
+.fp-dialog-heading{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:12px}
+.fp-dialog-heading{position:sticky;top:-22px;padding:10px 0;background:var(--surface);z-index:1}
+.fp-dialog-heading h2{font-size:19px}
+#fp-settings fieldset{border:0;border-top:1px solid var(--line);padding:14px 0;margin:16px 0 0;min-width:0}
+#fp-settings legend{font-weight:600;padding-right:10px}
+#fp-settings fieldset{scroll-margin-top:65px}
+#fp-settings label{display:flex;flex-direction:column;gap:6px;font-size:13px;margin-bottom:10px;min-width:0}
+#fp-settings input{min-width:0;max-width:100%;font:inherit}
+#fp-settings input[type=file]{font-size:12px;width:100%}
+#fp-settings input[type=number]{border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--surface);color:var(--ink);width:100%}
+#fp-settings .fp-confirm{flex-direction:row;align-items:flex-start;margin:10px 0;font-size:12px}
+.fp-map-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.fp-dialog-actions{display:flex;gap:8px;margin:12px 0}
+.fp-dialog-message{font-size:13px;overflow-wrap:anywhere;color:var(--warning)}
+.fp-geometry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#fp-settings .fp-geometry-grid input,#fp-settings .fp-geometry-grid select{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+#fp-settings h3{font-size:14px;margin:18px 0 8px}
+.fp-ob-list{display:grid;gap:8px;max-height:220px;overflow:auto}
+.fp-ob-row{display:flex;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:12px}
+.fp-ob-row span{flex:1;min-width:0;overflow-wrap:anywhere}
+.fp-ob-row button{flex:none;padding:5px 8px}
+.fp-state-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fp-state-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:12px}
+.fp-state-card canvas{width:58px;height:58px}
+.fp-state-card[aria-pressed=true]{border:2px solid var(--accent);background:#edf7f3}
+.fp-state-card:disabled{opacity:.5;cursor:not-allowed}
+.fp-symbol-actions{flex-wrap:wrap}
+#floorplan-canvas.is-placing{cursor:crosshair}
+@media(max-width:767px){
+ .is-focused .fp-filterbar{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .is-focused .floorplan-replay{padding:0 12px 12px;gap:7px}
+ .is-focused .floorplan-plot{min-height:150px}
+ .is-focused .floorplan-playback{flex-wrap:wrap}
+ .is-focused .floorplan-playback>input{min-width:100px}
+ .is-focused .floorplan-replay button.secondary{min-height:36px;padding:5px 8px}
+ .fp-map-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #fp-settings{padding:16px}
+ .fp-dialog-heading{top:-16px}
+}
+/* Reference-inspired drawing and selection remain inside the existing map panel. */
+.floorplan-plot{border:0;box-shadow:inset 0 0 0 1px #dce8ef;background:#f5f9fc}
+.fp-scene-label{position:absolute;left:8px;top:7px;font-size:10px;color:#667e90;pointer-events:none;background:#f5f9fce8;padding:2px 4px;border-radius:3px}
+.fp-robot-link{position:absolute;right:7px;top:5px;max-width:52%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #bcdedc;border-radius:14px;padding:4px 7px;background:#e9f5f3;color:#006d6a;font:inherit;font-size:10px;min-height:24px;cursor:pointer}
+.fp-robot-link[aria-pressed=true]{background:#d9eeeb;border-color:#72bcb7}
+.fp-robot-link:disabled{opacity:.55;cursor:default}
+.fp-link-status{position:absolute;bottom:3px;left:7px;right:7px;font-size:10px;line-height:1.4;color:#61798c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f5f9fce8;padding:2px 3px}
+.is-focused .fp-scene-label{font-size:12px;top:9px;left:10px}
+.is-focused .fp-robot-link{font-size:12px;padding:5px 10px;top:7px;right:10px;min-height:30px}
+.is-focused .fp-link-status{font-size:12px;bottom:5px;left:10px;right:10px}
+.fp-pointer{top:auto;bottom:27px;right:9px;background:#f5f9fce8}
+@media(max-width:767px){.is-focused .fp-scene-label{font-size:10px}.is-focused .fp-robot-link{font-size:10px;max-width:55%}.is-focused .fp-link-status{font-size:10px}}
+
+.map-panel:not(.is-focused) .fp-advanced{display:none}
+
+.fp-motion-state{position:absolute;left:8px;bottom:25px;max-width:calc(100% - 16px);font-size:10px;line-height:1.4;color:#426d72;background:#f5f9fce8;border-radius:4px;padding:2px 5px;pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fp-motion-state[data-state="held"],.fp-motion-state[data-state="preview"]{color:#716148;background:#fff8e9ee}
+.is-focused .fp-motion-state{left:10px;bottom:30px;font-size:11px}
+@media(max-width:767px){.is-focused .fp-motion-state{font-size:10px;bottom:27px}}
+
+/* Additional controls stay within the existing map panel. */
+#fp-mobile-tools{display:none}
+.fp-return{position:absolute;right:10px;bottom:53px;border:1px solid #91c7c4;border-radius:14px;background:#e9f5f3;color:#006d6a;padding:5px 9px;font:inherit;font-size:11px;cursor:pointer}
+.fp-toolbar label:has(#fp-follow:checked){color:#006d6a;font-weight:600}
+@media(max-width:767px){
+ .is-focused #fp-mobile-tools{display:block}
+ .is-focused .floorplan-replay:not(.tools-open) .fp-filterbar,.is-focused .floorplan-replay:not(.tools-open) .fp-toolbar{display:none}
+ .is-focused .floorplan-plot{min-height:220px}
+ .is-focused .floorplan-controls{flex-wrap:wrap}
+ .is-focused .floorplan-controls label{flex-basis:150px}
+ .is-focused .fp-pointer{bottom:49px}
+}
+
+.fp-prediction-label{position:absolute;left:8px;top:31px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;line-height:1.4;color:#b02d35;background:#fff6f4ed;padding:2px 5px;border-radius:4px;pointer-events:none}
+.fp-toolbar label:has(#fp-prediction){color:#b02d35}
+
+/* Same panel geometry; expand status details only on request or a new issue. */
+.fp-compact-status{display:none}
+.map-panel:not(.is-focused) .fp-compact-status{display:block;position:absolute;left:7px;bottom:3px;max-width:calc(100% - 14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #c7dedc;border-radius:5px;background:#eff8f5f2;color:#386761;font:inherit;font-size:10px;line-height:1.4;padding:2px 5px;cursor:pointer}
+.map-panel:not(.is-focused) .has-map-issue .fp-compact-status{color:#805e20;background:#fff5df}
+.map-panel:not(.is-focused) .floorplan-replay:not(.hud-open) :is(.fp-motion-state,.fp-prediction-label,.fp-link-status){display:none}
+.map-panel:not(.is-focused) .hud-open .fp-link-status{bottom:26px}
+.map-panel:not(.is-focused) .hud-open .fp-motion-state{bottom:49px}
+#floorplan-time{appearance:none;-webkit-appearance:none;background:transparent;height:22px;cursor:pointer}
+#floorplan-time::-webkit-slider-runnable-track{height:7px;border-radius:5px;background-image:var(--fp-gap-track,linear-gradient(transparent,transparent)),linear-gradient(to right,var(--accent) var(--fp-progress,0%),#e0e9e5 var(--fp-progress,0%))}
+#floorplan-time::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);margin-top:-3.5px;border:2px solid #fff;box-shadow:0 0 0 1px #6a9e8d}
+#floorplan-time::-moz-range-track{height:7px;border-radius:5px;background-image:var(--fp-gap-track,linear-gradient(transparent,transparent)),linear-gradient(to right,var(--accent) var(--fp-progress,0%),#e0e9e5 var(--fp-progress,0%))}
+#floorplan-time::-moz-range-thumb{width:11px;height:11px;border:2px solid #fff;border-radius:50%;background:var(--accent)}
+#floorplan-time:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:5px}
+
+/* Small overview maps reserve the plot for the robot and paths, including error states. */
+.map-panel:not(.is-focused) .floorplan-replay :is(.fp-robot-link,.fp-link-status,.fp-motion-state,.fp-prediction-label,#fp-return){display:none!important}
+.map-panel:not(.is-focused) .fp-compact-status{max-width:110px;font-size:9px;padding:1px 4px}
+button.map-replay-badge{border:0;background:transparent;color:var(--muted);font:inherit;font-size:10px;padding:2px 4px;cursor:pointer}
+button.map-replay-badge:hover{color:var(--accent);text-decoration:underline}
+
+.fp-fleet{display:flex;flex-wrap:wrap;gap:6px;max-height:84px;overflow:auto}.fp-fleet[hidden]{display:none}.fp-fleet button{font-size:11px;padding:5px 8px}.fp-fleet button[aria-pressed=true]{background:#e3f4f0;font-weight:600}#fp-scenario{max-width:145px;font:inherit;padding:4px;border:1px solid var(--line);border-radius:6px}
+
+/* Focus view enlarges the overview map instead of revealing inspection tools. */
+.dashboard-page .map-panel.is-focused .fp-advanced,
+.dashboard-page .map-panel.is-focused .floorplan-replay :is(.fp-robot-link,.fp-link-status,.fp-motion-state,.fp-prediction-label,#fp-return,.fp-compact-status){display:none!important}
+.dashboard-page .map-panel.is-focused .floorplan-replay{display:flex;flex-direction:column;overflow:hidden;padding:6px 8px 8px;gap:5px}
+.dashboard-page .map-panel.is-focused .floorplan-plot{flex:1;min-height:0;width:100%}
+.dashboard-page .map-panel.is-focused .fp-map-footer{flex:none}
