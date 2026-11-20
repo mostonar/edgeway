@@ -18,6 +18,48 @@ MN-CSE: window anomaly scores in `TRAINING-AE-i/cnt-window-scores` (read by
 MEC 028 / MEC 013 add link state and location. The judge app of each site subscribes
 to that `cnt-verdict`.
 
+## Judge app
+
+`judge_ae/judge_ae.py` (`JUDGE-AE-n`, n = 1, 2, 3 for sites A, B, C) decides whether an
+anomaly report points to the floor or to the robot, by sending a second robot over the
+same spot.
+
+1. A report in `ANALYSIS-AE-n/cnt-verdict` opens a case. The judge app writes a
+   `suspect` verdict with the location to every robot's `command`. The reporting robot
+   moves aside and waits; another robot drives over the spot (cross-check).
+2. Once the cross-check robot comes within 3 m of the spot, the judge app waits 30 s
+   (`--grace-s`) for its report.
+3. The second robot reports there too → `final` verdict, cause `floor`. A no-go zone
+   around both locations goes to `JUDGE-AE-n/cnt-judgement`, and the robots keep
+   working outside it.
+4. No report → `final` verdict, cause `robot`. The first robot waits for inspection.
+
+The Site-Dashboard shows the zones and can ask to clear one through
+`JUDGE-AE-n/cnt-request` (`{"type": "zone-clear", "x", "y"}`). The judge app then
+removes the zone and sends a `closed` verdict to the robots.
+
+| Resource | Use |
+| --- | --- |
+| `ANALYSIS-AE-n/cnt-verdict` | subscribed: anomaly reports from the site app |
+| `JUDGE-AE-n/cnt-request` | subscribed: zone-clear requests from the Site-Dashboard |
+| `JUDGE-AE-n/cnt-judgement` | written: current no-go zones |
+| `<robot>/command` | written: `suspect` / `final` / `closed` verdicts |
+| `JUDGE-AE-n/acp_judgement` | only `JUDGE-AE-n` and `CAdmin` have access |
+
+- **Robots**: found by the label `<site>:command` (e.g. `siteC:command`) that the robot
+  IPEs put on their `command` containers, checked again every 30 s. `--robots` fixes the
+  list instead.
+- **Notifications**: arrive through a `<pollingChannel>` unless `--notify` gives a URL
+  the CSE can reach.
+- **CSE outage**: the judge app checks the MN-CSE every 5 s (`--alive-s`). While it is
+  down, writes are held and sent again in order once it answers. With `--iot` (the
+  MEP's MEC 033 `registered_iot_platforms` URL, set by `run_judge.sh`), it asks the MEP
+  for the current MN-CSE and, if it moved, creates its AE, containers and subscriptions
+  there again.
+
+`judge_ae.py` needs only `requests` and runs on its own; the usage block at the top of
+the file lists all options.
+
 ## Setup
 
 ```bash
