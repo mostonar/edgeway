@@ -1,0 +1,1704 @@
+# Wi-Fi access information: ETSI GS MEC 028 (WAI API), implemented by meep-wais.
+version: 1.10.0
+name: edgeway
+deployment:
+  netChar:
+    latency: 50
+    latencyVariation: 10
+    latencyDistribution: Normal
+    throughputDl: 1000
+    throughputUl: 1000
+    packetLoss: 0
+  connectivity:
+    model: OPEN
+  d2d:
+    d2dMaxDistance: 100
+    disableD2dViaNetwork: false
+  domains:
+  - id: public
+    name: public
+    type: PUBLIC
+    netChar:
+      latency: 6
+      latencyVariation: 2
+      throughputDl: 1000
+      throughputUl: 1000
+    zones:
+    - id: public-common
+      name: public-common
+      type: COMMON
+      netChar:
+        latency: 5
+        latencyVariation: 1
+        throughputDl: 1000
+        throughputUl: 1000
+      networkLocations:
+      - id: public-common-default
+        name: public-common-default
+        type: DEFAULT
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+        physicalLocations:
+        - id: 076a8218-52de-4112-8c41-22742dd4412d
+          name: monaco-telecom
+          type: DC
+          geoData:
+            location: null
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          dataNetwork:
+            dnn: internet
+            ladn: false
+            ecsp: ''
+          processes:
+          - id: 452a2696-56b5-450c-8852-672738180d65
+            name: cloud-mosquitto
+            type: CLOUD-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-mosquitto
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          wireless: false
+          wirelessType: ''
+          macId: ''
+          label: monaco-telecom
+          parent: edgeway
+  - id: 3a43d8f6-03ed-4dc2-a3d6-b72282ee2a27
+    name: sandbox-operator
+    type: OPERATOR
+    netChar:
+      latency: 6
+      latencyVariation: 2
+      throughputDl: 1000
+      throughputUl: 1000
+      packetLoss: 0
+    zones:
+    - id: sandbox-operator-common
+      name: sandbox-operator-common
+      type: COMMON
+      netChar:
+        latency: 5
+        latencyVariation: 1
+        throughputDl: 1000
+        throughputUl: 1000
+      networkLocations:
+      - id: sandbox-operator-common-default
+        name: sandbox-operator-common-default
+        type: DEFAULT
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+    - id: 226db13f-a3a0-4fa1-8a6a-c3cf239046ed
+      name: site-a
+      type: ZONE
+      netChar:
+        latency: 5
+        latencyVariation: 1
+        throughputDl: 1000
+        throughputUl: 1000
+        packetLoss: 0
+      meta:
+        display.map.color: '#1E88E5'
+      networkLocations:
+      - id: site-a-default
+        name: site-a-default
+        type: DEFAULT
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+        physicalLocations:
+        - id: ad47cda6-57a6-4150-8a96-f5864cccb110
+          name: mep-a
+          type: EDGE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 127.124893
+              - 37.476674
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          dataNetwork:
+            dnn: edn
+            ladn: false
+            ecsp: ''
+          processes:
+          - id: 6f94d3ec-22e9-4664-a661-89e42b209ef2
+            name: edgeway-fl-a
+            type: EDGE-APP
+            isExternal: true
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: ''
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig:
+              ingressServiceMap: []
+              egressServiceMap: []
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: 88ff63c7-9c1a-4002-8713-a6c64c0099bc
+            name: mec011-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-app-enablement
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: 35bc751e-1c07-4b43-a33e-cc80d38a4362
+            name: mec028-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-wais
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - mec011-1
+          - id: 7dfc02db-0be6-4fba-bcad-efc8e36c2d77
+            name: mec013-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-loc-serv
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - mec011-1
+          - id: f97f1365-7cac-4763-b2b4-245b020b4acd
+            name: mec021-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-ams
+            environment: MEEP_MEP_COVERAGE=mep-a:site-a/mep-b:site-b/mep-c:site-c,MEEP_SCOPE_OF_LOCALITY=MEC_SYSTEM,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - mec011-1
+          - id: 0f079daa-b649-4ec7-bbc2-30de32d6ac71
+            name: mec033-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-iot
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false,MEEP_BROKER="mqtt://monaco-telecom-meep-mosquitto:1883",MEEP_TOPIC="ETSI/MEC/Iot/mep-a"
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - mec011-1
+          - id: cb329e00-d39d-46ed-86de-a91b4f1f46ef
+            name: mec040-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-federation
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_SYSTEM,MEEP_CONSUMED_LOCAL_ONLY=false,WEBSOCK_ETPATH=/monaco-telecom/meep-mosquitto
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - cloud-mosquitto
+            - mec011-1
+          - id: 4481c0e2-d9b2-4ec8-b0c7-5f8e73584094
+            name: mec046-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-sss
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - mec011-1
+          - id: b5ee3ba6-6493-4d41-89cc-2efae64e765e
+            name: meep-acme-mn-cse-1
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-acme-mn-cse
+            environment: EXTERNAL_REMOTE_CSE_HOST=45.79.142.139,EXTERNAL_REMOTE_CSE_PORT=9090,EXTERNAL_REMOTE_CSE_PROTOCOL=https,REMOTE_CSE_USER=<in-cse-user>,REMOTE_CSE_PASS=<in-cse-password>,CSE_BASE_NAME=acme-cse-mn,CSE_BASE_RI=acme-cse-id-mn,WEBSOCK_ETPATH=/monaco-telecom/meep-mosquitto,MQTT_ENABLE=false,ENABLE_WS=true,MEC_ENABLE=true,REMOTE_CSE_ID=estimed-id-in,REMOTE_CSE_NAME=estimed-in
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec033-1
+          netChar:
+            latencyDistribution: Normal
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          wireless: false
+          wirelessType: ''
+          macId: ''
+          label: mep-a
+          parent: site-a
+          meta:
+            display.map.icon: ion-cube
+      - id: 55549c38-af19-4826-93d9-c0c24d935694
+        name: site-a-poa-wifi-1
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 026B5415002A
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 127.1253006
+            - 37.4789235
+          radius: 80
+        physicalLocations:
+        - id: 1164fae4-72ba-4f80-b0c7-702171d7e20b
+          name: robot-a1
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 127.1253006
+              - 37.4788154
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: 1f45fc2c89ab
+          label: robot-a1
+          parent: site-a-poa-wifi-1
+        - id: 9cc905da-3c47-5f98-9a4b-8861ce9091de
+          name: site-a-boundary
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 127.1265232
+              - 37.4793734
+            path:
+              type: LineString
+              coordinates:
+              - - 127.124893
+                - 37.476674
+              - - 127.1265232
+                - 37.476674
+              - - 127.1265232
+                - 37.4793734
+              - - 127.124893
+                - 37.4793734
+              - - 127.124893
+                - 37.476674
+            eopMode: LOOP
+            velocity: 0
+          connected: false
+          wireless: false
+          wirelessType: ''
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-android-checkbox-blank-outline
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: ''
+          label: site-a-boundary
+          parent: site-a-poa-wifi-1
+        label: site-a-poa-wifi-1
+        parent: site-a
+        meta:
+          display.map.icon: ion-wifi
+      - id: 6e140831-9bb8-4634-9c60-fa8618e4cb33
+        name: site-a-poa-wifi-2
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 02F9309CB169
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 127.1261157
+            - 37.4789235
+          radius: 80
+        label: site-a-poa-wifi-2
+        parent: site-a
+        meta:
+          display.map.icon: ion-wifi
+      - id: acad57a8-127a-42c8-9ff9-b0ec9bb24531
+        name: site-a-poa-wifi-3
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 02B2CA9BFFEC
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 127.1253006
+            - 37.4780237
+          radius: 80
+        physicalLocations:
+        - id: 88d1d6e2-9366-4738-b0de-23b6bcafdb8b
+          name: robot-a2
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 127.1253006
+              - 37.4779156
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: 10f7e3d9f6f7
+          label: robot-a2
+          parent: site-a-poa-wifi-3
+        label: site-a-poa-wifi-3
+        parent: site-a
+        meta:
+          display.map.icon: ion-wifi
+      - id: 059ca180-f95b-4ec4-8df9-5264bf7351c3
+        name: site-a-poa-wifi-4
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 022B1F81E380
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 127.1261157
+            - 37.4780237
+          radius: 80
+        label: site-a-poa-wifi-4
+        parent: site-a
+        meta:
+          display.map.icon: ion-wifi
+      - id: 7648be55-1c09-41dc-beda-c737e582da8e
+        name: site-a-poa-wifi-5
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 027E6015B78B
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 127.1253006
+            - 37.4771239
+          radius: 80
+        label: site-a-poa-wifi-5
+        parent: site-a
+        meta:
+          display.map.icon: ion-wifi
+        physicalLocations:
+        - id: e6a49d04-b09f-4842-8225-245dd19ac4d1
+          name: robot-a3
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 127.1252327
+              - 37.4770158
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: 7feaac85e068
+          label: robot-a3
+          parent: site-a-poa-wifi-5
+        - id: ff0532fe-e9e1-418e-af27-8e7fb5cca5c1
+          name: robot-a4
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 127.1253684
+              - 37.4770158
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: fccf1b8997f9
+          label: robot-a4
+          parent: site-a-poa-wifi-5
+      - id: 7576e6a7-76b8-47fc-96e5-e9f479e9644e
+        name: site-a-poa-wifi-6
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 02DB62A7490F
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 127.1261157
+            - 37.4771239
+          radius: 80
+        label: site-a-poa-wifi-6
+        parent: site-a
+        meta:
+          display.map.icon: ion-wifi
+      label: site-a
+      parent: sandbox-operator
+    - id: 9162c96e-9163-4652-9c77-f1025806a3d1
+      name: site-b
+      type: ZONE
+      netChar:
+        latency: 5
+        latencyVariation: 1
+        throughputDl: 1000
+        throughputUl: 1000
+        packetLoss: 0
+      meta:
+        display.map.color: '#43A047'
+      networkLocations:
+      - id: site-b-default
+        name: site-b-default
+        type: DEFAULT
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+        physicalLocations:
+        - id: f3cc3151-c378-4285-82a7-45479a3a7fdb
+          name: mep-b
+          type: EDGE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 128.82577
+              - 35.088353
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          dataNetwork:
+            dnn: edn
+            ladn: false
+            ecsp: ''
+          processes:
+          - id: ced1f5c8-3d98-4520-bf18-70229546a0b9
+            name: edgeway-fl-b
+            type: EDGE-APP
+            isExternal: true
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: ''
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig:
+              ingressServiceMap: []
+              egressServiceMap: []
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: 921d9d30-8121-497a-8785-0563e8cb8df3
+            name: mec011-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-app-enablement
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: 1524bfa9-380e-4afd-a282-1b40e05c46a7
+            name: mec028-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-wais
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+          - id: 8f6c28ee-f7e6-49c2-ab8b-5ce4b8ea1b76
+            name: mec013-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-loc-serv
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+          - id: 43c63346-7b1f-493b-a9d0-8ace62ebdbdd
+            name: mec021-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-ams
+            environment: MEEP_MEP_COVERAGE=mep-a:site-a/mep-b:site-b/mep-c:site-c,MEEP_SCOPE_OF_LOCALITY=MEC_SYSTEM,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+          - id: 21a007a4-165e-4562-b21e-96b66484ea58
+            name: mec033-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-iot
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false,MEEP_BROKER="mqtt://monaco-telecom-meep-mosquitto:1883",MEEP_TOPIC="ETSI/MEC/Iot/mep-b"
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+          - id: f75d021c-2922-473c-a507-edabc26c7392
+            name: mec040-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-federation
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_SYSTEM,MEEP_CONSUMED_LOCAL_ONLY=false,WEBSOCK_ETPATH=/monaco-telecom/meep-mosquitto
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+            - cloud-mosquitto
+          - id: 7f1f219f-7e56-46f6-b6a0-89df4c45d9ce
+            name: mec046-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-sss
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-2
+          - id: 4b5f1efd-8f06-4c48-8a45-29738ae77be1
+            name: meep-acme-mn-cse-2
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-acme-mn-cse
+            environment: EXTERNAL_REMOTE_CSE_HOST=45.79.142.139,EXTERNAL_REMOTE_CSE_PORT=9090,EXTERNAL_REMOTE_CSE_PROTOCOL=https,REMOTE_CSE_USER=<in-cse-user>,REMOTE_CSE_PASS=<in-cse-password>,CSE_BASE_NAME=acme-cse-mn,CSE_BASE_RI=acme-cse-id-mn,WEBSOCK_ETPATH=/monaco-telecom/meep-mosquitto,MQTT_ENABLE=false,ENABLE_WS=true,MEC_ENABLE=true,REMOTE_CSE_ID=estimed-id-in,REMOTE_CSE_NAME=estimed-in
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec033-2
+          netChar:
+            latencyDistribution: Normal
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          wireless: false
+          wirelessType: ''
+          macId: ''
+          label: mep-b
+          parent: site-b
+          meta:
+            display.map.icon: ion-cube
+      - id: 09ce2f13-b372-43af-a383-a0d017126f4f
+        name: site-b-poa-wifi-1
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 029617BD420D
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 128.8260332
+            - 35.0894022
+          radius: 60
+        physicalLocations:
+        - id: 0e6c0a94-2ec7-470d-9a25-5e19a26f2a59
+          name: robot-b1
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 128.8260332
+              - 35.089294
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: 8dc3ac1a70fc
+          label: robot-b1
+          parent: site-b-poa-wifi-1
+        - id: b17f7a1e-716f-503a-b247-61e97253fee5
+          name: site-b-boundary
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 128.8268227
+              - 35.0897519
+            path:
+              type: LineString
+              coordinates:
+              - - 128.82577
+                - 35.088353
+              - - 128.8268227
+                - 35.088353
+              - - 128.8268227
+                - 35.0897519
+              - - 128.82577
+                - 35.0897519
+              - - 128.82577
+                - 35.088353
+            eopMode: LOOP
+            velocity: 0
+          connected: false
+          wireless: false
+          wirelessType: ''
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-android-checkbox-blank-outline
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: ''
+          label: site-b-boundary
+          parent: site-b-poa-wifi-1
+        label: site-b-poa-wifi-1
+        parent: site-b
+        meta:
+          display.map.icon: ion-wifi
+      - id: a457090d-941e-49a7-ad25-8c941d4d35c6
+        name: site-b-poa-wifi-2
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 0213798C8AF7
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 128.8265596
+            - 35.0894022
+          radius: 60
+        physicalLocations:
+        - id: bdad7422-da6a-4638-bbbc-487dc82a40d2
+          name: robot-b2
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 128.8265596
+              - 35.089294
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: 0815e3ea2bbd
+          label: robot-b2
+          parent: site-b-poa-wifi-2
+        label: site-b-poa-wifi-2
+        parent: site-b
+        meta:
+          display.map.icon: ion-wifi
+      - id: 3bfedf7f-2c6e-4b5d-8c63-4a66e7776007
+        name: site-b-poa-wifi-3
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 021718472624
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 128.8260332
+            - 35.0887027
+          radius: 60
+        label: site-b-poa-wifi-3
+        parent: site-b
+        meta:
+          display.map.icon: ion-wifi
+      - id: d0588a39-2781-413e-a17c-a4461d8a4c88
+        name: site-b-poa-wifi-4
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 022A6290CCB3
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 128.8265596
+            - 35.0887027
+          radius: 60
+        label: site-b-poa-wifi-4
+        parent: site-b
+        meta:
+          display.map.icon: ion-wifi
+      label: site-b
+      parent: sandbox-operator
+    - id: 3e937416-4fc3-4bb2-a18f-0f3dac393dd2
+      name: site-c
+      type: ZONE
+      netChar:
+        latency: 5
+        latencyVariation: 1
+        throughputDl: 1000
+        throughputUl: 1000
+        packetLoss: 0
+      meta:
+        display.map.color: '#FB8C00'
+      networkLocations:
+      - id: site-c-default
+        name: site-c-default
+        type: DEFAULT
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+        physicalLocations:
+        - id: 46931af5-8199-4b59-b75b-c470fe035505
+          name: mep-c
+          type: EDGE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 126.575955
+              - 33.516533
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          dataNetwork:
+            dnn: edn
+            ladn: false
+            ecsp: ''
+          processes:
+          - id: e266b661-a314-494c-bcd3-b25697e64cad
+            name: edgeway-fl-c
+            type: EDGE-APP
+            isExternal: true
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: ''
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig:
+              ingressServiceMap: []
+              egressServiceMap: []
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: 55ac65da-cd84-4b6d-b9b9-25fec1d32fbc
+            name: edgeway-judge-c
+            type: EDGE-APP
+            isExternal: true
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: ''
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig:
+              ingressServiceMap: []
+              egressServiceMap: []
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: c2f87a01-de52-4649-b761-7fcd5f5d6a16
+            name: mec011-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-app-enablement
+            environment: ''
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies: []
+          - id: 756a66e7-8a47-4d3b-af24-f8659aa75724
+            name: mec028-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-wais
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-3
+          - id: 50824ba8-2442-4583-b77e-f5c021332d49
+            name: mec013-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-loc-serv
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-3
+          - id: 0b3ec05d-d783-4068-be1f-e3ba81b2337f
+            name: mec021-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-ams
+            environment: MEEP_MEP_COVERAGE=mep-a:site-a/mep-b:site-b/mep-c:site-c,MEEP_SCOPE_OF_LOCALITY=MEC_SYSTEM,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-3
+          - id: 853c56a1-440a-4dec-8e2b-7427a6768287
+            name: mec033-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-iot
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false,MEEP_BROKER="mqtt://monaco-telecom-meep-mosquitto:1883",MEEP_TOPIC="ETSI/MEC/Iot/mep-c"
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-3
+          - id: 22f614b8-f58c-4177-a633-9b269947a708
+            name: mec040-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-federation
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_SYSTEM,MEEP_CONSUMED_LOCAL_ONLY=false,WEBSOCK_ETPATH=/monaco-telecom/meep-mosquitto
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-3
+            - cloud-mosquitto
+          - id: c6890e3a-0afc-4d4f-9b94-2c92d0a82254
+            name: mec046-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-sss
+            environment: MEEP_SCOPE_OF_LOCALITY=MEC_HOST,MEEP_CONSUMED_LOCAL_ONLY=false
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec011-3
+          - id: f2df5b76-a1a7-4fed-b5ec-fb6d274c299e
+            name: meep-acme-mn-cse-3
+            type: EDGE-APP
+            isExternal: false
+            userChartLocation: null
+            userChartAlternateValues: null
+            userChartGroup: null
+            image: meep-docker-registry:30001/meep-acme-mn-cse
+            environment: EXTERNAL_REMOTE_CSE_HOST=45.79.142.139,EXTERNAL_REMOTE_CSE_PORT=9090,EXTERNAL_REMOTE_CSE_PROTOCOL=https,REMOTE_CSE_USER=<in-cse-user>,REMOTE_CSE_PASS=<in-cse-password>,CSE_BASE_NAME=acme-cse-mn,CSE_BASE_RI=acme-cse-id-mn,WEBSOCK_ETPATH=/monaco-telecom/meep-mosquitto,MQTT_ENABLE=false,ENABLE_WS=true,MEC_ENABLE=true,REMOTE_CSE_ID=estimed-id-in,REMOTE_CSE_NAME=estimed-in
+            commandArguments: ''
+            commandExe: ''
+            serviceConfig: null
+            gpuConfig: null
+            cpuConfig: null
+            memoryConfig: null
+            externalConfig: null
+            netChar:
+              latency: 0
+              latencyVariation: 0
+              throughputDl: 1000
+              throughputUl: 1000
+              packetLoss: 0
+            placementId: ''
+            dependencies:
+            - mec033-3
+          netChar:
+            latencyDistribution: Normal
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          wireless: false
+          wirelessType: ''
+          macId: ''
+          label: mep-c
+          parent: site-c
+          meta:
+            display.map.icon: ion-cube
+      - id: cf5c9b6d-3bf8-48fb-9393-8242fa60c1d0
+        name: site-c-poa-wifi-1
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 020B506C6675
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 126.5764717
+            - 33.5176991
+          radius: 72
+        physicalLocations:
+        - id: d86fb05f-df29-4b09-9592-1826c7ea661f
+          name: robot-c1
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 126.5764717
+              - 33.5175909
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: e7bcdeaed0c7
+          label: robot-c1
+          parent: site-c-poa-wifi-1
+        - id: ccb727ac-1eec-52cd-b030-bf571273dc41
+          name: site-c-boundary
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 126.5769883
+              - 33.5179323
+            path:
+              type: LineString
+              coordinates:
+              - - 126.575955
+                - 33.516533
+              - - 126.5769883
+                - 33.516533
+              - - 126.5769883
+                - 33.5179323
+              - - 126.575955
+                - 33.5179323
+              - - 126.575955
+                - 33.516533
+            eopMode: LOOP
+            velocity: 0
+          connected: false
+          wireless: false
+          wirelessType: ''
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-android-checkbox-blank-outline
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: ''
+          label: site-c-boundary
+          parent: site-c-poa-wifi-1
+        label: site-c-poa-wifi-1
+        parent: site-c
+        meta:
+          display.map.icon: ion-wifi
+      - id: d5308c3d-f91b-4094-80cb-348025f4d915
+        name: site-c-poa-wifi-2
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 022B5EDEA2AA
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 126.5764717
+            - 33.5172326
+          radius: 72
+        label: site-c-poa-wifi-2
+        parent: site-c
+        meta:
+          display.map.icon: ion-wifi
+      - id: e9248dfc-e542-41ef-8aa8-5c9ac8540b7d
+        name: site-c-poa-wifi-3
+        type: POA-WIFI
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+          packetLoss: 0
+        poaWifiConfig:
+          macId: 02D43412FA3C
+        geoData:
+          location:
+            type: Point
+            coordinates:
+            - 126.5764717
+            - 33.5167662
+          radius: 72
+        physicalLocations:
+        - id: 5d2e3747-fb0b-4c99-bc08-77ab8209e4fe
+          name: robot-c2
+          type: UE
+          geoData:
+            location:
+              type: Point
+              coordinates:
+              - 126.5764717
+              - 33.516658
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          wireless: true
+          wirelessType: wifi
+          dataNetwork:
+            dnn: ''
+            ladn: false
+            ecsp: ''
+          meta:
+            display.map.icon: ion-social-android
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          macId: fafec7a379fe
+          label: robot-c2
+          parent: site-c-poa-wifi-3
+        label: site-c-poa-wifi-3
+        parent: site-c
+        meta:
+          display.map.icon: ion-wifi
+      label: site-c
+      parent: sandbox-operator
+    - id: 1bf9e6cd-039c-4cd0-835f-afd2dbfd87a8
+      name: spare
+      type: ZONE
+      netChar:
+        latency: 5
+        latencyVariation: 1
+        throughputDl: 1000
+        throughputUl: 1000
+        packetLoss: 0
+      meta:
+        display.map.color: '#C131EF'
+      networkLocations:
+      - id: spare-default
+        name: spare-default
+        type: DEFAULT
+        netChar:
+          latency: 1
+          latencyVariation: 1
+          throughputDl: 1000
+          throughputUl: 1000
+        physicalLocations:
+        - id: 5d27838b-e6ad-4e05-a213-ab1cb71bcec0
+          name: mep-spare
+          type: EDGE
+          geoData:
+            location: null
+            path: null
+            eopMode: ''
+            velocity: null
+          connected: true
+          dataNetwork:
+            dnn: edn
+            ladn: false
+            ecsp: ''
+          processes: []
+          netChar:
+            throughputDl: 1000
+            throughputUl: 1000
+            latency: 0
+            latencyVariation: 0
+            packetLoss: 0
+          wireless: false
+          wirelessType: ''
+          macId: ''
+          label: mep-spare
+          parent: spare
+      label: spare
+      parent: sandbox-operator
+    label: sandbox-operator
+    parent: edgeway

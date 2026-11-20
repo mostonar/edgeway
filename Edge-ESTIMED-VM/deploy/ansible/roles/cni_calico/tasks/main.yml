@@ -1,0 +1,156 @@
+---
+# - name: Check if calico-system namespace exists
+#   command: kubectl get ns tigera-operator --kubeconfig /etc/kubernetes/admin.conf
+#   register: calico_ns
+#   failed_when: false
+#   changed_when: false
+
+# - name: Install Calico operator
+#   when: calico_ns.rc != 0
+#   command: >
+#     kubectl apply -f {{ calico_operator_manifest }}
+#     --kubeconfig /etc/kubernetes/admin.conf
+#   register: calico_operator_result
+#   changed_when: "'created' in calico_operator_result.stdout"
+
+# - name: Wait before applying Calico custom resources (allow operator to initialize)
+#   pause:
+#     seconds: 30
+#   when: calico_ns.rc != 0
+
+# - name: Install Calico custom resources
+#   when: calico_ns.rc != 0
+#   command: >
+#     kubectl apply -f {{ calico_custom_resources_manifest }}
+#     --kubeconfig /etc/kubernetes/admin.conf
+#   register: calico_cr_result
+#   changed_when: "'created' in calico_cr_result.stdout"
+# - block:
+#     - name: Create temporary kubeconfig directory
+#       file:
+#         path: /home/ansible/.kube
+#         state: directory
+#         mode: '0700'
+#         owner: ansible
+#         group: ansible
+
+#     - name: Copy admin.conf to temporary kubeconfig
+#       copy:
+#         src: /etc/kubernetes/admin.conf
+#         dest: /home/ansible/.kube/config
+#         owner: ansible
+#         group: ansible
+#         mode: '0600'
+- name: Ensure .kube directory exists for user
+  file:
+    path: "/home/{{ target_user }}/.kube"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0700'
+  become: true
+
+- name: copy admin.conf for user
+  become: true
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ target_user }}/.kube/config
+    owner: "{{ target_user }}"
+    mode: '0600'
+    remote_src: true
+
+- name: Apply Calico operator CRDs
+  kubernetes.core.k8s:
+    kubeconfig: /home/{{ target_user }}/.kube/config
+    state: present
+    src: "{{ calico_operator_crds_manifest }}"
+  become: true
+  register: operator_crds_result
+  ignore_errors: true
+
+- name: Apply Calico operator manifest
+  kubernetes.core.k8s:
+    kubeconfig: /home/{{ target_user }}/.kube/config
+    state: present
+    src: "{{ calico_operator_manifest }}"
+  become: true
+  register: operator_manifest_result
+  ignore_errors: true
+
+- name: Wait for tigera-operator Deployment to be Ready
+  kubernetes.core.k8s:
+    kubeconfig: /home/{{ target_user }}/.kube/config
+    state: present
+    kind: Deployment
+    name: tigera-operator
+    namespace: tigera-operator
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+  become: true
+  when: operator_manifest_result is not failed
+
+- name: Apply Calico custom resources manifest
+  kubernetes.core.k8s:
+    kubeconfig: /home/{{ target_user }}/.kube/config
+    state: present
+    src: "{{ calico_custom_resources_manifest }}"
+  become: true
+  register: calico_custom_resources_result
+
+- name: Display CNI installation notice
+  debug:
+    msg: |
+      CNI (Calico) is being installed — this involves downloading container images and may take seconds to several minutes.
+      You can check the status in another terminal by running:
+        kubectl get po -A
+
+- name: Wait for Calico Installation to be ready
+  retries: 60
+  delay: 30
+  until: >
+    calico_installation.resources[0].status.conditions is defined
+    and (calico_installation.resources[0].status.conditions
+         | selectattr('type', 'equalto', 'Degraded')
+         | map(attribute='status')
+         | list | first) == "False"
+  kubernetes.core.k8s_info:
+    kubeconfig: /home/{{ target_user }}/.kube/config
+    kind: Installation
+    api_version: operator.tigera.io/v1
+    name: default
+  register: calico_installation
+  become: true
+
+# - name: Remove master/control-plane taints to allow scheduling on single-node
+#   command: kubectl taint nodes {{ target_user }} {{ item }}-
+#   loop:
+#     - node-role.kubernetes.io/control-plane
+#     - node-role.kubernetes.io/control-plane
+#   failed_when: false
+#   changed_when: false
+
+- name: Remove control-plane taint
+  command: kubectl taint nodes --all {{ item }}-
+  loop:
+    - node-role.kubernetes.io/control-plane
+    - node-role.kubernetes.io/control-plane
+  failed_when: false
+  changed_when: false
+
+- name: Patch CoreDNS ConfigMap to use public DNS resolvers
+  shell: |
+    kubectl get configmap coredns -n kube-system -o yaml | \
+    sed 's/forward \. \/etc\/resolv\.conf/forward . 8.8.8.8 1.1.1.1/' | \
+    kubectl apply -f -
+  register: coredns_patch
+  changed_when: "'configured' in coredns_patch.stdout"
+  become: true
+
+- name: Restart CoreDNS deployment to apply changes
+  shell: |
+    kubectl rollout restart deployment/coredns -n kube-system
+    kubectl rollout status deployment/coredns -n kube-system --timeout=60s
+  become: true
+  when: coredns_patch.changed

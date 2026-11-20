@@ -1,0 +1,152 @@
+# yaml-language-server: $schema=none
+---
+# ============================================================
+# MEC Sandbox Configuration
+# - Patch chart security contexts
+# - Update secrets with user-provided GitHub OAuth creds
+# - Update .meepctl-repocfg.yaml with user-provided IP/address
+# ============================================================
+
+- name: Add kubectl bash completion to .bashrc
+  lineinfile:
+    path: "{{ target_home }}/.bashrc"
+    line: "source <(kubectl completion bash)"
+    state: present
+  become: true
+  become_user: "{{ target_user }}"
+
+- name: Add docker registry entry to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ mec_host_address }} meep-docker-registry"
+    state: present
+
+- name: Copy Kubernetes CA cert to system trust store
+  copy:
+    src: /etc/kubernetes/pki/ca.crt
+    dest: /usr/local/share/ca-certificates/kubernetes-ca.crt
+    remote_src: true
+    mode: "0644"
+  register: ca_cert_copy
+
+- name: Update system CA certificates
+  command: update-ca-certificates
+  when: ca_cert_copy.changed
+
+- name: Restart container runtimes on certificate update
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - docker
+    - containerd
+  when: ca_cert_copy.changed
+
+- name: Verify etsi-mec-sandbox directory exists
+  stat:
+    path: "{{ mec_sandbox_dir }}"
+  register: sandbox_dir_check
+
+- name: Verify etsi-mec-sandbox-frontend directory exists
+  stat:
+    path: "{{ mec_frontend_dir }}"
+  register: frontend_dir_check
+
+- name: Fail if sandbox directory is missing
+  fail:
+    msg: >
+      etsi-mec-sandbox directory not found at {{ mec_sandbox_dir }}.
+      The backend repo (etsi-mec-sandbox) and frontend repo (etsi-mec-sandbox-frontend)
+      must be siblings under the same parent directory (e.g. ~/etsi-mec-sandbox and ~/etsi-mec-sandbox-frontend).
+  when: not sandbox_dir_check.stat.exists
+
+- name: Fail if frontend directory is missing
+  fail:
+    msg: >
+      etsi-mec-sandbox-frontend directory not found at {{ mec_frontend_dir }}.
+      The backend repo (etsi-mec-sandbox) and frontend repo (etsi-mec-sandbox-frontend)
+      must be siblings under the same parent directory (e.g. ~/etsi-mec-sandbox and ~/etsi-mec-sandbox-frontend).
+  when: not frontend_dir_check.stat.exists
+
+# --- Update secrets.yaml with user-provided GitHub OAuth ---
+
+- name: "Update GitHub OAuth client-id in secrets.yaml"
+  replace:
+    path: "{{ mec_frontend_dir }}/config/secrets.yaml"
+    regexp: 'client-id:\s*"my-github-client-id"'
+    replace: 'client-id: "{{ github_client_id }}"'
+
+- name: "Update GitHub OAuth secret in secrets.yaml"
+  replace:
+    path: "{{ mec_frontend_dir }}/config/secrets.yaml"
+    regexp: 'secret:\s*"my-github-secret"'
+    replace: 'secret: "{{ github_client_secret }}"'
+
+# --- Update .meepctl-repocfg.yaml with user-provided host ---
+
+- name: "Update ingress host in .meepctl-repocfg.yaml"
+  replace:
+    path: "{{ mec_frontend_dir }}/config/.meepctl-repocfg.yaml"
+    regexp: 'host:\s*(mec-platform|try-mec)\.etsi\.org'
+    replace: "host: {{ mec_host_address }}"
+
+- name: "Update OAuth redirect-uris in .meepctl-repocfg.yaml"
+  replace:
+    path: "{{ mec_frontend_dir }}/config/.meepctl-repocfg.yaml"
+    regexp: 'redirect-uri:\s*https://(mec-platform|try-mec)\.etsi\.org/platform-ctrl/v1/authorize'
+    replace: "redirect-uri: https://{{ mec_host_address }}/platform-ctrl/v1/authorize"
+
+- name: Get UID of target_user
+  command: "id -u {{ target_user }}"
+  register: target_uid_check
+  changed_when: false
+
+- name: Get GID of target_user
+  command: "id -g {{ target_user }}"
+  register: target_gid_check
+  changed_when: false
+
+- name: Update UID in .meepctl-repocfg.yaml
+  replace:
+    path: "{{ item }}"
+    regexp: 'uid:\s*\d+'
+    replace: "uid: {{ target_uid_check.stdout }}"
+  loop:
+    - "{{ mec_sandbox_dir }}/.meepctl-repocfg.yaml"
+    - "{{ mec_frontend_dir }}/config/.meepctl-repocfg.yaml"
+  ignore_errors: true
+
+- name: Update GID in .meepctl-repocfg.yaml
+  replace:
+    path: "{{ item }}"
+    regexp: 'gid:\s*\d+'
+    replace: "gid: {{ target_gid_check.stdout }}"
+  loop:
+    - "{{ mec_sandbox_dir }}/.meepctl-repocfg.yaml"
+    - "{{ mec_frontend_dir }}/config/.meepctl-repocfg.yaml"
+  ignore_errors: true
+
+- name: Pre-create .meep directories with correct ownership
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: "0755"
+  loop:
+    - "{{ target_home }}/.meep"
+    - "{{ target_home }}/.meep/postgis"
+    - "{{ target_home }}/.meep/certs"
+    - "{{ target_home }}/.meep/codecov"
+    - "{{ target_home }}/.meep/user"
+    - "{{ target_home }}/.meep/user/frontend"
+    - "{{ target_home }}/.meep/user/values"
+  become: true
+
+- name: "Config complete"
+  debug:
+    msg: |
+      MEC Sandbox configuration applied:
+      - GitHub OAuth credentials updated in secrets.yaml
+      - Host set to {{ mec_host_address }} in .meepctl-repocfg.yaml
+      - Redirect URIs updated for GitHub and GitLab OAuth

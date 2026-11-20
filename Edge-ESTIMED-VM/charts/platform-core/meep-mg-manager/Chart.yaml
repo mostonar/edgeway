@@ -1,0 +1,5 @@
+apiVersion: v2
+appVersion: "1.0.0"
+description: MEEP MG Manager Helm chart for Kubernetes
+name: meep-mg-manager
+version: 1.0.0

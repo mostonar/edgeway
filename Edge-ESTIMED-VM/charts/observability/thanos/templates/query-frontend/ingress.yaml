@@ -1,0 +1,39 @@
+{{- if and .Values.queryFrontend.enabled .Values.queryFrontend.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "thanos.compName" (list . "query-frontend") }}
+  labels:
+    {{- include "thanos.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.queryFrontend.ingress.certManager }}
+    kubernetes.io/tls-acme: "true"
+    {{- end }}
+    {{- with .Values.queryFrontend.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- include "thanos.annotations" (dict "Values" .Values "component" "query-frontend") | nindent 4 }}
+spec:
+  {{- with .Values.queryFrontend.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+  {{- range .Values.queryFrontend.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+        {{- range .paths }}
+          - path: {{ .path | quote }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "thanos.compName" (list $ "query-frontend") }}
+                port:
+                  name: http
+        {{- end }}
+  {{- end }}
+  {{- with .Values.queryFrontend.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,103 @@
+# Default values for meep-acme-mn-cse
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+deployment:
+  replicas: 1
+  port: 80
+  protocol: TCP
+  dependencies:
+    system:
+      {{- if not .IsMepService }}
+      - kube-dns
+      {{- end }}
+    namespace:
+
+image:
+  repository: meep-docker-registry:30001/meep-acme-mn-cse
+  tag: latest
+  pullPolicy: Always
+  # entrypointScript: /entrypoint.sh
+  env:
+    MEAS_REP_UE_PERIODIC_TRIGGER_INTERVAL: 1s
+    NR_MEAS_REP_UE_PERIODIC_TRIGGER_INTERVAL: 1s
+    MEEP_INSTANCE_ID: {{.InstanceId}}
+    MEEP_SANDBOX_NAME: {{.SandboxName}}
+    MEEP_SVC_PATH: /meep-acme-mn-cse
+    MEEP_HOST_URL: {{.HostUrl}}
+    SERVER_PORT: 80
+    CSE_BASE_NAME: mep-cse-mn
+    CSE_BASE_RI: acme-mep-id-mn-cse
+    SERVER_TYPE: MN
+    REMOTE_CSE_HOST: meep-acme-in-cse
+    REMOTE_CSE_PORT: 3003
+    REMOTE_CSE_ID: laboai-id-in
+    REMOTE_CSE_NAME: laboai-cse-in
+    MQTT_HOST: "{{.LocationName}}-meep-mosquitto"
+    MQTT_PORT: 1883
+    MQTT_USERNAME: test
+    MQTT_PASSWORD: mqttq
+    MEEP_TOPIC: {{.SandboxName}}/acme-mn-cse
+    ENABLE_COAP: false
+    # ENABLE_WS defaults to false in entrypoint.sh; set it in scenario environment to enable.
+    {{- if .IsMepService }}
+    MEEP_LOCATION_NAME: "{{.LocationName}}"
+    {{- end }}
+    {{- if eq .AppEnablement "local" }}
+    MEEP_APP_ENABLEMENT: {{.LocationName}}-meep-app-enablement
+    {{- else if eq .AppEnablement "global" }}
+    MEEP_APP_ENABLEMENT: meep-app-enablement
+    {{- end }}
+    {{- range .Env}}
+    {{.}}
+    {{- end}}
+
+service:
+  {{- if .IsMepService }}
+  name: {{.LocationName}}-meep-acme-mn-cse
+  {{- else }}
+  name: meep-acme-mn-cse
+  {{- end }}
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  hosts:
+    - name: ''
+      paths:
+        {{- if .IsMepService }}
+        - /{{.SandboxName}}/{{.LocationName}}/meep-acme-mn-cse
+        {{- else }}
+        - /{{.SandboxName}}/meep-acme-mn-cse
+        {{- end }}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/force-ssl-redirect: {{ .HttpsOnly }}
+    {{- if .IsMepService }}
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/{{.SandboxName}}/{{.LocationName}}/meep-acme-mn-cse(/|$)(.*)$ /$2 break;
+    {{- else }}
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/{{.SandboxName}}/meep-acme-mn-cse(/|$)(.*)$ /$2 break;
+    {{- end }}
+    {{- if .AuthEnabled }}
+    nginx.ingress.kubernetes.io/auth-url: {{ if .HttpsOnly }}https{{ else }}http{{ end }}://$http_host/auth/v1/authenticate?svc=meep-acme-mn-cse&sbox={{.SandboxName}}&mep={{.LocationName}}
+    {{- end }}
+  labels: {}
+  tls:
+
+prometheus:
+  monitor:
+    enabled: true
+    port: 9000
+    interval: 10s
+    additionalLabels: {}
+    relabelings: []
+    scrapeTimeout: 5s
+    
+codecov:
+  enabled: false
+  location: "<<WORKDIR>/codecov/meep-acme-mn-cse"
+
+meepOrigin: core

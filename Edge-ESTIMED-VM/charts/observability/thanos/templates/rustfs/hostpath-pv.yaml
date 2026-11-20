@@ -1,0 +1,42 @@
+{{- if and .Values.rustfs.enabled .Values.rustfs.persistence.hostPath.enabled }}
+# Static, hostPath-backed PersistentVolumes for the RustFS subchart's data
+# and logs PVCs (named "<release>-rustfs-data"/"-logs" by the subchart's own
+# fullname convention). Paired with rustfs.storageclass.name being set to
+# "<release>-rustfs" so the subchart's PVCs bind to these specific volumes
+# instead of triggering dynamic provisioning.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-rustfs-data
+  annotations:
+    "helm.sh/resource-policy": keep
+  labels:
+    {{- include "thanos.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.rustfs.storageclass.dataStorageSize }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ .Release.Name }}-rustfs
+  hostPath:
+    path: {{ .Values.rustfs.persistence.hostPath.dataLocation | quote }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-rustfs-logs
+  annotations:
+    "helm.sh/resource-policy": keep
+  labels:
+    {{- include "thanos.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.rustfs.storageclass.logStorageSize }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ .Release.Name }}-rustfs
+  hostPath:
+    path: {{ .Values.rustfs.persistence.hostPath.logsLocation | quote }}
+{{- end }}

@@ -1,0 +1,54 @@
+#!/bin/sh -e
+
+DESC="etsi-mec-sandbox platform"
+TIMEOUT=7
+IS_RUNNING=`kubectl get pods --all-namespaces | grep "meep-virt-engine" | awk '{print $2}'`
+start_advantedge() {
+    if [ -z "$IS_RUNNING" ] ; then
+      meepctl deploy dep
+      sleep $TIMEOUT
+      meepctl deploy core
+      sleep $TIMEOUT
+      kubectl get pods --all-namespaces
+    fi
+}
+
+stop_advantedge() {
+    if [ -n "$IS_RUNNING" ]; then
+      meepctl delete core
+      sleep $TIMEOUT
+      meepctl delete dep
+      sleep $TIMEOUT
+      kubectl get pods --all-namespaces
+      sleep $TIMEOUT
+      helm delete --no-hooks meep-prometheus
+    fi
+    IS_RUNNING=`kubectl get pods --all-namespaces | grep "meep-virt-engine" | awk '{print $2}'`
+}
+
+case "$1" in
+start)
+  echo "Starting $DESC"
+  start_advantedge
+  ;;
+stop)
+  echo "Stopping $DESC"
+  stop_advantedge
+
+  ;;
+restart)
+  echo "Reloading $DESC"
+  stop_advantedge
+  sleep $TIMEOUT
+  start_advantedge
+  ;;
+status)
+  kubectl get pods --all-namespaces
+  ;;
+*)
+  echo "Usage: $0 {start|stop|restart|status}" >&2
+  exit 1
+  ;;
+esac
+
+exit 0

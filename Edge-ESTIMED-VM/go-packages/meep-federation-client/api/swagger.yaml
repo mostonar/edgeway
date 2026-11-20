@@ -1,0 +1,1517 @@
+openapi: 3.0.0
+info:
+  title: ETSI GS MEC 040 - MEC Federation enablement APIs
+  description: The ETSI MEC ISG MEC040 Federation enablement API described using OpenAPI
+  contact:
+    url: https://forge.etsi.org/rep/mec/gs040-fed-enablement-api
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 3.2.1
+externalDocs:
+  description: "ETSI GS MEC 040 Federation enablement API, v3.2.1"
+  url: https://www.etsi.org/deliver/etsi_gs/MEC/001_099/040/03.02.01_60/gs_MEC040v030201p.pdf
+servers:
+- url: https://localhost/sandboxname/sandboxname/sandboxname/sandboxname/fed_enablement/v1
+tags:
+- name: systemInfo
+- name: subscription
+- name: fedServiceInfo
+paths:
+  /fed_resources/systems:
+    get:
+      tags:
+      - systemInfo
+      summary: Retrieve a list of systems resources (see clause 6 for data model)
+        of federation members.
+      description: "The GET method retrieves the information of a list of systems\
+        \ resources of federation members. This method is typically used in the sequence\
+        \ of \"MEC system discovery\" as described in clause 5.2.2.2. The method shall\
+        \ comply with the URI query parameters, request and response data structures,\
+        \ and response codes, as specified in Tables 7.3.3.1-1 and 7.3.3.1-2."
+      operationId: systeminfoGET
+      parameters:
+      - name: systemId
+        in: query
+        description: Identifier of the MEC system.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: Query.systemId
+      - name: systemName
+        in: query
+        description: The name of the MEC system.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: Query.systemName
+      - name: systemProvider
+        in: query
+        description: Provider of the MEC system.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: Query.systemProvider
+      responses:
+        "200":
+          description: It is used to indicate that the query for retrieving systems
+            resource(s) is successful. Response body containing one or multiple systems
+            resources shall be returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SystemInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - systemInfo
+      summary: Create new systems resource for a given MEC system.
+      description: "The POST method creates the information of systems resources to\
+        \ the MEC federator. This method is typically used in the sequence of \"Registration\
+        \ of MEC system to the federation\" as described in clause 5.2.2.1. The method\
+        \ shall comply with the URI query parameters, request and response data structures,\
+        \ and response codes, as specified in Tables\_7.3.3.4-1 and 7.3.3.4-2."
+      operationId: systeminfoPOST
+      requestBody:
+        description: Entity body in the request contains SystemInfo to be created.
+          The attribute "systemId" shall be absent.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/fed_resources_systems_body'
+        required: true
+      responses:
+        "201":
+          description: |-
+            It is used to indicate that the systems resource is successfully created.
+
+            The HTTP response includes a "Location" HTTP header that contains the URI of the created resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/fed_resources_systems_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /fed_resources/systems/{systemId}:
+    get:
+      tags:
+      - systemInfo
+      summary: Retrieve the systems resource of the federation member with systemId
+        as its system identifier.
+      description: "The GET method retrieves the systems resource information. This\
+        \ method is typically used in the sequence of \"MEC system discovery\" as\
+        \ described in clause 5.2.2.2. The method shall comply with the URI query\
+        \ parameters, request and response data structures, and response codes, as\
+        \ specified in Tables 7.4.3.1-1 and 7.4.3.1-2."
+      operationId: systeminfoByIdGET
+      parameters:
+      - name: systemId
+        in: path
+        description: Identifier of the MEC system.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: Path.systemId
+      responses:
+        "200":
+          description: It is used to indicate that the query for retrieving systems
+            resource is successful. Response body containing one systems resource
+            shall be returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/fed_resources_systems_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - systemInfo
+      summary: Delete the systems resource for a given MEC system.
+      description: "The DELETE method deletes the information of systems resources\
+        \ stored in the MEF. This method is typically used in the sequence of \"Deregistration\
+        \ of MEC system to the federation\" as described in clause 5.2.2.1.1. The\
+        \ method shall comply with the URI query parameters, request and response\
+        \ data structures, and response codes, as specified in Tables 7.4.3.5-1 and\
+        \ 7.4.3.5-2."
+      operationId: systeminfoByIdDELETE
+      parameters:
+      - name: systemId
+        in: path
+        description: Identifier of the MEC system.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: Path.systemId
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - systemInfo
+      summary: Update the systems resource for a given MEC system.
+      description: "The PATCH method updates the information of systems resources\
+        \ stored in the MEC federator through previous registration. This method is\
+        \ typically used in the sequence of \"Update of MEC system to the federation\"\
+        \ as described in clause 5.2.2.2. The method shall comply with the URI query\
+        \ parameters, request and response data structures, and response codes, as\
+        \ specified in Tables 7.4.3.3-1 and 7.4.3.3-2."
+      operationId: systeminfoByIdPATCH
+      parameters:
+      - name: systemId
+        in: path
+        description: Identifier of the MEC system.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: Path.systemId
+      requestBody:
+        description: It contains attributes to be update.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/systems_systemId_body'
+        required: true
+      responses:
+        "200":
+          description: It is used to indicate that the systems resource is successfully
+            updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/fed_resources_systems_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions:
+    get:
+      tags:
+      - subscription
+      summary: Retrieve information on subscriptions for notifications
+      description: Queries information on subscriptions for notifications
+      operationId: subscriptionsGET
+      parameters:
+      - name: subscriptionType
+        in: query
+        description: Query parameter is used to filter a specific subscription type
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: systemId
+        in: query
+        description: Identifier of the MEC system
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Response body contains the list of links to requestor's subscriptions
+            is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionLinkList'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - subscription
+      summary: Create a new subscription
+      description: Creates a new subscription to to MEF
+      operationId: subscriptionPOST
+      requestBody:
+        description: Subscription to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemUpdateNotificationSubscription'
+        required: true
+      responses:
+        "201":
+          description: Successful subscription response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemUpdateNotificationSubscription'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions/{subscriptionId}:
+    get:
+      tags:
+      - subscription
+      summary: Retrieve information on current specific subscription
+      description: "Queries information about an existing subscription, identified\
+        \ by its  self-referring URI returned on creation\""
+      operationId: subscriptionGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Id, specifically the \\\"self\\\" returned in the\
+          \ subscription  request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+      responses:
+        "200":
+          description: Subscription information regarding subscription notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemUpdateNotificationSubscription'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - subscription
+      summary: Modify an existing subscription
+      description: "Updates an existing subscription, identified by its self-referring\
+        \ URI returned on creation"
+      operationId: subscriptionPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Id, specifically the \\\"self\\\" returned in the\
+          \ subscription  request\""
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+      requestBody:
+        description: Subscription to be modified
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemUpdateNotificationSubscription'
+        required: true
+      responses:
+        "200":
+          description: Successful subscription modification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemUpdateNotificationSubscription'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - subscription
+      summary: Cancel an existing subscription
+      description: "Cancels an existing subscription, identified by its self-referring\
+        \ URI  returned on creation (initial POST)"
+      operationId: subscriptionDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Id, specifically the \\\"self\\\" returned in the\
+          \ subscription  request\""
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /fed_resources/systems/{systemId}/services:
+    get:
+      tags:
+      - fedServiceInfo
+      summary: Retrieves the information of all MEC services hosted by the MEC system
+      description: Retrieves the information of all MEC services hosted by the MEC
+        system associated with the systemId
+      operationId: servicesGET
+      parameters:
+      - name: systemId
+        in: path
+        description: Identifier of the MEC system.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: Path.systemId
+      - name: seInstancerId
+        in: query
+        description: Indicator of a MEC service offered for MEC federation.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: Query.seInstancerId
+      - name: serName
+        in: query
+        description: The name of the service.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: Query.serName
+      - name: serCategory
+        in: query
+        description: A Category reference.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: Query.serCategory
+      responses:
+        "200":
+          description: It is used to indicate that the query for retrieving systems
+            resource(s) is successful. Response body containing one or multiple systems
+            resources shall be returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FedServiceInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /fed_resources/systems/{systemId}/services/{serviceId}:
+    get:
+      tags:
+      - fedServiceInfo
+      summary: Retrieves the information of a specific MEC service hosted by the MEC
+        system associated with the systemId and serviceId
+      description: Retrieves the information of a specific MEC service hosted by the
+        MEC system associated with the systemId and serviceId
+      operationId: serviceGET
+      parameters:
+      - name: systemId
+        in: path
+        description: Identifier of the MEC system.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: Path.systemId
+      - name: serviceId
+        in: path
+        description: Service identifier.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: Path.serviceId
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the specific subscription data type is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FedServiceInfo'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized: used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          description: A URI reference according to IETF RFC 3986 that identifies
+            the problem type
+          format: uri
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type"
+        status:
+          type: integer
+          description: The HTTP status code for this occurrence of the problem
+          format: uint32
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+          format: uri
+    FedServiceInfo:
+      title: FedServiceInfo
+      required:
+      - mecHostInformation
+      - serviceInfo
+      - systemId
+      type: object
+      properties:
+        systemId:
+          type: string
+          description: Identifier of the MEC system.
+        mecHostInformation:
+          $ref: '#/components/schemas/MecHostInformation'
+        serviceInfo:
+          $ref: '#/components/schemas/ServiceInfo'
+      description: This data type represents the general information of a MEC service
+        in a MEC federation. The attributes of the FedServiceInfo shall follow the
+        indications provided  in Table 6.2.4-1.
+      example:
+        systemId: systemId
+        serviceInfo:
+          serCategory:
+            name: name
+            href: href
+            id: id
+            version: version
+          transportsSupported:
+          - serializers:
+            - JSON
+            - JSON
+            transport:
+              implSpecificInfo: implSpecificInfo
+              protocol: protocol
+              security:
+                (extensions):
+                - (extensions)
+                - (extensions)
+                oAuth2Info:
+                  tokenEndpoint: http://example.com/aeiou
+                  grantTypes:
+                  - SEE_DESCRIPTION
+                  - SEE_DESCRIPTION
+              name: name
+              description: description
+              type: REST_HTTP
+              version: version
+          - serializers:
+            - JSON
+            - JSON
+            transport:
+              implSpecificInfo: implSpecificInfo
+              protocol: protocol
+              security:
+                (extensions):
+                - (extensions)
+                - (extensions)
+                oAuth2Info:
+                  tokenEndpoint: http://example.com/aeiou
+                  grantTypes:
+                  - SEE_DESCRIPTION
+                  - SEE_DESCRIPTION
+              name: name
+              description: description
+              type: REST_HTTP
+              version: version
+          serName: serName
+          version: version
+        mecHostInformation:
+          hostName: hostName
+          hostId: hostId
+    SystemInfo:
+      title: SystemInfo
+      required:
+      - systemId
+      - systemName
+      - systemProvider
+      type: object
+      properties:
+        systemId:
+          type: string
+          description: "Identifier of the MEC system. For the uniqueness of the identifier\
+            \ across the federated MEC systems, UUID format [i.9] is recommended.\
+            \ Shall be absent in POST request, and present otherwise."
+        systemName:
+          type: string
+          description: The name of the MEC system. This is how the MEC system identifies
+            other MEC systems
+        systemProvider:
+          type: string
+          description: Provider of the MEC system.
+      description: This type represents an information provided by the MEC orchestrator
+        as a part of the "Registration of MEC system to the federation
+      example:
+        systemId: systemId
+        systemName: systemName
+        systemProvider: systemProvider
+    ServiceInfo:
+      title: SystemInfo
+      required:
+      - serName
+      - transportsSupported
+      - version
+      type: object
+      properties:
+        serName:
+          type: string
+          description: The name of the service
+        serCategory:
+          $ref: '#/components/schemas/CategoryRef'
+        version:
+          type: string
+          description: The version of the service
+        transportsSupported:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransportsSupported'
+      description: The ServiceDescriptor data type describes a MEC service produced
+        by a service-providing MEC application.
+      example:
+        serCategory:
+          name: name
+          href: href
+          id: id
+          version: version
+        transportsSupported:
+        - serializers:
+          - JSON
+          - JSON
+          transport:
+            implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            security:
+              (extensions):
+              - (extensions)
+              - (extensions)
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - SEE_DESCRIPTION
+                - SEE_DESCRIPTION
+            name: name
+            description: description
+            type: REST_HTTP
+            version: version
+        - serializers:
+          - JSON
+          - JSON
+          transport:
+            implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            security:
+              (extensions):
+              - (extensions)
+              - (extensions)
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - SEE_DESCRIPTION
+                - SEE_DESCRIPTION
+            name: name
+            description: description
+            type: REST_HTTP
+            version: version
+        serName: serName
+        version: version
+    SystemInfoUpdate:
+      title: SystemInfoUpdate
+      type: object
+      properties:
+        systemName:
+          type: string
+          description: The name of the MEC system. This is how the MEC system identifies
+            other MEC systems.
+        endpoint:
+          $ref: '#/components/schemas/EndPointInfo'
+      description: "This type represents an information provided by MEC orchestrator\
+        \ as a part of the \nUpdate of MEC system(s) to the federation.\n"
+    EndPointInfo:
+      title: EndPointInfo
+      type: object
+      properties:
+        uris:
+          type: array
+          description: "Entry point information of the service as string, formatted\
+            \ according to URI syntax (see IETF RFC 3986 [8]). Shall be used for REST\
+            \ APIs. See note."
+          items:
+            type: string
+        fqdn:
+          type: array
+          description: Fully Qualified Domain Name of the service. See note.
+          items:
+            type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Addresses'
+        alternative:
+          type: string
+          description: "Entry point information of the service in a format defined\
+            \ by an implementation, or in an external specification. See\_note."
+      description: "NOTE: Exactly one of \"uris\", \"fqdn\", \"addresses\" or \"alternative\"\
+        \ shall be present. \n"
+      example:
+        uris:
+        - uris
+        - uris
+        addresses:
+        - port: 0
+          host: host
+        - port: 0
+          host: host
+        fqdn:
+        - fqdn
+        - fqdn
+        alternative: alternative
+    Addresses:
+      required:
+      - host
+      - port
+      type: object
+      properties:
+        host:
+          type: string
+          description: Host portion of the address.
+        port:
+          type: integer
+          description: Port portion of the address.
+      description: Entry point information of the service as one or more pairs of
+        IP address and port. See note.
+      example:
+        port: 0
+        host: host
+    SystemUpdateNotificationSubscription:
+      title: SystemUpdateNotificationSubscription
+      required:
+      - callbackReference
+      - subscriptionType
+      type: object
+      properties:
+        subscriptionType:
+          type: string
+          description: Shall be set to "SystemUpdateNotificationSubscription".
+        callbackReference:
+          type: string
+          description: URI selected by the MEC orchestrator to receive notifications
+            on the subscribed MEC system information updates in the MEC federation.
+            This shall be included in both the request and the response.
+          format: uri
+        links:
+          $ref: '#/components/schemas/links'
+        systemId:
+          minItems: 0
+          type: array
+          description: "Identifier(s) to uniquely specify the target MEC system(s)\
+            \ for the subscription. If absent, the subscription should include all\
+            \ MEC systems in the MEC federation."
+          items:
+            type: string
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+      description: This type represents a subscription to the notifications from the
+        MEC federator related to information update of the MEC systems in the MEC
+        federation.
+      example:
+        systemId:
+        - systemId
+        - systemId
+        subscriptionType: subscriptionType
+        callbackReference: http://example.com/aeiou
+        expiryDeadline:
+          seconds: 0
+          nanoSeconds: 6
+        links:
+          self:
+            href: http://example.com/aeiou
+    SystemUpdateNotification:
+      title: SystemUpdateNotification
+      required:
+      - links
+      - notificationType
+      - updatedSystemInfo
+      type: object
+      properties:
+        notificationType:
+          type: string
+          description: Shall be set to "SystemUpdateNotification".
+        updatedSystemInfo:
+          minItems: 1
+          type: array
+          description: Updated information of the MEC system(s) in the MEC federation.
+          items:
+            $ref: '#/components/schemas/SystemInfo'
+        links:
+          $ref: '#/components/schemas/links1'
+      description: This type represents the information that the MEC federator notifies
+        the subscribed MEC orchestrator about the information update of the MEC systems
+        in the MEC federation.
+    TimeStamp:
+      title: TimeStamp
+      required:
+      - nanoSeconds
+      - seconds
+      type: object
+      properties:
+        seconds:
+          type: integer
+          description: "The seconds part of the time. Time is defined as Unixtime\
+            \ since January 1, 1970, 00:00:00 UTC."
+          format: uint32
+        nanoSeconds:
+          type: integer
+          description: "The nanoseconds part of the time. Time is defined as Unix-time\
+            \ since January 1, 1970, 00:00:00 UTC."
+          format: uint32
+      description: The expiration time of the subscription determined by the MEC Federation
+        Enablement Service.
+      example:
+        seconds: 0
+        nanoSeconds: 6
+    links:
+      title: links
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+      description: Object containing hyperlinks related to the resource. This shall
+        only be included in the HTTP responses.
+      example:
+        self:
+          href: http://example.com/aeiou
+    links1:
+      title: links1
+      required:
+      - subscription
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/LinkType'
+      description: Object containing hyperlinks related to the resource.
+    LinkType:
+      title: LinkType
+      required:
+      - href
+      type: object
+      properties:
+        href:
+          type: string
+          description: URI referring to a resource.
+          format: uri
+      description: Self-referring URI. The URI shall be unique within the MEC Federation
+        Enablement API as it acts as an ID for the subscription (SubscriptionId).
+      example:
+        href: http://example.com/aeiou
+    SubscriptionLinkList:
+      required:
+      - _links
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/links'
+        subscription:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionLinkList_subscription'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Structure (inlined)
+      example:
+        _links:
+          self:
+            href: http://example.com/aeiou
+        subscription:
+        - subscriptionType: subscriptionType
+          href: http://example.com/aeiou
+        - subscriptionType: subscriptionType
+          href: http://example.com/aeiou
+    SubscriptionLinkList_subscription:
+      required:
+      - href
+      - subscriptionType
+      type: object
+      properties:
+        href:
+          type: string
+          description: The URI referring to the subscription.
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: URI
+        subscriptionType:
+          type: string
+          description: "Type of the subscription. The string shall be set according\
+            \ to the \"subscriptionType\" attribute of the associated subscription\
+            \ data type defined in 6.3.2, 6.3.3. and 6.3.5:\n“AssocStaSubscription”\
+            \n“StaDataRateSubscription”\n“MeasurementReportSubscription”"
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      example:
+        subscriptionType: subscriptionType
+        href: http://example.com/aeiou
+    MecHostInformation:
+      title: MecHostInformation
+      required:
+      - hostId
+      type: object
+      properties:
+        hostName:
+          type: string
+          description: Human-readable name of MEC host
+        hostId:
+          type: string
+          description: Deployment-specific information to identify a MEC host
+      description: The data type represents the parameters of MEC host information
+      example:
+        hostName: hostName
+        hostId: hostId
+    TransportsSupported:
+      title: TransportsSupported
+      required:
+      - serializers
+      type: object
+      properties:
+        transport:
+          $ref: '#/components/schemas/TransportDescriptor'
+        serializers:
+          type: array
+          description: "Information about the serializers in this binding, as defined\
+            \ in the SerializerTypes type in ETSI GS MEC 011"
+          items:
+            $ref: '#/components/schemas/SerializerType'
+      description: Indicates transports and serialization formats supported made available
+        to the service-consuming application. Defaults to REST + JSON if absent.
+      example:
+        serializers:
+        - JSON
+        - JSON
+        transport:
+          implSpecificInfo: implSpecificInfo
+          protocol: protocol
+          security:
+            (extensions):
+            - (extensions)
+            - (extensions)
+            oAuth2Info:
+              tokenEndpoint: http://example.com/aeiou
+              grantTypes:
+              - SEE_DESCRIPTION
+              - SEE_DESCRIPTION
+          name: name
+          description: description
+          type: REST_HTTP
+          version: version
+    CategoryRef:
+      title: CategoryRef
+      required:
+      - href
+      - id
+      - name
+      - version
+      type: object
+      properties:
+        href:
+          type: string
+          description: Reference of the catalogue.
+        id:
+          type: string
+          description: Unique identifier of the category.
+        name:
+          type: string
+          description: Name of the category.
+        version:
+          type: string
+          description: Category version.
+      description: This type represents the category reference.
+      example:
+        name: name
+        href: href
+        id: id
+        version: version
+    TransportDescriptor:
+      title: TransportDescriptor
+      required:
+      - name
+      - protocol
+      - security
+      - type
+      - version
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of this transport.
+        description:
+          type: string
+          description: Human-readable description of this transport.
+        protocol:
+          type: string
+          description: The name of the protocol used. Shall be set to HTTP for a REST
+            API.
+        security:
+          $ref: '#/components/schemas/SecurityInfo'
+        type:
+          $ref: '#/components/schemas/TransportTypes'
+        version:
+          type: string
+          description: The version of the protocol used.
+        implSpecificInfo:
+          type: string
+          description: Additional implementation specific details of the transport.
+      example:
+        implSpecificInfo: implSpecificInfo
+        protocol: protocol
+        security:
+          (extensions):
+          - (extensions)
+          - (extensions)
+          oAuth2Info:
+            tokenEndpoint: http://example.com/aeiou
+            grantTypes:
+            - SEE_DESCRIPTION
+            - SEE_DESCRIPTION
+        name: name
+        description: description
+        type: REST_HTTP
+        version: version
+    TransportTypes:
+      type: string
+      description: The enumeration TransportType represents types of transports.
+      enum:
+      - REST_HTTP
+      - MB_TOPIC_BASED
+      - MB_ROUTING
+      - MB_PUBSUB
+      - RPC
+      - RPC_STREAMING
+      - WEBSOCKET
+      x-etsi-ref: 8.1.6.4
+      x-etsi-mec-extensible: true
+      x-etsi-mec-enumeration-table:
+      - value: REST_HTTP
+        description: "RESTful API using HTTP (as defined in IETF RFC 9110 [11])."
+      - value: MB_TOPIC_BASED
+        description: "Topic-based message bus which routes messages to receivers based\
+          \ on subscriptions, if a pattern passed on subscription matches the topic\
+          \ of the message. EXAMPLE MQTT (see [i.4])."
+      - value: MB_ROUTING
+        description: "Routing-based message bus which routes messages to receivers\
+          \ based on subscriptions, if a key passed on subscription is equal to the\
+          \ key of the message."
+      - value: MB_PUBSUB
+        description: Publish-subscribe based message bus which distributes messages
+          to all subscribers.
+      - value: RPC
+        description: "Remote procedure call. EXAMPLE GRPC (see [i.5])."
+      - value: RPC_STREAMING
+        description: "Remote procedure call supporting streams of requests and responses.\
+          \ EXAMPLE GRPC (see [i.5])."
+      - value: WEBSOCKET
+        description: "Websockets as defined in IETF RFC 6455 [12]."
+    SecurityInfo:
+      type: object
+      properties:
+        oAuth2Info:
+          $ref: '#/components/schemas/OAuth2Info'
+        (extensions):
+          minItems: 0
+          type: array
+          description: "'Extensions for alternative transport mechanisms. These extensions\
+            \ depend on the actual transport, and are out of scope of the present\
+            \ document. For instance, such extensions may be used to signal the necessary\
+            \ parameters for the client to use TLSbased authorization defined for\
+            \ alternative transports (see ETSI GS MEC 009 [5] for more information).'\n"
+          items:
+            type: string
+      example:
+        (extensions):
+        - (extensions)
+        - (extensions)
+        oAuth2Info:
+          tokenEndpoint: http://example.com/aeiou
+          grantTypes:
+          - SEE_DESCRIPTION
+          - SEE_DESCRIPTION
+    OAuth2Info:
+      required:
+      - grantTypes
+      type: object
+      properties:
+        grantTypes:
+          minItems: 0
+          type: array
+          description: |
+            "List of supported OAuth 2.0 grant types.\nEach entry shall be one of the following permitted values:\nOAUTH2_AUTHORIZATION_CODE (Authorization code grant type)\nOAUTH2_IMPLICIT_GRANT\n \t(Implicit grant type)\nOAUTH2_RESOURCE_OWNER\n\t(Resource owner password credentials grant type) \nOAUTH2_CLIENT_CREDENTIALS\n\t(Client credentials grant type)\nOnly the value \"OAUTH2_CLIENT_CREDENTIALS\" is supported in the present document. "
+          items:
+            type: string
+            enum:
+            - SEE_DESCRIPTION
+        tokenEndpoint:
+          type: string
+          description: The token endpoint. Shall be present unless the grant type
+            is OAUTH2_IMPLICIT_GRANT.
+          format: uri
+      description: "Parameters related to use of OAuth 2.0. Shall be present in case\
+        \ OAuth 2.0 (see IETF RFC 6749 [13]) is supported to secure the provision\
+        \ of the service over the transport.\n"
+      example:
+        tokenEndpoint: http://example.com/aeiou
+        grantTypes:
+        - SEE_DESCRIPTION
+        - SEE_DESCRIPTION
+    SerializerType:
+      title: SerializerType
+      type: string
+      description: "The enumeration SerializerType represents types of serializers.\
+        \ This enumeration shall be extensible.\nNOTE: The enumeration values above\
+        \ shall represent the serializers as defined by the referenced specifications.\
+        \ \n"
+      enum:
+      - JSON
+      - XML
+      - PROTOBUF3
+    fed_resources_systems_body:
+      type: object
+      properties:
+        SystemInfo:
+          $ref: '#/components/schemas/SystemInfo'
+      example:
+        SystemInfo:
+          systemId: systemId
+          systemName: systemName
+          systemProvider: systemProvider
+    systems_systemId_body:
+      type: object
+      properties:
+        SystemInfoUpdate:
+          $ref: '#/components/schemas/SystemInfoUpdate'
+  responses:
+    "204":
+      description: No Content
+    "400":
+      description: "Bad Request: used to indicate that incorrect parameters were passed\
+        \ to the request."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "401":
+      description: "Unauthorized: used when the client did not submit credentials."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "403":
+      description: "Forbidden: operation is not allowed given the current status of\
+        \ the resource."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "404":
+      description: "Not Found: used when a client provided a URI that cannot be mapped\
+        \ to a valid resource URI."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  parameters:
+    Query.systemId:
+      name: systemId
+      in: query
+      description: Identifier of the MEC system.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: Query.systemId
+    Path.systemId:
+      name: systemId
+      in: path
+      description: Identifier of the MEC system.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+      x-exportParamName: Path.systemId
+    Query.systemName:
+      name: systemName
+      in: query
+      description: The name of the MEC system.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: Query.systemName
+    Query.systemProvider:
+      name: systemProvider
+      in: query
+      description: Provider of the MEC system.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: Query.systemProvider
+    Query.seInstancerId:
+      name: seInstancerId
+      in: query
+      description: Indicator of a MEC service offered for MEC federation.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: Query.seInstancerId
+    Query.serName:
+      name: serName
+      in: query
+      description: The name of the service.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: Query.serName
+    Query.serCategory:
+      name: serCategory
+      in: query
+      description: A Category reference.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: Query.serCategory

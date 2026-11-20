@@ -1,0 +1,18 @@
+curl -X POST "http://192.168.10.42/sandbox-api/v1/login?provider=github" --header "Accept: application/json"
+
+curl -X GET "http://192.168.10.42/sandbox-api/v1/namespace?user_code=D87E-179D" --header "Accept: application/json"
+
+curl -X GET http://192.168.10.42/sandbox-api/v1/sandboxNetworkScenarios?sandbox_name=sbx2bplfsb --header "Accept: application/json"
+
+curl -X GET "http://192.168.10.42/sandbox-api/v1/sandboxNetworkScenarios/sbx2bplfsb?network_scenario_id=4g-5g-macro-v2x" --header "Accept: application/json"
+
+curl -X POST "http://192.168.10.42/sandbox-api/v1/sandboxNetworkScenarios/sbx2bplfsb?network_scenario_id=4g-5g-macro-v2x" --header "Accept: application/json"
+
+curl -X GET "http://192.168.10.42/sandbox-api/v1/sandboxMecServices/sbx2bplfsb" --header "Accept: application/json"
+
+curl -X DELETE http://192.168.10.42/sandbox-api/v1/sandboxNetworkScenarios/sbx2bplfsb/4g-5g-macro-v2x
+
+curl -X POST http://192.168.10.42/sandbox-api/v1/logout?sandbox_name=sbx2bplfsb --header "Accept: application/json"
+
+kubectl logs meep-auth-svc-5b68d569d8-mzfcs > meep-auth-svc.log 2>&1
+kubectl logs meep-sandbox-api-6f497778b5-g5qsv > meep-sandbox-api.log 2>&1

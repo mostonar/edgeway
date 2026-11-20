@@ -1,0 +1,48 @@
+# Rendered by pyinfra from upstream Calico manifests/custom-resources-bpf.yaml
+# (https://github.com/projectcalico/calico/blob/{{ calico_version }}/manifests/custom-resources-bpf.yaml).
+# The only deviation from upstream is that the IP pool CIDR comes from
+# `pod_network_cidr` so it always matches `kubeadm init --pod-network-cidr`.
+# When bumping `calico_version`, diff this file against the new upstream manifest.
+
+# This section includes base Calico installation configuration.
+# For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.Installation
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  # Configures Calico networking.
+  calicoNetwork:
+    linuxDataplane: BPF
+    bpfNetworkBootstrap: Enabled
+    kubeProxyManagement: Enabled
+    ipPools:
+      - name: default-ipv4-ippool
+        blockSize: 26
+        cidr: {{ pod_network_cidr }}
+        encapsulation: VXLANCrossSubnet
+        natOutgoing: Enabled
+        nodeSelector: all()
+
+---
+# This section configures the Calico API server.
+# For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.APIServer
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+
+---
+# Configures the Calico Goldmane flow aggregator.
+apiVersion: operator.tigera.io/v1
+kind: Goldmane
+metadata:
+  name: default
+
+---
+# Configures the Calico Whisker observability UI.
+apiVersion: operator.tigera.io/v1
+kind: Whisker
+metadata:
+  name: default

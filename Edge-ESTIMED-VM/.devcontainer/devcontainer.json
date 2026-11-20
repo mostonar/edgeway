@@ -1,0 +1,13 @@
+{
+    "name": "Go",
+    "image": "mcr.microsoft.com/devcontainers/go:1.25-bookworm",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.go"
+            ]
+        }
+    },
+    "postCreateCommand": "go version",
+    "remoteUser": "vscode"
+}

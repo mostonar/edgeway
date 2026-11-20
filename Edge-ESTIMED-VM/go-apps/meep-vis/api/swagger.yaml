@@ -1,0 +1,3114 @@
+openapi: 3.0.0
+info:
+  title: ETSI GS MEC 030 V2X Information Services API
+  description: ETSI GS MEC 030 V2X Information Services API described using OpenAPI.
+  contact:
+    name: ETSI Forge
+    url: https://forge.etsi.org/rep/mec/gs030-vis-api
+    email: cti_support@etsi.org
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 3.2.2
+externalDocs:
+  description: "ETSI GS MEC 030 V2X Information Services API, v3.2.1"
+  url: https://www.etsi.org/deliver/etsi_gs/MEC/001_099/030/03.02.01_60/
+servers:
+- url: https://localhost/sandboxname/vis/v2
+tags:
+- name: queries
+  description: Queries
+- name: subscription
+  description: Subscription
+- name: QoS
+- name: V2X_msg
+paths:
+  /queries/uu_unicast_provisioning_info:
+    get:
+      tags:
+      - queries
+      summary: Used to query provisioning information for V2X communication over Uu
+        unicast.
+      description: Used to query provisioning information for V2X communication over
+        Uu unicast.
+      operationId: prov_info_uu_unicastGET
+      parameters:
+      - name: location_info
+        in: query
+        description: Comma separated list of locations to identify a cell of a base
+          station or a particular geographical area
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: 'A response body containing the Uu unicast provisioning information. '
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UuUnicastProvisioningInfo'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /queries/uu_mbms_provisioning_info:
+    get:
+      tags:
+      - queries
+      summary: retrieve information required for V2X communication over Uu MBMS.
+      description: retrieve information required for V2X communication over Uu MBMS.
+      operationId: prov_info_uu_mbmsGET
+      parameters:
+      - name: location_info
+        in: query
+        description: omma separated list of locations to identify a cell of a base
+          station or a particular geographical area
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: 'A response body containing the Uu unicast provisioning information. '
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UuMbmsProvisioningInfo'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /queries/pc5_provisioning_info:
+    get:
+      tags:
+      - queries
+      summary: Query provisioning information for V2X communication over PC5.
+      description: Query provisioning information for V2X communication over PC5.
+      operationId: prov_infoGET
+      parameters:
+      - name: location_info
+        in: query
+        description: Comma separated list of locations to identify a cell of a base
+          station or a particular geographical area
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: A response body containing the PC5 provisioning information
+            is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pc5ProvisioningInfo'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /provide_v2x_msg_distribution_server_info:
+    post:
+      tags:
+      - V2X_msg
+      summary: Request the information about available V2X Message Distribution Servers
+        that can be supported by the service consumer.
+      description: Request the information about available V2X Message Distribution
+        Servers that can be supported by the service consumer (e.g. a MEC application).
+      operationId: v2xMsg_distributionServerPost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/V2xMsgDistributionServerInfo'
+        required: true
+      responses:
+        "200":
+          description: The response body shall contain the connection information
+            of the V2X Message Distribution Servers that the service consumer can
+            use for direct connection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V2xMsgDistributionServerInfo'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /provide_predicted_qos:
+    post:
+      tags:
+      - QoS
+      summary: Request the predicted QoS correspondent to potential routes of a vehicular
+        UE.
+      description: Request the predicted QoS correspondent to potential routes of
+        a vehicular UE.
+      operationId: predicted_qosPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictedQos'
+        required: true
+      responses:
+        "200":
+          description: The response body shall contain the predicted QoS corresponding
+            to potential routes of a vehicular UE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictedQos'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /publish_v2x_message:
+    post:
+      tags:
+      - V2X_msg
+      summary: Used to publish a V2X message.
+      description: Used to publish a V2X message.
+      operationId: v2x_messagePOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/V2xMsgPublication'
+        required: true
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions:
+    get:
+      tags:
+      - subscription
+      summary: Request information about the subscriptions for this requestor.
+      description: Request information about the subscriptions for this requestor.
+      operationId: subGET
+      parameters:
+      - name: subscription_type
+        in: query
+        description: "Query parameter to filter on a specific subscription type. Permitted\
+          \ values:  prov_chg_uu_uni: provisioning information change for V2X communication\
+          \ over Uuunicast. prov_chg_uu_mbms: provisioning information change for\
+          \ V2X communication over Uu MBMS. prov_chg_uu_pc5: provisioning information\
+          \ change for V2X communication over PC5. v2x_msg: V2X interoperability message.\
+          \ pred_qos: information on the predicted QoS"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: A response body containing the list of links to requestor subscriptions
+            is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionLinkList'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - subscription
+      summary: ' create a new subscription to VIS notifications.'
+      description: ' create a new subscription to VIS notifications.'
+      operationId: subPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_body'
+        required: true
+      responses:
+        "201":
+          description: "In the returned NotificationSubscription structure, the created\
+            \ subscription is described using the appropriate data type."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscriptions_body'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "415":
+          description: "Unsupported Media Type :  used to indicate that the server\
+            \ or the client does not support the content type of the entity body."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "422":
+          description: "Unprocessable Entity : used to indicate that the server understands\
+            \ the content type of the request entity and that the syntax of the request\
+            \ entity is correct but that the server is unable to process the contained\
+            \ instructions. This error condition can occur if an JSON request body\
+            \ is syntactically correct but semantically incorrect, for example if\
+            \ the target area for the request is considered too large. This error\
+            \ condition can also occur if the capabilities required by the request\
+            \ are not supported."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      callbacks:
+        notification:
+          '{$request.body#/callbackReference}':
+            post:
+              summary: Callback POST used to send a notification
+              description: A notification from VIS.
+              operationId: notificationPOST
+              requestBody:
+                description: Subscription notification
+                content:
+                  application/json:
+                    schema:
+                      oneOf:
+                      - $ref: '#/components/schemas/ProvChgUuUniNotification'
+                      - $ref: '#/components/schemas/ProvChgUuMbmsNotification'
+                      - $ref: '#/components/schemas/ProvChgPc5Notification'
+                      - $ref: '#/components/schemas/V2xMsgNotification'
+                required: true
+              responses:
+                "204":
+                  description: No Content
+  /subscriptions/{subscriptionId}:
+    get:
+      tags:
+      - subscription
+      summary: Retrieve information about this subscription.
+      description: Retrieve information about this subscription.
+      operationId: individualSubscriptionGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Refers to created subscription, where the VIS API allocates\
+          \ a unique resource name for this subscription"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: A response body containing the data type describing the specific
+            RNI event subscription is returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - subscription
+      summary: Used to update the existing subscription.
+      description: Used to update the existing subscription.
+      operationId: individualSubscriptionPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Refers to created subscription, where the VIS API allocates\
+          \ a unique resource name for this subscription"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_subscriptionId_body'
+        required: true
+      responses:
+        "200":
+          description: A response body containing data type describing the updated
+            subscription is returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscriptions_subscriptionId_body'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition failed :  used when a condition has failed during\
+            \ conditional requests, e.g. when using ETags to avoid write conflicts\
+            \ when using PUT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "422":
+          description: "Unprocessable Entity : used to indicate that the server understands\
+            \ the content type of the request entity and that the syntax of the request\
+            \ entity is correct but that the server is unable to process the contained\
+            \ instructions. This error condition can occur if an JSON request body\
+            \ is syntactically correct but semantically incorrect, for example if\
+            \ the target area for the request is considered too large. This error\
+            \ condition can also occur if the capabilities required by the request\
+            \ are not supported."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - subscription
+      summary: Used to cancel the existing subscription.
+      description: Used to cancel the existing subscription.
+      operationId: individualSubscriptionDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Refers to created subscription, where the VIS API allocates\
+          \ a unique resource name for this subscription"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    CellId:
+      required:
+      - cellId
+      type: object
+      properties:
+        cellId:
+          type: string
+          description: E-UTRAN Cell Identity as a bit string (size (28)).
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      example:
+        cellId: cellId
+      x-etsi-ref: 6.6.2
+    Earfcn:
+      required:
+      - earfcn
+      type: object
+      properties:
+        earfcn:
+          type: integer
+          description: "E-UTRA Absolute Radio Frequency Channel Number, range (0...\
+            \ 65535)"
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Integer
+      example:
+        earfcn: 1
+      x-etsi-ref: 6.6.3
+    Ecgi:
+      required:
+      - cellId
+      - plmn
+      type: object
+      properties:
+        cellId:
+          $ref: '#/components/schemas/CellId'
+        plmn:
+          $ref: '#/components/schemas/Plmn'
+      example:
+        plmn:
+          mnc: mnc
+          mcc: mcc
+        cellId:
+          cellId: cellId
+      x-etsi-ref: 6.5.5
+    FddInfo:
+      required:
+      - dlEarfcn
+      - dlTransmissionBandwidth
+      - ulEarfcn
+      - ulTransmissionBandwidth
+      type: object
+      properties:
+        dlEarfcn:
+          $ref: '#/components/schemas/Earfcn'
+        dlTransmissionBandwidth:
+          $ref: '#/components/schemas/TransmissionBandwidth'
+        ulEarfcn:
+          $ref: '#/components/schemas/Earfcn'
+        ulTransmissionBandwidth:
+          $ref: '#/components/schemas/TransmissionBandwidth'
+      example:
+        dlEarfcn:
+          earfcn: 1
+        ulEarfcn: null
+        dlTransmissionBandwidth:
+          transmissionBandwidth: 5
+        ulTransmissionBandwidth: null
+      x-etsi-ref: 6.5.6
+    links:
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+      description: Hyperlink related to the resource. This shall be only included
+        in the HTTP responses and in HTTP PUT requests.
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    LinkType:
+      required:
+      - href
+      type: object
+      properties:
+        href:
+          type: string
+          description: URI referring to a resource
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+      example:
+        href: http://example.com/aeiou
+      x-etsi-ref: 6.5.13
+    LocationInfo:
+      type: object
+      properties:
+        ecgi:
+          $ref: '#/components/schemas/Ecgi'
+        geoArea:
+          $ref: '#/components/schemas/LocationInfo.geoArea'
+      example:
+        geoArea:
+          latitude: 0.8008282
+          longitude: 6.0274563
+        ecgi:
+          plmn:
+            mnc: mnc
+            mcc: mcc
+          cellId:
+            cellId: cellId
+      x-etsi-notes: "NOTE:\tEither ecgi or geoArea shall be present, but not both."
+      x-etsi-ref: 6.5.3
+    LocationInfo.geoArea:
+      required:
+      - latitude
+      - longitude
+      type: object
+      properties:
+        latitude:
+          type: number
+          description: Latitude (DATUM = WGS84) -90 to 90 in decimal degree format
+            DDD.ddd
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        longitude:
+          type: number
+          description: Longitude (DATUM = WGS84) -180 to 180 in decimal degree format
+            DDD.ddd
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+      description: Information of a geographical area.
+      example:
+        latitude: 0.8008282
+        longitude: 6.0274563
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    Pc5NeighbourCellInfo:
+      required:
+      - ecgi
+      - plmn
+      - siV2xConfig
+      type: object
+      properties:
+        ecgi:
+          $ref: '#/components/schemas/Ecgi'
+        plmn:
+          $ref: '#/components/schemas/Plmn'
+        siV2xConfig:
+          $ref: '#/components/schemas/SystemInformationBlockType21'
+      example:
+        plmn:
+          mnc: mnc
+          mcc: mcc
+        siV2xConfig: {}
+        ecgi:
+          plmn:
+            mnc: mnc
+            mcc: mcc
+          cellId:
+            cellId: cellId
+      x-etsi-ref: 6.5.12
+    Pc5ProvisioningInfo:
+      required:
+      - proInfoPc5
+      type: object
+      properties:
+        proInfoPc5:
+          minItems: 1
+          type: array
+          items:
+            $ref: '#/components/schemas/Pc5ProvisioningInfo.proInfoPc5'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        timeStamp:
+          seconds: 7
+          nanoSeconds: 2
+        proInfoPc5:
+        - locationInfo:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          neighbourCellInfo:
+          - plmn:
+              mnc: mnc
+              mcc: mcc
+            siV2xConfig: {}
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          - plmn:
+              mnc: mnc
+              mcc: mcc
+            siV2xConfig: {}
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          dstLayer2Id: dstLayer2Id
+        - locationInfo:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          neighbourCellInfo:
+          - plmn:
+              mnc: mnc
+              mcc: mcc
+            siV2xConfig: {}
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          - plmn:
+              mnc: mnc
+              mcc: mcc
+            siV2xConfig: {}
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          dstLayer2Id: dstLayer2Id
+      x-etsi-ref: 6.2.4
+    Pc5ProvisioningInfo.proInfoPc5:
+      required:
+      - dstLayer2Id
+      - locationInfo
+      type: object
+      properties:
+        dstLayer2Id:
+          type: string
+          description: "For sidelink communication, the Destination Layer-2 ID is\
+            \ set to the ProSe Layer-2 Group ID or Prose UE ID, see ETSI TS\_136\_\
+            321 [i.12].\nPLMN operators coordinate to make sure Destination Layer2\
+            \ ID(s) for different V2X services are configured in a consistent manner."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over PC5.
+          items:
+            $ref: '#/components/schemas/Pc5NeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Pc5NeighbourCellInfo
+      description: The provisioning information per location as defined below.
+      example:
+        locationInfo:
+          geoArea:
+            latitude: 0.8008282
+            longitude: 6.0274563
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        neighbourCellInfo:
+        - plmn:
+            mnc: mnc
+            mcc: mcc
+          siV2xConfig: {}
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        - plmn:
+            mnc: mnc
+            mcc: mcc
+          siV2xConfig: {}
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        dstLayer2Id: dstLayer2Id
+      x-etsi-mec-cardinality: 1..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    Plmn:
+      required:
+      - mcc
+      - mnc
+      type: object
+      properties:
+        mcc:
+          type: string
+          description: The Mobile Country Code part of PLMN Identity.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        mnc:
+          type: string
+          description: The Mobile Network Code part of PLMN Identity.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      example:
+        mnc: mnc
+        mcc: mcc
+      x-etsi-ref: 6.5.4
+    PredictedQos:
+      required:
+      - locationGranularity
+      - predictionTarget
+      - qos
+      type: object
+      properties:
+        locationGranularity:
+          type: string
+          description: Granularity of visited location. Measured in meters.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        noticePeriod:
+          $ref: '#/components/schemas/TimeStamp'
+        predictionArea:
+          $ref: '#/components/schemas/PredictionArea'
+        predictionTarget:
+          type: string
+          description: "Indicates target of QoS prediction. Valid values:\n\n1.\t\
+            SINGLE_UE_PREDICTION: \nThe predicted QoS is to be intended as journey-specific\
+            \ for a requesting vehicular UE.\n\n2.\tE2E_APPLICATION_INSTANCE_PREDICTION:\n\
+            The E2E user plane link between two V2X application instances, where one\
+            \ instance relates to a single vehicular UE and the other instance to\
+            \ an application instance within another network, i.e. either another\
+            \ vehicular UE as in the V2N2V case, or an infrastructure element as in\
+            \ the V2N2I case.\n\nShall only be included in the request.\n\n"
+          enum:
+          - SEE_DESCRIPTION
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum_inlined
+        qos:
+          $ref: '#/components/schemas/Qos'
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Routes'
+        timeGranularity:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        noticePeriod:
+          seconds: 7
+          nanoSeconds: 2
+        routes:
+        - routeInfo:
+          - location: null
+            time: null
+          - location: null
+            time: null
+        - routeInfo:
+          - location: null
+            time: null
+          - location: null
+            time: null
+        qos:
+          stream:
+          - qosKpi:
+            - kpiValue: kpiValue
+              confidence: confidence
+              kpiName: kpiName
+            - kpiValue: kpiValue
+              confidence: confidence
+              kpiName: kpiName
+          - qosKpi:
+            - kpiValue: kpiValue
+              confidence: confidence
+              kpiName: kpiName
+            - kpiValue: kpiValue
+              confidence: confidence
+              kpiName: kpiName
+        timeGranularity: null
+        locationGranularity: locationGranularity
+        predictionArea:
+          center:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          radius: radius
+        predictionTarget: SEE_DESCRIPTION
+      x-etsi-notes: "NOTE:\tThe data type of locationGranularity is a string which\
+        \ indicates the granularity of a visited location by means of latitudinal\
+        \ and longitudinal margins."
+      x-etsi-ref: 6.2.6
+    PredictedQos.routes:
+      minItems: 1
+      type: object
+      properties:
+        routeInfo:
+          minItems: 2
+          required:
+          - location
+          type: array
+          description: |-
+            Information relating to a specific route.
+            The first structure shall relate to the route origin and the last to the route destination. Intermediate waypoint locations may also be provided.
+          items:
+            $ref: '#/components/schemas/PredictedQos.routes.routeInfo'
+          x-etsi-mec-cardinality: 2..N
+          x-etsi-mec-origin-type: Structure (inlined)
+    PredictedQos.routes.routeInfo:
+      type: object
+      properties:
+        location:
+          $ref: '#/components/schemas/LocationInfo'
+        rsrp:
+          type: integer
+          description: "Reference Signal Received Power as defined in ETSI TS 136\
+            \ 214 [i.13].\nShall only be included in the response."
+          format: uint8
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uint8
+        rsrq:
+          type: integer
+          description: "Reference Signal Received Quality as defined in ETSI TS 136\
+            \ 214 [i.13].\nShall only be included in the response."
+          format: uint8
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uint8
+        time:
+          $ref: '#/components/schemas/TimeStamp'
+    ProblemDetails:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: URI
+        status:
+          type: integer
+          description: The HTTP status code for this occurrence of the problem
+          format: uint32
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uint32
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        type:
+          type: string
+          description: A URI reference according to IETF RFC 3986 that identifies
+            the problem type
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: URI
+    ProvChgPc5Notification:
+      required:
+      - locationInfo
+      - notificationType
+      type: object
+      properties:
+        dstLayer2Id:
+          type: string
+          description: "For sidelink communication, the Destination Layer-2 ID is\
+            \ set to the ProSe Layer-2 Group ID or Prose UE ID, see ETSI TS 136 321\
+            \ [i.12]."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over PC5.
+          items:
+            $ref: '#/components/schemas/Pc5NeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Pc5NeighbourCellInfo
+        notificationType:
+          type: string
+          description: Shall be set to "ProvChgPc5Notification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      x-etsi-ref: 6.4.4
+    ProvChgPc5Subscription:
+      required:
+      - filterCriteria
+      - subscriptionType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/links'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        filterCriteria:
+          $ref: '#/components/schemas/ProvChgPc5Subscription.filterCriteria'
+        requestTestNotification:
+          type: boolean
+          description: "Shall be set to TRUE by the service consumer to request a\
+            \ test notification via HTTP on the callbackReference URI, as described\
+            \ in ETSI GS\_MEC\_009 [i.1], clause 6.12a.\nDefault: FALSE."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "ProvChgPc5Subscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      anyOf:
+      - oneOf:
+        - required:
+          - callbackReference
+        - required:
+          - websockNotifConfig
+      x-etsi-notes: "NOTE:   At least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to VIS to choose an alternative and return only that alternative in the\
+        \ response, as described in ETSI GS MEC 009 [i.1], clause 6.12a."
+      x-etsi-ref: 6.3.4
+    ProvChgPc5Subscription.filterCriteria:
+      required:
+      - dstLayer2Id
+      - locationInfo
+      type: object
+      properties:
+        dstLayer2Id:
+          type: string
+          description: "For sidelink communication, the Destination Layer-2 ID is\
+            \ set to the ProSe Layer-2 Group ID or Prose UE ID, see ETSI TS 136 321\
+            \ [i.12]."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over PC5.
+          items:
+            $ref: '#/components/schemas/Pc5NeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Pc5NeighbourCellInfo
+      description: "List of filtering criteria for the subscription. Any filtering\
+        \ criteria from below, which is included in the request, shall also be included\
+        \ in the response."
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    ProvChgUuMbmsNotification:
+      required:
+      - locationInfo
+      - notificationType
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over Uu MBMS.
+          items:
+            $ref: '#/components/schemas/UuMbmsNeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UuMbmsNeighbourCellInfo
+        notificationType:
+          type: string
+          description: Shall be set to "ProvChgUuMbmsNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        v2xServerUsd:
+          $ref: '#/components/schemas/V2xServerUsd'
+      x-etsi-ref: 6.4.3
+    ProvChgUuMbmsSubscription:
+      required:
+      - filterCriteria
+      - subscriptionType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/links'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        filterCriteria:
+          $ref: '#/components/schemas/ProvChgUuMbmsSubscription.filterCriteria'
+        requestTestNotification:
+          type: boolean
+          description: "Shall be set to TRUE by the service consumer to request a\
+            \ test notification via HTTP on the callbackReference URI, as described\
+            \ in ETSI GS\_MEC\_009 [i.1], clause 6.12a.\nDefault: FALSE."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "ProvChgUuMbmsSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      anyOf:
+      - oneOf:
+        - required:
+          - callbackReference
+        - required:
+          - websockNotifConfig
+      x-etsi-notes: "NOTE:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to VIS to choose an alternative and return only that alternative in the\
+        \ response, as described in ETSI GS MEC 009 [i.1], clause 6.12a."
+      x-etsi-ref: 6.3.3
+    ProvChgUuMbmsSubscription.filterCriteria:
+      required:
+      - locationInfo
+      - v2xServerUsd
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over Uu MBMS.
+          items:
+            $ref: '#/components/schemas/UuMbmsNeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UuMbmsNeighbourCellInfo
+        v2xServerUsd:
+          $ref: '#/components/schemas/V2xServerUsd'
+      description: "List of filtering criteria for the subscription. Any filtering\
+        \ criteria from below, which is included in the request, shall also be included\
+        \ in the response."
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    ProvChgUuUniNotification:
+      required:
+      - locationInfo
+      - notificationType
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over Uu unicast.
+          items:
+            $ref: '#/components/schemas/UuUniNeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UuUniNeighbourCellInfo
+        notificationType:
+          type: string
+          description: Shall be set to "ProvChgUuUniNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        v2xApplicationServer:
+          $ref: '#/components/schemas/V2xApplicationServer'
+      x-etsi-ref: 6.4.2
+    ProvChgUuUniSubscription:
+      required:
+      - filterCriteria
+      - subscriptionType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/links'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        filterCriteria:
+          $ref: '#/components/schemas/ProvChgUuUniSubscription.filterCriteria'
+        requestTestNotification:
+          type: boolean
+          description: "Shall be set to TRUE by the service consumer to request a\
+            \ test notification via HTTP on the callbackReference URI, as described\
+            \ in ETSI GS\_MEC\_009 [i.1], clause 6.12a.\nDefault: FALSE."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "ProvChgUuUniSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      anyOf:
+      - oneOf:
+        - required:
+          - callbackReference
+        - required:
+          - websockNotifConfig
+      x-etsi-notes: "NOTE:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to VIS to choose an alternative and return only that alternative in the\
+        \ response, as described in ETSI GS MEC 009 [i.1], clause 6.12a."
+      x-etsi-ref: 6.3.2
+    ProvChgUuUniSubscription.filterCriteria:
+      required:
+      - locationInfo
+      - v2xApplicationServer
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over Uu unicast.
+          items:
+            $ref: '#/components/schemas/UuUniNeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UuUniNeighbourCellInfo
+        v2xApplicationServer:
+          $ref: '#/components/schemas/V2xApplicationServer'
+      description: "List of filtering criteria for the subscription. Any filtering\
+        \ criteria from below, which is included in the request, shall also be included\
+        \ in the response."
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    SubscriptionLinkList:
+      required:
+      - _links
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links2'
+      example:
+        _links:
+          subscriptions:
+          - subscriptionType: subscriptionType
+            href: http://example.com/aeiou
+          - subscriptionType: subscriptionType
+            href: http://example.com/aeiou
+          self:
+            href: http://example.com/aeiou
+      x-etsi-ref: 6.3.7
+    SystemInformationBlockType21:
+      type: object
+    TddInfo:
+      required:
+      - earfcn
+      - subframeAssignment
+      - transmissionBandwidth
+      type: object
+      properties:
+        earfcn:
+          $ref: '#/components/schemas/Earfcn'
+        subframeAssignment:
+          type: string
+          description: Uplink-downlink subframe configuration information.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        transmissionBandwidth:
+          $ref: '#/components/schemas/TransmissionBandwidth'
+      example:
+        subframeAssignment: subframeAssignment
+        transmissionBandwidth: null
+        earfcn: null
+      x-etsi-ref: 6.5.7
+    TestNotification:
+      required:
+      - _links
+      - notificationType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/TestNotification__links'
+        notificationType:
+          type: string
+          description: Shall be set to "TestNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      x-etsi-ref: 6.4.6
+    TimeStamp:
+      required:
+      - nanoSeconds
+      - seconds
+      type: object
+      properties:
+        nanoSeconds:
+          type: integer
+          description: "The nanoseconds part of the time. Time is defined as Unix-time\
+            \ since January 1, 1970, 00:00:00 UTC."
+          format: uint32
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uint32
+        seconds:
+          type: integer
+          description: "The seconds part of the time. Time is defined as Unixtime\
+            \ since January 1, 1970, 00:00:00 UTC."
+          format: uint32
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uint32
+      example:
+        seconds: 7
+        nanoSeconds: 2
+      x-etsi-ref: 6.5.2
+    TransmissionBandwidth:
+      required:
+      - transmissionBandwidth
+      type: object
+      properties:
+        transmissionBandwidth:
+          $ref: '#/components/schemas/TransmissionBandwidth.transmissionBandwidth'
+      example:
+        transmissionBandwidth: 5
+      x-etsi-ref: 6.6.4
+    TransmissionBandwidth.transmissionBandwidth:
+      type: integer
+      description: |
+        'Numeric value corresponding to the transmission bandwidth expressed in units of resource blocks as follows:
+
+        1 = bw6 (6 resource blocks)
+
+        2 = bw15 (15 resource blocks)
+
+        3 = bw25 (25 resource blocks)
+
+        4 = bw50 (50 resource blocks)
+
+        5 = bw75 (75 resource blocks)
+
+        6 = bw100 (100 resource blocks)'
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Enum
+    UuMbmsNeighbourCellInfo:
+      required:
+      - ecgi
+      - fddInfo
+      - mbmsServiceAreaIdentity
+      - pci
+      - plmn
+      - tddInfo
+      type: object
+      properties:
+        ecgi:
+          $ref: '#/components/schemas/Ecgi'
+        fddInfo:
+          $ref: '#/components/schemas/FddInfo'
+        mbmsServiceAreaIdentity:
+          minItems: 1
+          type: array
+          description: Supported MBMS Service Area Identities in the cell.
+          items:
+            type: string
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: String
+        pci:
+          type: integer
+          description: Physical Cell Identifier.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Integer
+        plmn:
+          $ref: '#/components/schemas/Plmn'
+        tddInfo:
+          $ref: '#/components/schemas/TddInfo'
+      example:
+        fddInfo:
+          dlEarfcn:
+            earfcn: 1
+          ulEarfcn: null
+          dlTransmissionBandwidth:
+            transmissionBandwidth: 5
+          ulTransmissionBandwidth: null
+        mbmsServiceAreaIdentity:
+        - mbmsServiceAreaIdentity
+        - mbmsServiceAreaIdentity
+        pci: 0
+        plmn:
+          mnc: mnc
+          mcc: mcc
+        tddInfo:
+          subframeAssignment: subframeAssignment
+          transmissionBandwidth: null
+          earfcn: null
+        ecgi:
+          plmn:
+            mnc: mnc
+            mcc: mcc
+          cellId:
+            cellId: cellId
+      x-etsi-ref: 6.5.11
+    UuMbmsProvisioningInfo:
+      required:
+      - proInfoUuMbms
+      type: object
+      properties:
+        proInfoUuMbms:
+          minItems: 1
+          type: array
+          items:
+            $ref: '#/components/schemas/UuMbmsProvisioningInfo.proInfoUuMbms'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        timeStamp:
+          seconds: 7
+          nanoSeconds: 2
+        proInfoUuMbms:
+        - v2xServerUsd:
+            sdpInfo:
+              ipMulticastAddress: ipMulticastAddress
+              portNumber: portNumber
+            tmgi:
+              mnc: mnc
+              mcc: mcc
+              mbmsServiceId: mbmsServiceId
+            serviceAreaIdentifier:
+            - serviceAreaIdentifier
+            - serviceAreaIdentifier
+          locationInfo:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          neighbourCellInfo:
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            mbmsServiceAreaIdentity:
+            - mbmsServiceAreaIdentity
+            - mbmsServiceAreaIdentity
+            pci: 0
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            mbmsServiceAreaIdentity:
+            - mbmsServiceAreaIdentity
+            - mbmsServiceAreaIdentity
+            pci: 0
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+        - v2xServerUsd:
+            sdpInfo:
+              ipMulticastAddress: ipMulticastAddress
+              portNumber: portNumber
+            tmgi:
+              mnc: mnc
+              mcc: mcc
+              mbmsServiceId: mbmsServiceId
+            serviceAreaIdentifier:
+            - serviceAreaIdentifier
+            - serviceAreaIdentifier
+          locationInfo:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          neighbourCellInfo:
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            mbmsServiceAreaIdentity:
+            - mbmsServiceAreaIdentity
+            - mbmsServiceAreaIdentity
+            pci: 0
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            mbmsServiceAreaIdentity:
+            - mbmsServiceAreaIdentity
+            - mbmsServiceAreaIdentity
+            pci: 0
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+      x-etsi-ref: 6.2.3
+    UuMbmsProvisioningInfo.proInfoUuMbms:
+      required:
+      - locationInfo
+      - v2xServerUsd
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over Uu MBMS.
+          items:
+            $ref: '#/components/schemas/UuMbmsNeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UuMbmsNeighbourCellInfo
+        v2xServerUsd:
+          $ref: '#/components/schemas/V2xServerUsd'
+      description: The provisioning information per location as defined below.
+      example:
+        v2xServerUsd:
+          sdpInfo:
+            ipMulticastAddress: ipMulticastAddress
+            portNumber: portNumber
+          tmgi:
+            mnc: mnc
+            mcc: mcc
+            mbmsServiceId: mbmsServiceId
+          serviceAreaIdentifier:
+          - serviceAreaIdentifier
+          - serviceAreaIdentifier
+        locationInfo:
+          geoArea:
+            latitude: 0.8008282
+            longitude: 6.0274563
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        neighbourCellInfo:
+        - fddInfo:
+            dlEarfcn:
+              earfcn: 1
+            ulEarfcn: null
+            dlTransmissionBandwidth:
+              transmissionBandwidth: 5
+            ulTransmissionBandwidth: null
+          mbmsServiceAreaIdentity:
+          - mbmsServiceAreaIdentity
+          - mbmsServiceAreaIdentity
+          pci: 0
+          plmn:
+            mnc: mnc
+            mcc: mcc
+          tddInfo:
+            subframeAssignment: subframeAssignment
+            transmissionBandwidth: null
+            earfcn: null
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        - fddInfo:
+            dlEarfcn:
+              earfcn: 1
+            ulEarfcn: null
+            dlTransmissionBandwidth:
+              transmissionBandwidth: 5
+            ulTransmissionBandwidth: null
+          mbmsServiceAreaIdentity:
+          - mbmsServiceAreaIdentity
+          - mbmsServiceAreaIdentity
+          pci: 0
+          plmn:
+            mnc: mnc
+            mcc: mcc
+          tddInfo:
+            subframeAssignment: subframeAssignment
+            transmissionBandwidth: null
+            earfcn: null
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+      x-etsi-mec-cardinality: 1..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    UuUniNeighbourCellInfo:
+      required:
+      - ecgi
+      - fddInfo
+      - pci
+      - plmn
+      - tddInfo
+      type: object
+      properties:
+        ecgi:
+          $ref: '#/components/schemas/Ecgi'
+        fddInfo:
+          $ref: '#/components/schemas/FddInfo'
+        pci:
+          type: integer
+          description: Physical Cell Identifier.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Integer
+        plmn:
+          $ref: '#/components/schemas/Plmn'
+        tddInfo:
+          $ref: '#/components/schemas/TddInfo'
+      example:
+        fddInfo:
+          dlEarfcn:
+            earfcn: 1
+          ulEarfcn: null
+          dlTransmissionBandwidth:
+            transmissionBandwidth: 5
+          ulTransmissionBandwidth: null
+        pci: 5
+        plmn: null
+        tddInfo:
+          subframeAssignment: subframeAssignment
+          transmissionBandwidth: null
+          earfcn: null
+        ecgi: null
+      x-etsi-ref: 6.5.9
+    UuUnicastProvisioningInfo:
+      required:
+      - proInfoUuUnicast
+      type: object
+      properties:
+        proInfoUuUnicast:
+          minItems: 1
+          type: array
+          items:
+            $ref: '#/components/schemas/UuUnicastProvisioningInfo.proInfoUuUnicast'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        timeStamp:
+          seconds: 7
+          nanoSeconds: 2
+        proInfoUuUnicast:
+        - locationInfo:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          neighbourCellInfo:
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            pci: 5
+            plmn: null
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi: null
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            pci: 5
+            plmn: null
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi: null
+          v2xApplicationServer:
+            ipAddress: ipAddress
+            udpPort: udpPort
+        - locationInfo:
+            geoArea:
+              latitude: 0.8008282
+              longitude: 6.0274563
+            ecgi:
+              plmn:
+                mnc: mnc
+                mcc: mcc
+              cellId:
+                cellId: cellId
+          neighbourCellInfo:
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            pci: 5
+            plmn: null
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi: null
+          - fddInfo:
+              dlEarfcn:
+                earfcn: 1
+              ulEarfcn: null
+              dlTransmissionBandwidth:
+                transmissionBandwidth: 5
+              ulTransmissionBandwidth: null
+            pci: 5
+            plmn: null
+            tddInfo:
+              subframeAssignment: subframeAssignment
+              transmissionBandwidth: null
+              earfcn: null
+            ecgi: null
+          v2xApplicationServer:
+            ipAddress: ipAddress
+            udpPort: udpPort
+      x-etsi-ref: 6.2.2
+    UuUnicastProvisioningInfo.proInfoUuUnicast:
+      required:
+      - locationInfo
+      - v2xApplicationServer
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        neighbourCellInfo:
+          minItems: 0
+          type: array
+          description: The information of the neighbour cells in a visiting PLMN that
+            support V2X communication over Uu unicast.
+          items:
+            $ref: '#/components/schemas/UuUniNeighbourCellInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UuUniNeighbourCellInfo
+        v2xApplicationServer:
+          $ref: '#/components/schemas/V2xApplicationServer'
+      description: The provisioning information per location as defined below.
+      example:
+        locationInfo:
+          geoArea:
+            latitude: 0.8008282
+            longitude: 6.0274563
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        neighbourCellInfo:
+        - fddInfo:
+            dlEarfcn:
+              earfcn: 1
+            ulEarfcn: null
+            dlTransmissionBandwidth:
+              transmissionBandwidth: 5
+            ulTransmissionBandwidth: null
+          pci: 5
+          plmn: null
+          tddInfo:
+            subframeAssignment: subframeAssignment
+            transmissionBandwidth: null
+            earfcn: null
+          ecgi: null
+        - fddInfo:
+            dlEarfcn:
+              earfcn: 1
+            ulEarfcn: null
+            dlTransmissionBandwidth:
+              transmissionBandwidth: 5
+            ulTransmissionBandwidth: null
+          pci: 5
+          plmn: null
+          tddInfo:
+            subframeAssignment: subframeAssignment
+            transmissionBandwidth: null
+            earfcn: null
+          ecgi: null
+        v2xApplicationServer:
+          ipAddress: ipAddress
+          udpPort: udpPort
+      x-etsi-mec-cardinality: 1..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    V2xApplicationServer:
+      required:
+      - ipAddress
+      - udpPort
+      type: object
+      properties:
+        ipAddress:
+          type: string
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        udpPort:
+          type: string
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      example:
+        ipAddress: ipAddress
+        udpPort: udpPort
+      x-etsi-ref: 6.5.8
+    V2xMsgNotification:
+      required:
+      - _links
+      - msgContent
+      - msgPropertiesValues
+      - msgRepresentationFormat
+      - notificationType
+      - timeStamp
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links3'
+        msgContent:
+          type: string
+          description: Published V2X message content. The format of the string is
+            defined by the standardization organization indicated by the attribute
+            stdOrganization of the msgPropertiesValues attribute.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        msgPropertiesValues:
+          $ref: '#/components/schemas/V2xMsgPropertiesValues'
+        msgRepresentationFormat:
+          type: string
+          description: "The representation format of the binary V2X message, for example\
+            \ base64 or hexadecimal representation."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        notificationType:
+          type: string
+          description: Shall be set to "V2xMsgNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      x-etsi-ref: 6.4.5
+    V2xMsgNotification.links:
+      required:
+      - subscription
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/LinkType'
+      description: links to resources related to this notification.
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    V2xMsgPublication:
+      required:
+      - msgContent
+      - msgPropertiesValues
+      - msgRepresentationFormat
+      type: object
+      properties:
+        msgContent:
+          type: string
+          description: Published V2X message content. Its format is defined by the
+            standardization organization indicated by the attribute stdOrganization
+            of the msgPropertiesValues attribute.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        msgPropertiesValues:
+          $ref: '#/components/schemas/V2xMsgPropertiesValues'
+        msgRepresentationFormat:
+          type: string
+          description: "The representation format of the binary V2X message, for example\
+            \ base64 or hexadecimal representation."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      x-etsi-ref: 6.2.7
+    msgType:
+      type: integer
+      description: "Published V2X message type. Its value is defined by the standardization\
+        \ organization indicated by the attribute stdOrganization. See note 2.\n−\
+        \ denm(1): Decentralized Environmental Notification Message (DENM) as specified\
+        \ in ETSI EN 302 637-3,\n− cam(2): Cooperative Awareness Message (CAM) as\
+        \ specified in ETSI EN 302 637-2,\n− poi(3): Point of Interest message as\
+        \ specified in ETSI TS 101 556-1,\n− spatem(4): Signal Phase And Timing (SPAT)\
+        \ message as specified in SAE J2735 and in ETSI TS 103 301,\n− mapem(5): MAP\
+        \ message as specified in SAE J2735 and in ETSI TS 103 301,\n− ivim(6): In\
+        \ Vehicle Information (IVI) message as defined in ISO TS 19321,\n− ev-rsr(7):\
+        \ Electric vehicle recharging spot reservation message, as defined in ETSI\
+        \ TS 101 556-3,\n− tistpgtransaction(8): messages for Tyre Information System\
+        \ (TIS) and Tyre Pressure Gauge (TPG) interoperability, as specified in ETSI\
+        \ TS 101 556-2,\n− srem(9): Traffic light Signal Request Message as specified\
+        \ in ETSI TS 103 301,\n− ssem(10): Traffic Light Signal Request Status Message\
+        \ as specified in ETSI TS 103 301.\n− evcsn(11): Electrical Vehicle Charging\
+        \ Spot Notification message as specified in ETSI TS 101 556-1,\n− saem(12):\
+        \ Services Announcement Extended Message as specified in ETSI TS 102 890-1,\n\
+        − rtcmem(13): Radio Technical Commission for Maritime Services (RTCM) Message\
+        \ as specified in ETSI TS 103 301,\n"
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+      - 11
+      - 12
+      - 13
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Enum
+    V2xMsgSubscription:
+      required:
+      - filterCriteria
+      - subscriptionType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        filterCriteria:
+          $ref: '#/components/schemas/V2xMsgFilterCriteria'
+        requestTestNotification:
+          type: boolean
+          description: "Shall be set to TRUE by the service consumer to request a\
+            \ test notification via HTTP on the callbackReference URI, as described\
+            \ in ETSI GS MEC 009 [9], clause 6.12a. \nDefault: FALSE."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "V2xMsgSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      anyOf:
+      - oneOf:
+        - required:
+          - callbackReference
+        - required:
+          - websockNotifConfig
+      x-etsi-notes: "NOTE:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to VIS to choose an alternative and return only that alternative in the\
+        \ response, as described in ETSI GS MEC 009 [9], clause 6.12a."
+      x-etsi-ref: 6.3.5
+    V2xMsgSubscription.filterCriteria:
+      required:
+      - stdOrganization
+      type: object
+      properties:
+        msgType:
+          minItems: 0
+          type: array
+          description: Subscribed V2X message type. Its value is defined by the standardization
+            organization indicated by the attribute stdOrganization. See note 3.
+          items:
+            type: string
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Enum
+        stdOrganization:
+          type: string
+          description: "Standardization organization which defines the subscribed\
+            \ V2X message type: \nETSI: European Telecommunications Standards Institute.\
+            \ \nSee note 2."
+          enum:
+          - ETSI
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum
+      description: "List of filtering criteria for the subscription. Any filtering\
+        \ criteria from below, which is included in the request, shall also be included\
+        \ in the response."
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    V2xServerUsd:
+      required:
+      - sdpInfo
+      - serviceAreaIdentifier
+      - tmgi
+      type: object
+      properties:
+        sdpInfo:
+          $ref: '#/components/schemas/V2xServerUsd.sdpInfo'
+        serviceAreaIdentifier:
+          minItems: 1
+          type: array
+          description: A list of service area identifier for the applicable MBMS broadcast
+            area.
+          items:
+            type: string
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: String
+        tmgi:
+          $ref: '#/components/schemas/V2xServerUsd.tmgi'
+      example:
+        sdpInfo:
+          ipMulticastAddress: ipMulticastAddress
+          portNumber: portNumber
+        tmgi:
+          mnc: mnc
+          mcc: mcc
+          mbmsServiceId: mbmsServiceId
+        serviceAreaIdentifier:
+        - serviceAreaIdentifier
+        - serviceAreaIdentifier
+      x-etsi-ref: 6.5.10
+    V2xServerUsd.sdpInfo:
+      required:
+      - ipMulticastAddress
+      - portNumber
+      type: object
+      properties:
+        ipMulticastAddress:
+          type: string
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        portNumber:
+          type: string
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: SDP with IP multicast address and port number used for V2X communication
+        via MBMS.
+      example:
+        ipMulticastAddress: ipMulticastAddress
+        portNumber: portNumber
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    V2xServerUsd.tmgi:
+      required:
+      - mbmsServiceId
+      - mcc
+      - mnc
+      type: object
+      properties:
+        mbmsServiceId:
+          type: string
+          description: MBMS Service ID consisting of three octets.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        mcc:
+          type: string
+          description: The Mobile Country Code part of PLMN Identity.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        mnc:
+          type: string
+          description: The Mobile Network Code part of PLMN Identity.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: "Temporary Mobile Group Identity (TMGI), which is used within MBMS\
+        \ to uniquely identify Multicast and Broadcast bearer services."
+      example:
+        mnc: mnc
+        mcc: mcc
+        mbmsServiceId: mbmsServiceId
+      x-etsi-mec-cardinality: ""
+      x-etsi-mec-origin-type: Structure (inlined)
+    WebsockNotifConfig:
+      type: object
+      properties:
+        requestWebsocketUri:
+          type: boolean
+          description: Set to TRUE by the service consumer to indicate that Websocket
+            delivery is requested.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        websocketUri:
+          type: string
+          description: Set by VIS to indicate to the service consumer the Websocket
+            URI to be used for delivering notifications.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+      x-etsi-ref: 6.5.18
+    V2xMsgDistributionServerInfo:
+      required:
+      - v2xMsgDistributionServer
+      type: object
+      properties:
+        locationInfo:
+          minItems: 0
+          type: array
+          description: Location information to identify a particular geographical
+            area of interest to the service consumer for receiving V2X messages.
+          items:
+            $ref: '#/components/schemas/LocationInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: LocationInfo
+        v2xMsgDistributionServer:
+          minItems: 1
+          type: array
+          description: Describes the information of the V2X Message Distribution Servers
+            supported by the service consumer for direct communication.
+          items:
+            $ref: '#/components/schemas/V2xMsgDistributionServer'
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: V2xMsgDistributionServer
+      example:
+        locationInfo:
+        - geoArea:
+            latitude: 0.8008282
+            longitude: 6.0274563
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        - geoArea:
+            latitude: 0.8008282
+            longitude: 6.0274563
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        v2xMsgDistributionServer:
+        - infoConnection:
+            port_number: 0
+            ipAddress: ipAddress
+          infoProtocol:
+            msgProtocol:
+            - 6
+            - 6
+            protImplementation: protImplementation
+        - infoConnection:
+            port_number: 0
+            ipAddress: ipAddress
+          infoProtocol:
+            msgProtocol:
+            - 6
+            - 6
+            protImplementation: protImplementation
+      x-etsi-ref: 6.2.5
+    PredQosSubscription:
+      required:
+      - filterCriteria
+      - subscriptionType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links1'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        filterCriteria:
+          $ref: '#/components/schemas/QosPredFilterCriteria'
+        requestTestNotification:
+          type: boolean
+          description: "Shall be set to TRUE by the service consumer to request a\
+            \ test notification via HTTP on the callbackReference URI, as described\
+            \ in ETSI GS MEC 009 [9], clause 6.12a. \nDefault: FALSE."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "PredQosSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      anyOf:
+      - oneOf:
+        - required:
+          - callbackReference
+        - required:
+          - websockNotifConfig
+      x-etsi-notes: "NOTE:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to VIS to choose an alternative and return only that alternative in the\
+        \ response, as described in ETSI GS MEC 009 [9], clause 6.12a."
+      x-etsi-ref: 6.3.6
+    V2xMsgPropertiesValues:
+      required:
+      - locationInfo
+      - msgProtocolVersion
+      - msgType
+      - stdOrganization
+      type: object
+      properties:
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        msgProtocolVersion:
+          type: integer
+          description: "Protocol version of the V2X message (0..255),\nSee note 3."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Integer
+        msgType:
+          type: string
+          description: Published V2X message type. Its value is defined by the standardization
+            organization indicated by the attribute stdOrganization. See note 2.
+          enum:
+          - SEE_DESCRIPTION
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum
+        stdOrganization:
+          type: string
+          description: "Standardization organization which defines the published V2X\
+            \ message type: \nETSI: European Telecommunications Standards Institute.\
+            \ \nSee note 1."
+          enum:
+          - SEE_DESCRIPTION
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum
+      x-etsi-notes: "NOTE 1:\tOther standardization organizations could be added as\
+        \ needed.\nNOTE 2:\tThe V2X message types of ETSI shall be used as specified\
+        \ in ETSI TS 102 894-2 [6], clause A.114.\nNOTE 3:\tThe message protocol version\
+        \ of ETSI shall be used as specified in ETSI TS 102 894-2 [6], clause A.114."
+      x-etsi-ref: 6.5.14
+    V2xMsgFilterCriteria:
+      required:
+      - stdOrganization
+      type: object
+      properties:
+        locationInfo:
+          minItems: 0
+          type: array
+          description: Location information to identify a cell of a base station or
+            a particular geographical area to which the V2X message can be associated.
+          items:
+            $ref: '#/components/schemas/LocationInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: LocationInfo
+        msgProtocolVersion:
+          minItems: 0
+          type: array
+          description: "Protocol version of the V2X message (0..255),\nSee note 3."
+          items:
+            type: integer
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Integer
+        msgType:
+          minItems: 0
+          type: array
+          description: Published V2X message type. Its value is defined by the standardization
+            organization indicated by the attribute stdOrganization. See note 2.
+          items:
+            type: string
+            enum:
+            - SEE_DESCRIPTION
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Enum
+        stdOrganization:
+          type: string
+          description: "Standardization organization which defines the published V2X\
+            \ message type: \nETSI: European Telecommunications Standards Institute.\
+            \ \nSee note 1."
+          enum:
+          - SEE_DESCRIPTION
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum
+      x-etsi-notes: "NOTE 1:\tOther standardization organizations could be added as\
+        \ needed.\nNOTE 2:\tThe V2X message types of ETSI shall be used as specified\
+        \ in ETSI TS 102 894-2 [6], clause A.114.\nNOTE 3:\tThe message protocol version\
+        \ of ETSI shall be used as specified in ETSI TS 102 894-2 [6], clause A.114."
+      x-etsi-ref: 6.5.15
+    V2xMsgDistributionServer:
+      required:
+      - infoProtocol
+      type: object
+      properties:
+        infoConnection:
+          $ref: '#/components/schemas/InfoConnection'
+        infoProtocol:
+          $ref: '#/components/schemas/InfoProtocol'
+      example:
+        infoConnection:
+          port_number: 0
+          ipAddress: ipAddress
+        infoProtocol:
+          msgProtocol:
+          - 6
+          - 6
+          protImplementation: protImplementation
+      x-etsi-notes: "NOTE:\tOther application layer protocols (and versions thereof)\
+        \ may be added as needed."
+      x-etsi-ref: 6.5.16
+    InfoConnection:
+      required:
+      - ipAddress
+      - port_number
+      type: object
+      properties:
+        ipAddress:
+          type: string
+          description: IP address of the V2X Message Distribution Server.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        port_number:
+          type: integer
+          description: Port number of the V2X Message Distribution Server.
+          x-etsi-mec-cardinality': "1"
+          x-etsi-mec-origin-type': Integer (0..65535)
+      description: Connection information of the V2X Message Distribution Server the
+        service consumer can use for direct connection. Shall only be included in
+        the response.
+      example:
+        port_number: 0
+        ipAddress: ipAddress
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    InfoProtocol:
+      required:
+      - msgProtocol
+      - protImplementation
+      type: object
+      properties:
+        msgProtocol:
+          minItems: 1
+          type: array
+          description: "Numerical value corresponding to the application layer protocol\
+            \ supported by the service consumer. For the msgProtocol, the following\
+            \ values are currently defined (see note): 0 = MQTT v3.0.0 1 = MQTT v3.1.1\
+            \ 2 = MQTT v5 3 = MQTT-SN 4 = AMQP 1.0"
+          items:
+            type: integer
+            enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: Enum
+        protImplementation:
+          type: string
+          description: "Implementation specifics of application layer protocol, e.g.\_\
+            programming language."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: Specifics of the application layer protocol of V2X Message Distribution
+        Server.
+      example:
+        msgProtocol:
+        - 6
+        - 6
+        protImplementation: protImplementation
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    QosPredFilterCriteria:
+      type: object
+      properties:
+        streamId:
+          type: string
+          description: "The predicted QoS at the related time and vehicular UE location\
+            \ is provided for a specific data stream. In case of 3GPP network, this\
+            \ is mapped to a QoS flow. Stream needs to also contain the stream ID\
+            \ which, in case of the 3GPP network, can be mapped on to the 5QI or QCI.\n\
+            See note."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+      x-etsi-notes: "NOTE:\tOther identifiers could be added as needed."
+      x-etsi-ref: 6.5.17
+    PredictionArea:
+      required:
+      - center
+      - radius
+      type: object
+      properties:
+        center:
+          $ref: '#/components/schemas/LocationInfo'
+        radius:
+          type: string
+          description: Radius of geographical area including the two ends of the user
+            plane link between two V2X application instances. Measured in meters.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: |-
+        Geographical area including the two ends of the user plane link between two V2X application instances.
+
+        It shall only be present when "predictionTarget" = "E2E_APPLICATION_INSTANCE_PREDICTION".
+      example:
+        center:
+          geoArea:
+            latitude: 0.8008282
+            longitude: 6.0274563
+          ecgi:
+            plmn:
+              mnc: mnc
+              mcc: mcc
+            cellId:
+              cellId: cellId
+        radius: radius
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    Qos:
+      required:
+      - stream
+      type: object
+      properties:
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stream'
+      description: Predicted QoS at the related time and vehicular UE location. Shall
+        only be included in the response.
+      example:
+        stream:
+        - qosKpi:
+          - kpiValue: kpiValue
+            confidence: confidence
+            kpiName: kpiName
+          - kpiValue: kpiValue
+            confidence: confidence
+            kpiName: kpiName
+        - qosKpi:
+          - kpiValue: kpiValue
+            confidence: confidence
+            kpiName: kpiName
+          - kpiValue: kpiValue
+            confidence: confidence
+            kpiName: kpiName
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    Stream:
+      minItems: 1
+      required:
+      - streamId
+      - qosKpi
+      type: object
+      properties:
+        streamId:
+          type: string
+          description: "The identifier of a specific data stream. In case of 3GPP \
+                        \ network, this is mapped to a QoS flow"
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        qosKpi:
+          type: array
+          items:
+            $ref: '#/components/schemas/QosKpi'
+      description: "Predicted QoS at the related time and vehicular UE location for\
+        \ the specific data stream. In case of 3GPP network, this is mapped to a QoS\
+        \ flow. Stream needs to also contain the stream ID that, in case of the 3GPP\
+        \ network, can be mapped on to the 5QI or QCI."
+      example:
+        qosKpi:
+        - kpiValue: kpiValue
+          confidence: confidence
+          kpiName: kpiName
+        - kpiValue: kpiValue
+          confidence: confidence
+          kpiName: kpiName
+      x-etsi-mec-cardinality: 1..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    QosKpi:
+      minItems: 1
+      required:
+      - kpiName
+      - kpiValue
+      type: object
+      properties:
+        confidence:
+          type: string
+          description: "Confidence of the prediction, as returned by the relevant\
+            \ domain PF. The value and the measurement of the confidence depends on\
+            \ the SLA. Shall only be included in the response."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        kpiName:
+          type: string
+          description: "The name of the KPI (e.g. latency, UL bitrate, etc). It can\
+            \ be included in the request and in the response."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        kpiValue:
+          type: string
+          description: "Information on the predicted value for the specific QoS KPI.\
+            \ It can be in different forms, such as upper bound and lower bound, CDF,\
+            \ actual value, etc. Shall only be included in the response."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: This structure contains the prediction for a specific QoS KPI related
+        to a given data stream.
+      example:
+        kpiValue: kpiValue
+        confidence: confidence
+        kpiName: kpiName
+      x-etsi-mec-cardinality: 1..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    Routes:
+      minItems: 0
+      required:
+      - routeInfo
+      type: object
+      properties:
+        routeInfo:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteInfo'
+      description: Information relating to the potential routes of a vehicular UE.
+        Shall only be present when "predictionTarget" = "SINGLE_UE_PREDICTION".
+      example:
+        routeInfo:
+        - location: null
+          time: null
+        - location: null
+          time: null
+      x-etsi-mec-cardinality: 0..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    RouteInfo:
+      minItems: 1
+      required:
+      - location
+      type: object
+      properties:
+        location:
+          $ref: '#/components/schemas/LocationInfo'
+        time:
+          $ref: '#/components/schemas/TimeStamp'
+      description: |-
+        Information relating to a specific route.
+        The first structure shall relate to the route origin and the last to the route destination. Intermediate waypoint locations may also be provided.
+      example:
+        location: null
+        time: null
+      x-etsi-mec-cardinality: 1..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    _links:
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+      description: Hyperlink related to the resource. This shall be only included
+        in the HTTP responses and in HTTP PUT requests.
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    _links1:
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+      description: Hyperlink related to the resource. This shall be only included
+        in the HTTP responses and in HTTP PUT requests.
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    _links2:
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscriptions'
+      description: List of hyperlinks related to the resource.
+      example:
+        subscriptions:
+        - subscriptionType: subscriptionType
+          href: http://example.com/aeiou
+        - subscriptionType: subscriptionType
+          href: http://example.com/aeiou
+        self:
+          href: http://example.com/aeiou
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    _links3:
+      required:
+      - subscription
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/LinkType'
+      description: Links to resources related to this notification.
+      x-etsi-mec-cardinality: "1"
+      x-etsi-mec-origin-type: Structure (inlined)
+    Subscriptions:
+      minItems: 0
+      required:
+      - href
+      - subscriptionType
+      type: object
+      properties:
+        href:
+          type: string
+          description: The URI referring to the subscription.
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+        subscriptionType:
+          type: string
+          description: Type of the subscription. The values are as defined in the
+            "subscriptionType" attribute for each different V2X information event
+            subscription data type.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: The service consumer's subscriptions.
+      example:
+        subscriptionType: subscriptionType
+        href: http://example.com/aeiou
+      x-etsi-mec-cardinality: 0..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    subscriptions_body:
+      oneOf:
+      - $ref: '#/components/schemas/ProvChgUuUniSubscription'
+      - $ref: '#/components/schemas/ProvChgUuMbmsSubscription'
+      - $ref: '#/components/schemas/ProvChgPc5Subscription'
+      - $ref: '#/components/schemas/V2xMsgSubscription'
+    inline_response_200:
+      oneOf:
+      - $ref: '#/components/schemas/ProvChgUuUniSubscription'
+      - $ref: '#/components/schemas/ProvChgUuMbmsSubscription'
+      - $ref: '#/components/schemas/ProvChgPc5Subscription'
+      - $ref: '#/components/schemas/V2xMsgSubscription'
+      - $ref: '#/components/schemas/PredQosSubscription'
+    subscriptions_subscriptionId_body:
+      oneOf:
+      - $ref: '#/components/schemas/ProvChgUuUniSubscription'
+      - $ref: '#/components/schemas/ProvChgUuMbmsSubscription'
+      - $ref: '#/components/schemas/ProvChgPc5Subscription'
+      - $ref: '#/components/schemas/V2xMsgSubscription'
+      - $ref: '#/components/schemas/PredQosSubscription'
+    TestNotification__links:
+      required:
+      - subscription
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/LinkType'
+      description: 'Hyperlink related to the resource. '
+    ExpiryNotification:
+      properties:
+        _links:
+          description: Hyperlink related to the resource.
+          properties:
+            subscription:
+              $ref: '#/components/schemas/LinkType'
+          required:
+            - subscription
+          type: object
+          x-etsi-mec-cardinality: '1'
+          x-etsi-mec-origin-type: Structure (inlined)
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        notificationType:
+          description: Shall be set to "ExpiryNotification".
+          type: string
+          x-etsi-mec-cardinality: '1'
+          x-etsi-mec-origin-type: String
+      required:
+        - notificationType
+        - _links
+        - expiryDeadline
+      type: object
+      x-etsi-ref: 6.4.4
+  responses:
+    "204":
+      description: No Content
+    "206":
+      description: Partial content
+    "400":
+      description: "Bad Request : used to indicate that incorrect parameters were\
+        \ passed to the request."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "401":
+      description: "Unauthorized :  used when the client did not submit credentials."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "403":
+      description: "Forbidden :  operation is not allowed given the current status\
+        \ of the resource."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "404":
+      description: "Not Found :  used when a client provided a URI that cannot be\
+        \ mapped to a valid resource URI."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "406":
+      description: "Not Acceptable : used to indicate that the server cannot provide\
+        \ the any of the content formats supported by the client."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "409":
+      description: "Conflict : The operation cannot be executed currently, due to\
+        \ a conflict with the state of the resource"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "412":
+      description: "Precondition failed :  used when a condition has failed during\
+        \ conditional requests, e.g. when using ETags to avoid write conflicts when\
+        \ using PUT"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "415":
+      description: "Unsupported Media Type :  used to indicate that the server or\
+        \ the client does not support the content type of the entity body."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "422":
+      description: "Unprocessable Entity : used to indicate that the server understands\
+        \ the content type of the request entity and that the syntax of the request\
+        \ entity is correct but that the server is unable to process the contained\
+        \ instructions. This error condition can occur if an JSON request body is\
+        \ syntactically correct but semantically incorrect, for example if the target\
+        \ area for the request is considered too large. This error condition can also\
+        \ occur if the capabilities required by the request are not supported."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "429":
+      description: "Too Many Requests : used when a rate limiter has triggered."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'

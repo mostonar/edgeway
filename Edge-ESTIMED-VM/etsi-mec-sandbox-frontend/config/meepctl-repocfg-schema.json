@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "meepctl-repocfg",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "repo": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "deployment": {
+          "type": "object",
+          "properties": {
+            "permissions": {
+              "type": "object",
+              "properties": {
+                "uid": { "type": "integer" },
+                "gid": { "type": "integer" }
+              }
+            },
+            "user": {
+              "type": "object",
+              "properties": {
+                "frontend": { "type": "boolean" },
+                "swagger": { "type": "boolean" }
+              }
+            },
+            "ingress": {
+              "type": "object",
+              "properties": {
+                "host": { "type": "string" },
+                "https-only": { "type": "boolean" },
+                "host-ports": { "type": "boolean" },
+                "http-port": { "type": "integer" },
+                "https-port": { "type": "integer" },
+                "ca": { "type": "string" },
+                "le-server-prod": { "type": "boolean" }
+              }
+            },
+            "auth": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "provider-mode": { "type": "string" },
+                "session": {
+                  "type": "object",
+                  "properties": {
+                    "key-secret": { "type": "string" },
+                    "max-sessions": { "type": "integer" }
+                  }
+                },
+                "github": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "device-auth-url": { "type": "string" },
+                    "device-poll-url": { "type": "string" },
+                    "poll-url": { "type": "string" },
+                    "auth-url": { "type": "string" },
+                    "token-url": { "type": "string" },
+                    "redirect-uri": { "type": "string" },
+                    "secret": { "type": "string" }
+                  }
+                },
+                "gitlab": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "auth-url": { "type": "string" },
+                    "token-url": { "type": "string" },
+                    "redirect-uri": { "type": "string" },
+                    "api-url": { "type": "string" },
+                    "secret": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "metrics": { "type": "object" }
+          }
+        },
+        "resource-prerequisites": { "type": "object" },
+        "core": { "$ref": "#/definitions/meepComponentGroups" },
+        "sandbox": { "$ref": "#/definitions/meepComponentGroups" },
+        "dep": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-]+$": { "$ref": "#/definitions/meepDep" }
+          }
+        },
+        "packages": { "$ref": "#/definitions/meepPackageGroups" }
+      },
+      "required": ["name", "deployment"]
+    }
+  },
+  "definitions": {
+    "meepPackageGroups": {
+      "type": "object",
+      "properties": {
+        "go-packages": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-]+$": { "$ref": "#/definitions/meepPackage" }
+          }
+        },
+        "js-packages": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-]+$": { "$ref": "#/definitions/meepPackage" }
+          }
+        }
+      }
+    },
+    "meepComponentGroups": {
+      "type": "object",
+      "properties": {
+        "go-apps": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-]+$": { "$ref": "#/definitions/meepGoApp" }
+          }
+        },
+        "js-apps": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-]+$": { "$ref": "#/definitions/meepJsApp" }
+          }
+        }
+      }
+    },
+    "meepGoApp": {
+      "type": "object",
+      "properties": {
+        "src": { "type": "string" },
+        "bin": { "type": "string" },
+        "build": { "type": "boolean" },
+        "build-flags": { "type": "array", "items": { "type": "string" } },
+        "dockerize": { "type": "boolean" },
+        "deploy": { "type": "boolean" },
+        "chart": { "type": "string" },
+        "chart-user-values": { "type": "string" },
+        "codecov": { "type": "boolean" },
+        "lint": { "type": "boolean" },
+        "api": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "file": { "type": "string" }
+            }
+          }
+        },
+        "user-api": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "file": { "type": "string" }
+            }
+          }
+        },
+        "docker-data": {
+          "type": "object",
+          "patternProperties": { ".*": { "type": "string" } }
+        },
+        "core-pods": { "type": "array", "items": { "type": "string" } },
+        "dependency-pods": { "type": "array", "items": { "type": "string" } },
+        "sandbox-pods": { "type": "array", "items": { "type": "string" } },
+        "onboardedapp": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "meepJsApp": {
+      "type": "object",
+      "properties": {
+        "src": { "type": "string" },
+        "bin": { "type": "string" },
+        "build": { "type": "boolean" },
+        "dockerize": { "type": "boolean" },
+        "deploy": { "type": "boolean" },
+        "lint": { "type": "boolean" },
+        "local-deps": {
+          "type": "object",
+          "patternProperties": { ".*": { "type": "string" } }
+        },
+        "env": {
+          "type": "object",
+          "patternProperties": { ".*": { "type": "string" } }
+        }
+      },
+      "additionalProperties": false
+    },
+    "meepDep": {
+      "type": "object",
+      "properties": {
+        "build": { "type": "boolean" },
+        "dockerize": { "type": "boolean" },
+        "deploy": { "type": "boolean" },
+        "chart": { "type": "string" },
+        "chart-user-values": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "meepPackage": {
+      "type": "object",
+      "properties": {
+        "lint": { "type": "boolean" },
+        "src": { "type": "string" },
+        "test": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

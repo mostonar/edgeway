@@ -1,0 +1,138 @@
+/**
+ * @mainpage meep-nw-simu-catalog
+ *
+ * @section intro Introduction
+ *
+ * **meep-nw-simu-catalog** (Go package `catalog`) is the Round 5.3
+ * listing and instance helper for the ETSI MEC Sandbox. It talks to the
+ * Network Emulator Manager (NEM) REST API on radio host **S** so the
+ * sandbox UI can list Simu5G/OAI scenarios and create/delete NEM instances
+ * without calling NEM from the browser.
+ *
+ * Module:
+ * `github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-nw-simu-catalog`
+ *
+ * Primary callers: `go-apps/meep-platform-ctrl` (`pcGetScenarioList`) and
+ * `go-apps/meep-sandbox-ctrl` (`ceActivateScenario` / `ceTerminateScenario`).
+ *
+ * @section arch Architecture
+ *
+ * Two-host layout:
+ * - Host **B** (MEC Sandbox): Kubernetes `meep-*`, including meep-platform-ctrl.
+ * - Host **S** (radio emulator): NEM, default `http://172.29.10.20:8787`.
+ *
+ * Frontend contract is unchanged:
+ * - `GET /platform-ctrl/v1/scenarios`
+ * - `POST /{sbx}/sandbox-ctrl/v1/active/{name}`
+ *
+ * The browser never calls NEM. platform-ctrl uses this package when
+ * `MEEP_NW_SIMULATOR_TYPE` is `simu5g` or `oai`.
+ *
+ * Listing flow:
+ * 1. @ref FromEnv / @ref Config::UsesNem
+ * 2. @ref Client::ListNemScenarios — `GET {nem-url}/v1/scenarios`
+ * 3. CouchDB `GetDocList` (companions)
+ * 4. @ref MergeNemWithCompanions
+ * 5. `meep-model.JSONMarshallScenarioList`
+ *
+ * If step 2 fails, the handler returns **HTTP 502**. There is no CouchDB
+ * fallback on the NEM path.
+ *
+ * Overlay pods on host B may not reach NEM on the node LAN. meepctl can
+ * inject a host-network proxy and set `MEEP_NEM_URL` to
+ * `http://<node.ip>:18787` while `repo.nw_simulator.nem-url` stays the
+ * real NEM base URL.
+ *
+ * @section env Environment
+ *
+ * | Variable | Source in `.meepctl-repocfg.yaml` | Default |
+ * |----------|-----------------------------------|---------|
+ * | `MEEP_NW_SIMULATOR_TYPE` | `repo.nw_simulator.type` | `internal` |
+ * | `MEEP_NEM_URL` | `repo.nw_simulator.nem-url` | empty |
+ * | `MEEP_NEM_TIMEOUT_MS` | `repo.nw_simulator.timeout-ms` | `3000` |
+ * | `MEEP_NEM_ACTIVATE_TIMEOUT_MS` | `repo.nw_simulator.activate-timeout-ms` | `180000` |
+ *
+ * Types:
+ * - @ref TypeInternal — CouchDB listing; this package's NEM path is unused.
+ * - @ref TypeSimu5G — NEM catalog (4G/5G Simu5G; WiFi PoA is not in this round).
+ * - @ref TypeOAI — same NEM listing contract as simu5g.
+ *
+ * @section api Public API
+ *
+ * @subsection api_config Configuration
+ * - @ref Config — type, NEM URL, timeout
+ * - @ref FromEnv — load from process environment
+ * - @ref Config::UsesNem — true for simu5g and oai
+ * - @ref Config::Timeout — `time.Duration` for HTTP
+ *
+ * @subsection api_client NEM client
+ * - @ref New — construct @ref Client
+ * - @ref Client::Cfg
+ * - @ref Client::ListNemScenarios — GET /v1/scenarios
+ * - @ref Client::CreateInstance — POST /v1/instances (wait for READY)
+ * - @ref Client::GetInstance — GET /v1/instances/{sandbox_id}
+ * - @ref Client::DeleteInstance — DELETE /v1/instances/{sandbox_id}
+ * - @ref NemScenario — `{id, description, bundle_dir}`
+ * - @ref CreateInstanceRequest — `{sandbox_id, scenario_id, sim_time_limit}`
+ * - @ref Instance — READY payload (`sandbox_id` is the instance-id)
+ * - @ref IDSet — id set for filter matching
+ *
+ * @subsection api_merge Merge and filter
+ * - @ref MergeNemWithCompanions — **listing path** (stubs for missing companions)
+ * - @ref FilterCompanionDocs — companions only (NEM ids without YAML are dropped)
+ *
+ * @subsection api_errors Errors
+ * - @ref ErrNemURLEmpty — `MEEP_NEM_URL` not set
+ * - @ref ErrNemUnavailable — NEM down, HTTP error, or invalid JSON
+ * - @ref ErrNemConflict — POST /v1/instances HTTP 409
+ * - @ref ErrNemBadRequest — missing ids or HTTP 400
+ *
+ * Listing callers map URL/unavailable to HTTP 502. Test with `errors.Is`.
+ *
+ * @section merge_vs_filter Merge versus filter
+ *
+ * An empty JSON object `{}` is produced when `scenarios` is omitted
+ * (`omitempty` on an empty slice). The frontend does
+ * `if (!data.scenarios) return` and keeps a stale or empty listbox.
+ *
+ * @ref MergeNemWithCompanions always emits one document per NEM id so the
+ * payload contains `"scenarios":[{name:...},...]`.
+ *
+ * Activate of a stub name POSTs NEM (`CreateInstance`) and skips virt-engine
+ * until a CouchDB companion exists. That is expected when listing emitted a stub.
+
+ *
+ * @section usage Usage (platform-ctrl)
+ *
+ * @code{.go}
+ * nwCfg := nwcat.FromEnv()
+ * client := nwcat.New(nwCfg, nil)
+ * if client.Cfg().UsesNem() {
+ *     nemList, err := client.ListNemScenarios(r.Context())
+ *     if err != nil {
+ *         http.Error(w, err.Error(), http.StatusBadGateway)
+ *         return
+ *     }
+ *     scenarioList = nwcat.MergeNemWithCompanions(nemList, scenarioList)
+ * }
+ * @endcode
+ *
+ * @section files Source files
+ *
+ * | File | Role |
+ * |------|------|
+ * | doc.go | Package overview |
+ * | config.go | Environment and @ref Config |
+ * | client.go | NEM HTTP client (listing) |
+ * | instance.go | NEM HTTP client (POST/GET/DELETE /v1/instances) |
+ * | filter.go | Merge / filter helpers |
+ * | catalog_test.go | Unit tests |
+ *
+ * @section build Generating this manual
+ *
+ * From `go-packages/meep-nw-simu-catalog`:
+ * @code{.sh}
+ * doxygen Doxyfile
+ * @endcode
+ * HTML output: `doxygen/html/index.html`.
+ */

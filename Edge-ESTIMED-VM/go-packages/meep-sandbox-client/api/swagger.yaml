@@ -1,0 +1,451 @@
+openapi: 3.0.0
+info:
+  title: MEC Sandbox API
+  description: The MEC Sandbox API described using OpenAPI
+  contact:
+    email: cti_support@etsi.org
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 0.0.3
+servers:
+- url: http://127.0.0.1:8081/sandbox_api/v1
+paths:
+  /login:
+    post:
+      tags:
+      - Authorization
+      summary: Initiate OAuth login procedure and creates MEC Sandbox
+      description: Redirect the browser to the provider login page and creates your
+        MEC Sandbox on successful login and authorization
+      operationId: login
+      parameters:
+      - name: provider
+        in: query
+        description: Oauth provider
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - GITHUB
+          - GITLAB (EOL ACCOUNT)
+      responses:
+        "302":
+          description: Found
+          content: {}
+  /logout:
+    post:
+      tags:
+      - Authorization
+      summary: Terminates User Session and User Sandbox
+      description: Terminates User Session and User Sandbox
+      operationId: logout
+      responses:
+        "200":
+          description: OK
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+  /sandboxNetworkScenarios:
+    get:
+      tags:
+      - Sandbox Network Scenarios
+      summary: get the list of the available network scenarios
+      description: This method retrieves the list of the available network scenarios.
+      operationId: SandboxNetworkScenarios_GET
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available network scenarios."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxNetworkScenario'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No network scenario found."
+  /sandboxNetworkScenarios/{network_scenario_id}:
+    post:
+      tags:
+      - Sandbox Network Scenarios
+      summary: Selects the Network Scenario to be used.
+      description: This method selects the network scenario to be used. This request
+        initiates the creation of necessary MEC services for specific network scenario
+      operationId: SandboxNetworkScenarios_POST
+      parameters:
+      - name: network_scenario_id
+        in: path
+        description: Network scenario to be used
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          enum:
+          - 4g-5g-macro-v2x
+          - 4g-5g-macro-v2x-fed
+          - 4g-5g-wifi-macro
+          - 4g-macro
+          - 4g-wifi-macro
+          - dual-mep-4g-5g-wifi-macro
+          - dual-mep-short-path
+          x-exportParamName: Provider
+          x-optionalDataType: String
+      responses:
+        "201":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+  /sandboxUeController:
+    get:
+      tags:
+      - Sandbox UE Controller
+      summary: get the list of the available UEs (e.g. "Stationary UE")
+      description: This method retrieves the list of the available available UEs.
+      operationId: SandboxUeController_GET
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available UEs."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UE'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No UE found."
+  /sandboxUeController/{user_equipment_id}:
+    patch:
+      tags:
+      - Sandbox UE Controller
+      summary: set the new value of the UE
+      description: This method sets the new value of the UE.
+      operationId: SandboxUeController_PATCH
+      parameters:
+      - name: user_equipment_id
+        in: path
+        description: Network scenario to be used
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          enum:
+          - Stationary_UE
+          - Low_Velocity_UE
+          - High_Velocity_UE
+      - name: user_equipment_value
+        in: query
+        description: It uniquely identifies a UE to set the new value
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+      responses:
+        "200":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No UE found."
+  /sandboxMecServices:
+    get:
+      tags:
+      - Sandbox MEC Services
+      summary: get the list of the available MEC services
+      description: This method retrieves the list of the available MEC services.
+      operationId: SandboxMecServices_GET
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available MEC services."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxMecServices'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No MEC services found."
+  /sandboxMecServices/{mec_service_name}:
+    post:
+      tags:
+      - Sandbox MEC Services
+      summary: select the MEC services to use
+      description: This method selects the MEC service to be used.
+      operationId: SandboxMecServices_POST
+      parameters:
+      - name: mec_service_name
+        in: path
+        description: It uniquely identifies a MEC service to use
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "201":
+          description: "Upon success, an empty response message."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxMecServices'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No MEC services found."
+  /sandboxAppInstances:
+    get:
+      tags:
+      - Sandbox App Instances
+      summary: get the list of the available application instance identifier
+      description: This method retrieves the list of the available application instance
+        identifier.
+      operationId: SandboxAppInstances_GET
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available application instance identifier."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxAppInstances'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No application instance identifier found."
+  /sandboxLogsSubscriptions:
+    post:
+      tags:
+      - Sandbox Logs Subscriptions
+      summary: Subscription to receive logs from the sandbox
+      description: This method is used to receive logs from the sandbox.
+      operationId: SandboxLogsSubscriptions_POST
+      responses:
+        "201":
+          description: "Upon success, a response message content containing the subscription\
+            \ reference."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxLogsSubscriptions'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+  /sandboxLogsSubscriptions/{subscription_reference}:
+    delete:
+      tags:
+      - Sandbox Logs Subscriptions
+      summary: Subscription to receive logs from the sandbox
+      description: This method is used to receive logs from the sandbox.
+      operationId: SandboxLogsSubscriptions_DELETE
+      parameters:
+      - name: subscription_reference
+        in: path
+        description: It uniquely identifies subscription reference to receive logs
+          from the sandbox
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : Subscription reference not found."
+components:
+  schemas:
+    SandboxNetworkScenario:
+      title: SandboxNetworkScenario
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The network scenario name.
+          example: "[\"4g-5g-macro\"]"
+      example:
+        id: "[\"4g-5g-macro\"]"
+    UE:
+      title: UE
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The UE name.
+          example: "[\"Stationary UE\"]"
+      example:
+        id: "[\"Stationary UE\"]"
+    SandboxMecServices:
+      title: SandboxMecServices
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The MEC service name.
+          example: "[\"Location (030)\"]"
+        service_id:
+          type: string
+          description: "When a MEC service is selected, this field contains a token\
+            \ which shall be used in MEC service API URI."
+      example:
+        service_id: service_id
+        id: "[\"Location (030)\"]"
+    SandboxAppInstances:
+      title: SandboxAppInstances
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The application instance identifier.
+          example: "[\"c5f834ae-db0c-4eec-bdfe-3dfc55f91b4a\"]"
+      example:
+        id: "[\"c5f834ae-db0c-4eec-bdfe-3dfc55f91b4a\"]"
+    SandboxLogsSubscriptions:
+      title: SandboxLogsSubscriptions
+      required:
+      - callbackReference
+      type: object
+      properties:
+        callbackReference:
+          type: string
+          description: The callback to notify log messages.
+          example: "[\"http://my.callback.com/sandbox/logs/some-id\"]"
+        subscriptionReference:
+          type: string
+          description: The reference of the subscription.
+          example: "[\"37dd7ef4-c382-11ee-9301-5fe5aa3a97cf\"]"
+      example:
+        subscriptionReference: "[\"37dd7ef4-c382-11ee-9301-5fe5aa3a97cf\"]"
+        callbackReference: "[\"http://my.callback.com/sandbox/logs/some-id\"]"
+    Sandbox:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Sandbox name
+      description: Sandbox object
+      example: {}
+    ProblemDetails:
+      required:
+      - detail
+      - status
+      type: object
+      properties:
+        type:
+          type: string
+          description: "A URI reference according to IETF RFC 3986 that identifies\
+            \ the problem type. It is encouraged that the URI provides human-readable\
+            \ documentation for the problem (e.g. using HTML) when dereferenced. When\
+            \ this member is not present, its value is assumed to be \"about:blank\"\
+            .\n"
+          format: URI
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type. It should\
+            \ not change from occurrence to occurrence of the problem, except for\
+            \ purposes of localization. If type is given and other than \"about:blank\"\
+            , this attribute shall also be provided. A short, human-readable summary\
+            \ of the problem type.  It SHOULD NOT change from occurrence to occurrence\
+            \ of the problem, except for purposes of localization (e.g., using proactive\
+            \ content negotiation; see [RFC7231], Section 3.4).\n"
+        status:
+          type: integer
+          description: "The HTTP status code for this occurrence of the problem. The\
+            \ HTTP status code ([RFC7231], Section 6) generated by the origin server\
+            \ for this occurrence of the problem.\n"
+        detail:
+          type: string
+          description: |
+            A human-readable explanation specific to this occurrence of the problem.
+        instance:
+          type: string
+          description: |
+            A URI reference that identifies the specific occurrence of the problem. It may yield further information if dereferenced.
+          format: URI
+      description: "The definition of the general \"ProblemDetails\" data structure\
+        \ from IETF RFC 7807 is reproduced inthis structure. Compared to the general\
+        \ framework defined in IETF RFC 7807, the \"status\" and \"detail\" attributes\
+        \ are mandated to be included by the present document, to ensure that the\
+        \ response contains additional textual information about an error. IETF RFC\
+        \ 7807 foresees extensibility of the \"ProblemDetails\" type. It is possible\
+        \ that particular APIs in the present document, or particular implementations,\
+        \ define extensions to define additional attributes that provide more information\
+        \ about the error. The description column only provides some explanation of\
+        \ the meaning to Facilitate understanding of the design. For a full description,\
+        \ see IETF RFC 7807.\n"
+      example:
+        instance: instance
+        detail: detail
+        type: type
+        title: title
+        status: 0

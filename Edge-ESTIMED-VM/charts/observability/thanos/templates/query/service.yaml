@@ -1,0 +1,38 @@
+{{- if .Values.query.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "thanos.compName" (list . "query") }}
+  labels:
+    app.kubernetes.io/component: query
+    {{- include "thanos.labels" . | nindent 4 }}
+    {{- with .Values.query.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- include "thanos.annotations" (dict "Values" .Values "component" "query") | nindent 4 }}
+    {{- with .Values.query.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.query.service.type }}
+  {{- if or (eq .Values.query.service.type "NodePort") (eq .Values.query.service.type "LoadBalancer") }}
+  externalTrafficPolicy: {{ .Values.query.service.externalTrafficPolicy | default "Cluster" }}
+  {{- end }}
+  ports:
+    - name: http
+      port: {{ .Values.query.service.httpPort }}
+      targetPort: http
+      {{- if and (or (eq .Values.query.service.type "NodePort") (eq .Values.query.service.type "LoadBalancer")) (.Values.query.service.httpNodePort) }}
+      nodePort: {{ .Values.query.service.httpNodePort }}
+      {{- end }}
+    - name: grpc
+      port: {{ .Values.query.service.grpcPort }}
+      targetPort: grpc
+      {{- if and (or (eq .Values.query.service.type "NodePort") (eq .Values.query.service.type "LoadBalancer")) (.Values.query.service.grpcNodePort) }}
+      nodePort: {{ .Values.query.service.grpcNodePort }}
+      {{- end }}
+  selector:
+    app.kubernetes.io/component: query
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

@@ -1,0 +1,195 @@
+/*
+ * Copyright (c) 2022 ETSI.  All rights reserved.
+ */
+
+// MDC global variable overrides
+
+// Theme & Colors
+$mdc-theme-primary: #02488d;
+$mdc-theme-secondary: #007dc0;
+$mdc-theme-background: #f8f9fa;
+
+// Typography
+$mdc-typography-font-family: unquote("Rubik");
+$mdc-typography-styles-body1: (
+    font-size: .9rem
+);
+
+// Layout
+$mdc-layout-grid-default-margin: (
+    desktop: 0px,
+    tablet: 16px,
+    phone: 16px
+);
+$mdc-layout-grid-default-gutter: (
+    desktop: 10px,
+    tablet: 16px,
+    phone: 16px
+) !default;
+
+// MDC
+@import 'material-components-web/material-components-web';
+
+// Outlined Select issue causing horizontal scrolling
+.mdc-select--outlined::before, .mdc-select--outlined::after {
+    content: none;
+}
+
+// Colors
+.mdc-top-app-bar {
+    @include mdc-top-app-bar-fill-color(#fff);
+}
+
+.mdc-dialog {
+    @include mdc-dialog-max-width(550px, 20px);
+}
+
+.mdc-dialog.large-dialog {
+    @include mdc-dialog-max-width(865px, 20px);
+}
+
+.detailed-dialog {
+    @include mdc-dialog-max-width(1024px, 20px);
+}
+
+.rmwc-icon--size-large {
+    font-size: 2.25rem;
+    width: 1em;
+    height: 1em;
+}
+
+// Ensure layout covers the entire screen
+
+html {
+    height: 100%;
+}
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    -ms-appearance: none;
+}
+
+// UI
+#app-container {
+    width: 100%;
+}
+.ui-body {
+    display: flex;
+    flex-direction: row;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+    font-family: 'Rubik';
+    overflow-x: auto;
+    overflow-y: auto !important;
+}
+.ui-content {
+    flex-direction: column;
+    flex-grow: 1;
+    height: 100%;
+    box-sizing: border-box;
+}
+.ui-main {
+    padding: 16px;
+}
+.ui-dashboard {
+    width: 100%;
+    height: calc(100vh - 124px);
+}
+.component-style {
+    background-color: #FFFFFF;
+}
+
+// Element configuration
+.cfg-network-element-div {
+    height:60vh;
+}
+
+// Navigation
+#edgenative-connector-logo {
+    height: 42px;
+    width: 135px;
+    padding: 0;
+}
+
+// IDCC Styles
+.text-color-main {
+    color: #3e484f;
+}
+
+// Markers
+.custom-marker-pin {
+    width: 28px;
+    height: 28px;
+    border-radius: 50% 50% 50% 0;
+    background: #00ccff;
+    position: absolute;
+    transform: rotate(-45deg);
+    left: 50%;
+    top: 50%;
+    margin: -15px 0 0 -15px;
+    border: 1px solid;
+    border-color: #00a3cc;
+}
+// to draw white circle
+.custom-marker-pin::after {
+    content: '';
+    width: 24px;
+    height: 24px;
+    margin: 2px 0 0 2px;
+    background: #ffffff;
+    position: absolute;
+    border-radius: 50%;
+}
+
+// to align icon
+.custom-marker-icon {
+    position: absolute;
+    width: 20px;
+    font-size: 20px;
+    left: 0;
+    right: 0;
+    margin: 11px auto;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.custom-marker-icon-text {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    font-size: 8px;
+    left: 0;
+    right: 0;
+    margin: 11px auto;
+    // text-align: center;
+    vertical-align: middle;
+    font-family: 'Roboto';
+    font-weight: 600;
+}
+
+.custom-marker-text {
+    height: 20px;
+    margin: 12px auto;
+    font-size: 12px;
+    font-family: 'Roboto';
+    font-weight: 600;
+}
+
+/* Premium Page Transitions */
+.fade-in-page {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

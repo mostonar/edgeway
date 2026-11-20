@@ -1,0 +1,10 @@
+*~
+.swp
+.bak
+node_modules/
+pkg/
+vendor/
+dist/
+bin
+js-packages/meep-*
+.build_checksum

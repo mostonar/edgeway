@@ -1,0 +1,79 @@
+---
+
+- name: Install Docker engine and components
+  apt:
+    name:
+      - "docker-ce"
+      - "docker-ce-cli"
+      - "docker-compose-plugin"
+    state: present
+  notify: Restart docker
+
+- name: Hold Docker packages
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - docker-compose-plugin
+
+- name: Add user to Docker group
+  user:
+    name: "{{ target_user }}"
+    groups: docker
+    append: true
+
+- name: Reset ssh connection to pick up new docker group
+  meta: reset_connection
+
+- name: Ensure docker socket is group-accessible
+  file:
+    path: /var/run/docker.sock
+    group: docker
+    mode: "0660"
+  become: true
+
+# - name: Verify docker access as {{ target_user }}
+#   shell: "sg docker -c 'docker info > /dev/null 2>&1'"
+#   become: true
+#   become_user: "{{ target_user }}"
+#   changed_when: false
+#   register: docker_access_check
+#   failed_when: false
+
+# - name: Fallback — activate docker group via newgrp for current session
+#   shell: "sg docker -c 'docker ps > /dev/null'"
+#   become: true
+#   become_user: "{{ target_user }}"
+#   when: docker_access_check.rc != 0
+#   changed_when: false
+
+- name: Allow {{ target_user }} to access containerd socket
+  acl:
+    path: /run/containerd/containerd.sock
+    etype: user
+    entity: '{{ target_user }}'
+    permissions: rw
+
+- name: Set dockerd config
+  copy:
+    src: "daemon.json"
+    dest: /etc/docker/
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Debug - Docker & Containerd setup completed
+  debug:
+    msg: |
+      ✅ Docker & Containerd setup completed successfully:
+      - GPG key added
+      - repo configured
+      - engine & plugins installed
+      - packages held
+      - user {{ target_user }} added to Docker group
+      - containerd config generated
+      - SystemdCgroup enabled
+      - sandbox image set to pause:3.10
+      - containerd and docker restarted

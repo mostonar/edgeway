@@ -1,0 +1,32 @@
+{{- if .Values.queryFrontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "thanos.compName" (list . "query-frontend") }}
+  labels:
+    app.kubernetes.io/component: query-frontend
+    {{- include "thanos.labels" . | nindent 4 }}
+    {{- with .Values.queryFrontend.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- include "thanos.annotations" (dict "Values" .Values "component" "query-frontend") | nindent 4 }}
+    {{- with .Values.queryFrontend.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.queryFrontend.service.type }}
+  {{- if or (eq .Values.queryFrontend.service.type "NodePort") (eq .Values.queryFrontend.service.type "LoadBalancer") }}
+  externalTrafficPolicy: {{ .Values.queryFrontend.service.externalTrafficPolicy | default "Cluster" }}
+  {{- end }}
+  ports:
+    - name: http
+      port: {{ .Values.queryFrontend.service.port }}
+      targetPort: http
+      {{- if and (or (eq .Values.queryFrontend.service.type "NodePort") (eq .Values.queryFrontend.service.type "LoadBalancer")) (.Values.queryFrontend.service.nodePort) }}
+      nodePort: {{ .Values.queryFrontend.service.nodePort }}
+      {{- end }}
+  selector:
+    app.kubernetes.io/component: query-frontend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

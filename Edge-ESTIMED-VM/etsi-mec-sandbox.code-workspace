@@ -1,0 +1,21 @@
+{
+    "folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../mec-sandbox-scenarios"
+		},
+		{
+			"path": "../dev/stf_685"
+		},
+		{
+			"path": "../dev/stf_707"
+		}
+	],
+	"extensions": {
+		"recommendations": [
+			"waderyan.nodejs-extension-pack"
+		]
+	}
+}

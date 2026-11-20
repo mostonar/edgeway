@@ -1,0 +1,1386 @@
+openapi: 3.0.0
+info:
+  title: MEC service management realized by CAPIF APIs
+  description: The ETSI MEC ISG MEC011 MEC Service Management realized by CAPIF APIs
+    described using OpenAPI
+  contact:
+    email: cti_support@etsi.org
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 3.2.1
+externalDocs:
+  description: "ETSI GS MEC011 Application Enablement API, V3.2.1"
+  url: https://www.etsi.org/deliver/etsi_gs/MEC/001_099/011/03.02.01_60/gs_mec011v030201p.pdf
+servers:
+- url: https://localhost/sandboxname/service-apis/v1
+  description: Service APIs
+- url: https://localhost/sandboxname/published-apis/v1
+  description: Published APIs
+- url: https://localhost/sandboxname/capif-events/v1
+  description: CAPIF Events APIs
+tags:
+- name: services
+- name: appServices
+- name: appSubscriptions
+- name: callbacks
+paths:
+  /allServiceAPIs:
+    get:
+      tags:
+      - services
+      description: This method retrieves information about a list of mecService resources.
+        This method is typically used in "service availability query" procedure
+      operationId: Services_GET
+      parameters:
+      - name: vend-spec-etsi-mec-serinstance-id
+        in: query
+        description: Vendor-specific query parameter for service instance ID. The
+          "target" attribute shall be set to "/apiId".
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: "{\"target\": \"/apiId\", \"value\": \"serviceInstanceId\"}"
+      - name: api-name
+        in: query
+        description: "This query parameter corresponds to the parameter \"ser_name\"\
+          \ as defined in clause 8.2.3.3.1. As opposed to the cardinality of ser_instance_id\
+          \ defined in clause 8.2.3.3.1 that is 0..N, this parameter only supports\
+          \ a cardinality of 0..1."
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      - name: api-invoker-id
+        in: query
+        description: "If the Discover_Service_API is produced by the MEC platform\
+          \ towards the MEC applications, this identifier shall be set to the value\
+          \ of the \"appInstanceId\" (see clause 7.1.2.6). If the Discover_Service_API\
+          \ is produced by the CCF, the provisions in clause 8.1.2.2.3.1 of 3GPP TS\
+          \ 29.222 [21] apply. "
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: vend-spec-etsi-mec-sercategory-id
+        in: query
+        description: Vendor-specific query parameter for service category ID. The
+          "target" attribute shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/serCategory/id".
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/serCategory/id\"\
+            , \"value\": \"serviceCategoryId\"}"
+      - name: vend-spec-etsi-mec-consumed-local-only
+        in: query
+        description: Vendor-specific query parameter for consumed local only. The
+          "target" attribute shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/consumedLocalOnly".
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/consumedLocalOnly\"\
+            , \"value\": \"true\"}"
+      - name: vend-spec-etsi-mec-is-local
+        in: query
+        description: Vendor-specific query parameter for is local. The "target" attribute
+          shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/isLocal".
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/isLocal\"\
+            , \"value\": \"true\"}"
+      - name: vend-spec-etsi-mec-scope-of-locality
+        in: query
+        description: Vendor-specific query parameter for scope of locality. The "target"
+          attribute shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/scopeOfLocality".
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/scopeOfLocality\"\
+            , \"value\": \"scopeOfLocalityValue\"}"
+      responses:
+        "200":
+          description: |
+            The response body contains the result of the search over the list of registered APIs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiscoveredAPIs'
+                x-content-type: application/json
+        "307":
+          description: |
+            Temporary redirection. The response shall include a Location header field containing an alternative target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: Contains an alternative target URI of the resource located
+                in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: |
+            Permanent redirection. The response shall include a Location header field containing an alternative target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: Contains an alternative target URI of the resource located
+                in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "414":
+          description: It is used to indicate that the server is refusing to process
+            the request because the request URI is longer than the server is willing
+            or able to process.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    servers:
+    - url: https://localhost/sandboxname/service-apis/v1
+  /{apfId}/service-apis:
+    get:
+      tags:
+      - appServices
+      summary: get services
+      description: This method retrieves information about a list of mecService resources.
+        This method is typically used in "service availability query" procedure
+      operationId: AppServices_GET
+      parameters:
+      - name: apfId
+        in: path
+        description: "Identifier of the entity that registers the service API. If\
+          \ the MEC app plays the role of the APF, this variable shall be set to the\
+          \ value of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform\
+          \ plays the role of the APF, this variable shall be set to a specific identifier\
+          \ that identifies the MEC platform. "
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: |
+            Successful case. The representation(s) of the "Individual APF published API" resource(s) of the  requested service API(s) shall be returned in the response body. If there are no active "Individual APF published API" resources at the CCF, an empty array is  returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceAPIDescription'
+                x-content-type: application/json
+        "307":
+          description: |
+            Temporary redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: |
+            Permanent redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - appServices
+      summary: Publish a new API
+      description: Enables a service consumer to request to publish a new API at the
+        CCF.
+      operationId: AppServices_POST
+      parameters:
+      - name: apfId
+        in: path
+        description: "Identifier of the entity that registers the service API. If\
+          \ the MEC app plays the role of the APF, this variable shall be set to the\
+          \ value of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform\
+          \ plays the role of the APF, this variable shall be set to a specific identifier\
+          \ that identifies the MEC platform. "
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceAPIDescription'
+        required: true
+      responses:
+        "201":
+          description: |
+            Successful case. The service API is successfully published. The URI of the created "Individual APF published API"  resource shall be returned in an HTTP "Location" header.
+          headers:
+            Location:
+              description: |
+                Contains the URI of the newly created resource, according to the structure: {apiRoot}/published-apis/<apiVersion>/{apfId}/service-apis/{serviceApiId}
+              style: simple
+              explode: false
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceAPIDescription'
+    servers:
+    - url: https://localhost/sandboxname/published-apis/v1
+  /{apfId}/service-apis/{serviceApiId}:
+    get:
+      tags:
+      - appServices
+      description: The HTTP GET method allows a service consumer to retrieve an existing
+        "Individual APF published API" resource at  the CCF.
+      operationId: AppServicesServiceId_GET
+      parameters:
+      - name: apfId
+        in: path
+        description: "Identifier of the entity that registers the service API. If\
+          \ the MEC app plays the role of the APF, this variable shall be set to the\
+          \ value of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform\
+          \ plays the role of the APF, this variable shall be set to a specific identifier\
+          \ that identifies the MEC platform. "
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: serviceApiId
+        in: path
+        description: Represents a MEC service instance.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: |
+            Successful case. The service API is successfully  published and a representation of the created  "Individual APF published API" resource shall be  returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceAPIDescription'
+                x-content-type: application/json
+        "307":
+          description: |
+            Temporary redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: |
+            Permanent redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - appServices
+      description: The HTTP PUT method allows a service consumer to update an existing
+        "Individual APF published API" resource at the CCF.
+      operationId: AppServicesServiceId_PUT
+      parameters:
+      - name: apfId
+        in: path
+        description: "Identifier of the entity that registers the service API. If\
+          \ the MEC app plays the role of the APF, this variable shall be set to the\
+          \ value of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform\
+          \ plays the role of the APF, this variable shall be set to a specific identifier\
+          \ that identifies the MEC platform. "
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: serviceApiId
+        in: path
+        description: Represents a MEC service instance.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceAPIDescription'
+        required: true
+      responses:
+        "200":
+          description: |
+            Successful case. The service API is successfully  published and a representation of the created  "Individual APF published API" resource shall be  returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceAPIDescription'
+                x-content-type: application/json
+        "204":
+          description: Successful case. The "Individual APF published API" resource
+            is successfully updated and no content is returned in the response body.
+        "307":
+          description: |
+            Temporary redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: |
+            Permanent redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition Failed. It is used when a condition has failed\
+            \ during conditional requests, e.g. when using ETags to avoid write conflicts."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - appServices
+      description: The HTTP DELETE method allows a service consumer to delete an existing
+        "Individual APF published API" resource  at the CCF
+      operationId: AppServicesServiceId_DELETE
+      parameters:
+      - name: apfId
+        in: path
+        description: "Identifier of the entity that registers the service API. If\
+          \ the MEC app plays the role of the APF, this variable shall be set to the\
+          \ value of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform\
+          \ plays the role of the APF, this variable shall be set to a specific identifier\
+          \ that identifies the MEC platform. "
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: serviceApiId
+        in: path
+        description: Represents a MEC service instance.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Successful case. The "Individual APF published API" resource
+            is successfully deleted.
+        "307":
+          description: |
+            Temporary redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: |
+            Permanent redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+      - appServices
+      description: The HTTP PATCH method allows a service consumer to modify an existing
+        "Individual APF published API" resource at the CCF.
+      operationId: AppServicesServiceId_PATCH
+      parameters:
+      - name: apfId
+        in: path
+        description: "Identifier of the entity that registers the service API. If\
+          \ the MEC app plays the role of the APF, this variable shall be set to the\
+          \ value of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform\
+          \ plays the role of the APF, this variable shall be set to a specific identifier\
+          \ that identifies the MEC platform. "
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: serviceApiId
+        in: path
+        description: Represents a MEC service instance.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceAPIDescriptionPatch'
+        required: true
+      responses:
+        "200":
+          description: "Successful case. The \"Individual APF published API\"\n resource\
+            \ is successfully modified and a representation of \n the updated resource\
+            \ shall be returned in the response \n body.\n"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceAPIDescription'
+                x-content-type: application/json
+        "204":
+          description: Successful case. The "Individual APF published API" resource
+            is successfully updated and no content is returned in the response body.
+        "307":
+          description: |
+            Temporary redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: |
+            Permanent redirection. The response shall include a Location header field containing an alternative  target URI of the resource located in an alternative CCF.
+          headers:
+            Location:
+              description: |
+                Contains an alternative target URI of the resource located in an alternative CCF.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition Failed. It is used when a condition has failed\
+            \ during conditional requests, e.g. when using ETags to avoid write conflicts."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    servers:
+    - url: https://localhost/sandboxname/published-apis/v1
+  /{subscriberId}/subscriptions:
+    post:
+      tags:
+      - appSubscriptions
+      summary: Create a new CAPIF Events Subscription
+      description: Create a new CAPIF Events Subscription resource.
+      operationId: ApplicationsSubscriptions_POST
+      parameters:
+      - name: subscriberId
+        in: path
+        description: 'This variable shall be set to the value of the "appInstanceId"
+          (see clause 7.1.2.6). '
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventSubscription'
+        required: true
+      responses:
+        "201":
+          description: |
+            CAPIF Events Subscription resource created successfully. The URI of the created resource shall be returned in the  "Location" HTTP header
+          headers:
+            Location:
+              description: |
+                Contains the URI of the newly created resource, according to  the structure: {apiRoot}/capif-events/<apiVersion>/{subscriberId}/subscriptions/{subscriptionId}
+              style: simple
+              explode: false
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSubscription'
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      callbacks:
+        EventNotification:
+          '{$request.body#/callbackReference}':
+            post:
+              tags:
+              - callbacks
+              summary: Create callback
+              description: "The values SERVICE_API_AVAILABLE, SERVICE_API_UNAVAILABLE,\
+                \ and SERVICE_API_UPDATE defined in the type \"CAPIFEvent\" shall\
+                \ be supported. The remaining values of that type need not be supported."
+              operationId: EventNotification_POST
+              requestBody:
+                $ref: '#/components/requestBodies/EventNotification'
+              responses:
+                "204":
+                  description: ' The receipt of the Notification is acknowledged.'
+      deprecated: false
+    servers:
+    - url: https://localhost/sandboxname/capif-events/v1
+  '/{subscriberId}/subscriptions/{subscriptionId} ':
+    put:
+      tags:
+      - appSubscriptions
+      summary: The PUT method is used to update an existing subscription resource.
+      description: The susbcribing entity shall initiate the HTTP PUT request message
+        and the CAPIF core function shall respond to the message.
+      operationId: ApplicationsSubscriptions_PUT
+      parameters:
+      - name: subscriberId
+        in: path
+        description: 'This variable shall be set to the value of the "appInstanceId"
+          (see clause 7.1.2.6). '
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: subscriptionId
+        in: path
+        description: Represents a subscription to the notifications from the MEC platform.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventSubscription'
+        required: true
+      responses:
+        "200":
+          description: "The event subscription was successfully updated, and a representation\
+            \ of the updated resource is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSubscription'
+        "204":
+          description: The event subscription was successfully updated and no content
+            is returned in the response body.
+        "307":
+          description: Temporary redirection. The response shall include a Location
+            header field containing an alternative URI of the resource located in
+            an alternative CAPIF core function.
+          headers:
+            Location:
+              description: Contains an alternative URI of the resource located in
+                an alternative CAPIF core function.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: Permanent redirection. The response shall include a Location
+            header field containing an alternative URI of the resource located in
+            an alternative CAPIF core function.
+          headers:
+            Location:
+              description: Contains an alternative URI of the resource located in
+                an alternative CAPIF core function.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. It is used to indicate that incorrect parameters
+            were passed to the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: Forbidden. The operation is not allowed given the current status
+            of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: Not Found. It is used when a client provided a URI that cannot
+            be mapped to a valid resource URI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - appSubscriptions
+      summary: Delete an existing CAPIF Event Subscription
+      description: This endpoint deletes an existing CAPIF Event Subscription resource.
+      operationId: ApplicationsSubscription_DELETE
+      parameters:
+      - name: subscriberId
+        in: path
+        description: 'This variable shall be set to the value of the "appInstanceId"
+          (see clause 7.1.2.6). '
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: subscriptionId
+        in: path
+        description: Represents a subscription to the notifications from the MEC platform.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: The individual CAPIF Events Subscription matching the subscriptionId
+            is deleted.
+        "307":
+          description: "Temporary redirection, during resource termination. The response\
+            \ shall include a Location header field containing an alternative URI\
+            \ of the resource located in an alternative CAPIF core function."
+          headers:
+            Location:
+              description: An alternative URI of the resource located in an alternative
+                CAPIF core function.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: "Permanent redirection, during resource termination. The response\
+            \ shall include a Location header field containing an alternative URI\
+            \ of the resource located in an alternative CAPIF core function."
+          headers:
+            Location:
+              description: An alternative URI of the resource located in an alternative
+                CAPIF core function.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "400":
+          description: Bad Request. The request was invalid or cannot be served. The
+            exact error should be explained in the error payload.
+        "401":
+          description: Unauthorized. The request requires user authentication.
+        "403":
+          description: Forbidden. The server understood the request but refuses to
+            authorize it.
+        "404":
+          description: Not Found. The server has not found anything matching the Request-URI.
+        "500":
+          description: Internal Server Error. The server encountered an unexpected
+            condition which prevented it from fulfilling the request.
+    patch:
+      tags:
+      - appSubscriptions
+      summary: Modify an existing CAPIF Event Subscription
+      description: This endpoint modifies an existing CAPIF Event Subscription resource.
+      operationId: ApplicationsSubscription_patch
+      parameters:
+      - name: subscriberId
+        in: path
+        description: 'This variable shall be set to the value of the "appInstanceId"
+          (see clause 7.1.2.6). '
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: subscriptionId
+        in: path
+        description: Represents a subscription to the notifications from the MEC platform.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventSubscriptionPatch'
+        required: true
+      responses:
+        "200":
+          description: The subscription was successfully modified and a representation
+            of the updated resource is returned in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSubscription'
+        "204":
+          description: The subscription was successfully modified and no content was
+            returned in the response body.
+        "307":
+          description: Temporary redirection. The response shall include a Location
+            header field containing an alternative URI of the resource located in
+            an alternative CAPIF core function.
+          headers:
+            Location:
+              description: Contains an alternative URI of the resource located in
+                an alternative CAPIF core function.
+              style: simple
+              explode: false
+              schema:
+                type: string
+        "308":
+          description: Permanent redirection. The response shall include a Location
+            header field containing an alternative URI of the resource located in
+            an alternative CAPIF core function.
+          headers:
+            Location:
+              description: Contains an alternative URI of the resource located in
+                an alternative CAPIF core function.
+              style: simple
+              explode: false
+              schema:
+                type: string
+    servers:
+    - url: https://localhost/sandboxname/capif-events/v1
+components:
+  schemas:
+    EventSubscriptionPatch:
+      required:
+      - events
+      type: object
+      properties:
+        events:
+          type: array
+          description: |
+            The events for which the subscription is modified.
+          items:
+            $ref: '#/components/schemas/CAPIFEvent'
+        notificationDestination:
+          type: string
+          description: |
+            URI to which notifications will be sent. Shall be set to the value of the "callbackReference" attribute in the "SerAvailabilityNotificationSubscription" structure.
+          format: uri
+    EventSubscription:
+      required:
+      - events
+      - notificationDestination
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/CAPIFEvent'
+        notificationDestination:
+          type: string
+          description: |
+            URI selected by the MEC application instance to receive notifications on the subscribed MEC service availability information. This shall be included in both the request and the response.
+          format: uri
+        requestTestNotification:
+          type: boolean
+        websocketNotifConfig:
+          type: string
+      example:
+        notificationDestination: http://example.com/aeiou
+        websocketNotifConfig: websocketNotifConfig
+        events:
+        - SERVICE_API_AVAILABLE
+        - SERVICE_API_AVAILABLE
+        requestTestNotification: true
+    CAPIFEvent:
+      type: string
+      description: |
+        The CAPIFEvent data type represents the type of events for which the subscription is made.
+      enum:
+      - SERVICE_API_AVAILABLE
+      - SERVICE_API_UNAVAILABLE
+      - SERVICE_API_UPDATE
+    CategoryRef:
+      required:
+      - href
+      - id
+      - name
+      - version
+      type: object
+      properties:
+        href:
+          type: string
+          description: Reference of the catalogue
+          format: uri
+        id:
+          type: string
+          description: Unique identifier of the category
+        name:
+          type: string
+          description: "Name of the category, example values include RNI, Location\
+            \ & Bandwidth Management"
+        version:
+          type: string
+          description: Category version
+      description: This type represents the category reference
+      example:
+        name: name
+        href: http://example.com/aeiou
+        id: id
+        version: version
+    ProblemDetails:
+      required:
+      - detail
+      - status
+      type: object
+      properties:
+        type:
+          type: string
+          description: A URI reference according to IETF RFC 3986 that identifies
+            the problem type
+          format: uri
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type"
+        status:
+          type: integer
+          description: The HTTP status code for this occurrence of the problem
+          format: uint32
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+          format: uri
+    EventNotification:
+      type: object
+      properties:
+        events:
+          type: array
+          description: |
+            The values SERVICE_API_AVAILABLE, SERVICE_API_UNAVAILABLE, and SERVICE_API_UPDATE defined in the type "CAPIFEvent" shall be supported. The remaining values of that type need not be supported.
+          items:
+            $ref: '#/components/schemas/CAPIFEvent'
+    SerializerType:
+      type: string
+      description: |
+        The enumeration SerializerType represents types of serializers. This enumeration shall be extensible.
+      enum:
+      - JSON
+      - XML
+      - PROTOBUF3
+    LocalityType:
+      type: string
+      description: |
+        The enumeration LocalityType represents types of locality.
+      enum:
+      - MEC_SYSTEM
+      - MEC_HOST
+      - NFVI_POP
+      - ZONE
+      - ZONE_GROUP
+      - NFVI_NODE
+    ServiceState:
+      type: string
+      description: |
+        The enumeration ServiceState represents possible states of a MEC service instance.
+      enum:
+      - ACTIVE
+      - INACTIVE
+      - SUSPENDED
+    DiscoveredAPIs:
+      type: object
+      properties:
+        serviceAPIDescriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceAPIDescription'
+      example:
+        serviceAPIDescriptions:
+        - apiName: apiName
+          vendorSpecific-urn:etsi:mec:capifext:service-info:
+            scopeOfLocality: MEC_SYSTEM
+            serializer: JSON
+            state: ACTIVE
+            consumedLocalOnly: true
+            category:
+              name: name
+              href: http://example.com/aeiou
+              id: id
+              version: version
+            isLocal: true
+          apiId: apiId
+        - apiName: apiName
+          vendorSpecific-urn:etsi:mec:capifext:service-info:
+            scopeOfLocality: MEC_SYSTEM
+            serializer: JSON
+            state: ACTIVE
+            consumedLocalOnly: true
+            category:
+              name: name
+              href: http://example.com/aeiou
+              id: id
+              version: version
+            isLocal: true
+          apiId: apiId
+    ServiceAPIDescriptionPatch:
+      type: object
+      properties:
+        vendorSpecific-urn:etsi:mec:capifext:service-info:
+          $ref: '#/components/schemas/MecServiceInfoCapifExtPatch'
+    ServiceAPIDescription:
+      type: object
+      properties:
+        apiName:
+          type: string
+          description: |
+            Shall be set to the value of the "serName" attribute as defined in clause 8.1.2.2.
+        apiId:
+          type: string
+          description: |
+            If present, shall be set to the value of the "serInstanceId" attribute as defined in clause 8.1.2.2.
+        vendorSpecific-urn:etsi:mec:capifext:service-info:
+          $ref: '#/components/schemas/MecServiceInfoCapifExt'
+      example:
+        apiName: apiName
+        vendorSpecific-urn:etsi:mec:capifext:service-info:
+          scopeOfLocality: MEC_SYSTEM
+          serializer: JSON
+          state: ACTIVE
+          consumedLocalOnly: true
+          category:
+            name: name
+            href: http://example.com/aeiou
+            id: id
+            version: version
+          isLocal: true
+        apiId: apiId
+    MecServiceInfoCapifExtPatch:
+      type: object
+      properties:
+        serializer:
+          $ref: '#/components/schemas/SerializerType'
+        state:
+          $ref: '#/components/schemas/ServiceState'
+        scopeOfLocality:
+          $ref: '#/components/schemas/LocalityType'
+        consumedLocalOnly:
+          type: boolean
+        isLocal:
+          type: boolean
+        category:
+          $ref: '#/components/schemas/CategoryRef'
+    MecServiceInfoCapifExt:
+      type: object
+      properties:
+        serializer:
+          $ref: '#/components/schemas/SerializerType'
+        state:
+          $ref: '#/components/schemas/ServiceState'
+        scopeOfLocality:
+          $ref: '#/components/schemas/LocalityType'
+        consumedLocalOnly:
+          type: boolean
+        isLocal:
+          type: boolean
+        category:
+          $ref: '#/components/schemas/CategoryRef'
+      example:
+        scopeOfLocality: MEC_SYSTEM
+        serializer: JSON
+        state: ACTIVE
+        consumedLocalOnly: true
+        category:
+          name: name
+          href: http://example.com/aeiou
+          id: id
+          version: version
+        isLocal: true
+  responses:
+    "400":
+      description: Bad Request. It is used to indicate that incorrect parameters were
+        passed to the request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "401":
+      description: Unauthorized. It is used when the client did not submit the appropriate
+        credentials.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "403":
+      description: Forbidden. The operation is not allowed given the current status
+        of the resource.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "404":
+      description: Not Found. It is used when a client provided a URI that cannot
+        be mapped to a valid resource URI.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "409":
+      description: "Conflict. The operation cannot be executed currently, due to a\
+        \ conflict with the state of the resource. Typically, this is because the\
+        \ application instance resource is in NOT_INSTANTIATED state."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "412":
+      description: "Precondition Failed. It is used when a condition has failed during\
+        \ conditional requests, e.g. when using ETags to avoid write conflicts."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "414":
+      description: It is used to indicate that the server is refusing to process the
+        request because the request URI is longer than the server is willing or able
+        to process.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "429":
+      description: Too Many Requests. It is used when a rate limiter has triggered.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  parameters:
+    Path.apfId:
+      name: apfId
+      in: path
+      description: "Identifier of the entity that registers the service API. If the\
+        \ MEC app plays the role of the APF, this variable shall be set to the value\
+        \ of the \"appInstanceId\" (see clause 7.1.2.6). If the MEC platform plays\
+        \ the role of the APF, this variable shall be set to a specific identifier\
+        \ that identifies the MEC platform. "
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+    Path.subscriberId:
+      name: subscriberId
+      in: path
+      description: 'This variable shall be set to the value of the "appInstanceId"
+        (see clause 7.1.2.6). '
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+    Path.SubscriptionId:
+      name: subscriptionId
+      in: path
+      description: Represents a subscription to the notifications from the MEC platform.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+    Path.serviceApiId:
+      name: serviceApiId
+      in: path
+      description: Represents a MEC service instance.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+    Query.vend-spec-etsi-mec-sercategory-id:
+      name: vend-spec-etsi-mec-sercategory-id
+      in: query
+      description: Vendor-specific query parameter for service category ID. The "target"
+        attribute shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/serCategory/id".
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/serCategory/id\"\
+          , \"value\": \"serviceCategoryId\"}"
+    Query.vend-spec-etsi-mec-serinstance-id:
+      name: vend-spec-etsi-mec-serinstance-id
+      in: query
+      description: Vendor-specific query parameter for service instance ID. The "target"
+        attribute shall be set to "/apiId".
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        example: "{\"target\": \"/apiId\", \"value\": \"serviceInstanceId\"}"
+    Query.api-name:
+      name: api-name
+      in: query
+      description: "This query parameter corresponds to the parameter \"ser_name\"\
+        \ as defined in clause 8.2.3.3.1. As opposed to the cardinality of ser_instance_id\
+        \ defined in clause 8.2.3.3.1 that is 0..N, this parameter only supports a\
+        \ cardinality of 0..1."
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+    Query.api-invoker-id:
+      name: api-invoker-id
+      in: query
+      description: "If the Discover_Service_API is produced by the MEC platform towards\
+        \ the MEC applications, this identifier shall be set to the value of the \"\
+        appInstanceId\" (see clause 7.1.2.6). If the Discover_Service_API is produced\
+        \ by the CCF, the provisions in clause 8.1.2.2.3.1 of 3GPP TS 29.222 [21]\
+        \ apply. "
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+    Query.vend-spec-etsi-mec-scope-of-locality:
+      name: vend-spec-etsi-mec-scope-of-locality
+      in: query
+      description: Vendor-specific query parameter for scope of locality. The "target"
+        attribute shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/scopeOfLocality".
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/scopeOfLocality\"\
+          , \"value\": \"scopeOfLocalityValue\"}"
+    Query.vend-spec-etsi-mec-is-local:
+      name: vend-spec-etsi-mec-is-local
+      in: query
+      description: Vendor-specific query parameter for is local. The "target" attribute
+        shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/isLocal".
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/isLocal\"\
+          , \"value\": \"true\"}"
+    Query.vend-spec-etsi-mec-consumed-local-only:
+      name: vend-spec-etsi-mec-consumed-local-only
+      in: query
+      description: Vendor-specific query parameter for consumed local only. The "target"
+        attribute shall be set to "/vendorSpecific-urn:etsi:mec:capifext:service-info/consumedLocalOnly".
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        example: "{\"target\": \"/vendorSpecific-urn:etsi:mec:capifext:service-info/consumedLocalOnly\"\
+          , \"value\": \"true\"}"
+  requestBodies:
+    EventNotification:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EventNotification'
+      required: true

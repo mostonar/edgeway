@@ -1,0 +1,4876 @@
+openapi: 3.0.0
+info:
+  title: AdvantEDGE Location API
+  description: "Location Service is AdvantEDGE's implementation of [ETSI MEC ISG MEC013\
+    \ Location API](https://www.etsi.org/deliver/etsi_gs/MEC/001_099/013/03.01.01_60/gs_mec013v030101p.pdf)\
+    \ <p>The API is based on the Open Mobile Alliance's specification RESTful Network\
+    \ API for Zonal Presence <p>[Copyright (c) ETSI 2017](https://forge.etsi.org/etsi-forge-copyright-notice.txt)\
+    \ <p>**Micro-service**<br>[meep-loc-serv](https://github.com/InterDigitalInc/AdvantEDGE/tree/master/go-apps/meep-loc-serv)\
+    \ <p>**Type & Usage**<br>Edge Service used by edge applications that want to get\
+    \ information about Users (UE) and Zone locations <p>**Note**<br>AdvantEDGE supports\
+    \ all of Location API endpoints (see below)."
+  contact:
+    name: InterDigital AdvantEDGE Support
+    email: AdvantEDGE@InterDigital.com
+  license:
+    name: Apache 2.0
+    url: https://github.com/InterDigitalInc/AdvantEDGE/blob/master/LICENSE
+  version: 3.1.1
+externalDocs:
+  description: ETSI MEC013 V3.1.1 Location API
+  url: https://www.etsi.org/deliver/etsi_gs/MEC/001_099/013/03.01.01_60/gs_mec013v030101p.pdf
+servers:
+- url: https://localhost/sandboxname/location/v3
+tags:
+- name: location
+paths:
+  /queries/distance:
+    get:
+      tags:
+      - location
+      summary: UE Distance Lookup of a specific UE
+      description: UE Distance Lookup between terminals or a terminal and a location
+      operationId: distanceGET
+      parameters:
+      - name: requester
+        in: query
+        description: Entity that is requesting the information
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: Requester
+      - name: address
+        in: query
+        description: "address of users (e.g. \"sip\" URI, \"tel\" URI, \"acr\" URI)"
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: AddressMandatory
+      - name: latitude
+        in: query
+        description: Latitude geo position
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: float
+        x-exportParamName: Latitude
+      - name: longitude
+        in: query
+        description: Longitude geo position
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: float
+        x-exportParamName: Longitude
+      responses:
+        "200":
+          description: Successful response to a distance request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineTerminalDistance'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: queries
+  /queries/users:
+    get:
+      tags:
+      - location
+      summary: UE Location Lookup of a specific UE or group of UEs
+      description: UE Location Lookup of a specific UE or group of UEs
+      operationId: usersGET
+      parameters:
+      - name: zoneId
+        in: query
+        description: Identifier of zone
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: ZoneId
+      - name: accessPointId
+        in: query
+        description: Identifier of access point
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: AccessPointId
+      - name: address
+        in: query
+        description: "address of users (e.g. \"sip\" URI, \"tel\" URI, \"acr\" URI)"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+        x-exportParamName: Address
+      responses:
+        "200":
+          description: Successful response to users request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineUserList'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: queries
+  /queries/zones:
+    get:
+      tags:
+      - location
+      summary: Zones information Lookup
+      description: Used to get a list of identifiers for zones authorized for use
+        by the application.
+      operationId: zonesGET
+      responses:
+        "200":
+          description: Successful response to zones request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineZoneList'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: queries
+  /queries/zones/{zoneId}:
+    get:
+      tags:
+      - location
+      summary: Zones information Lookup
+      description: Used to get the information for an authorized zone for use by the
+        application.
+      operationId: zonesGetById
+      parameters:
+      - name: zoneId
+        in: path
+        description: Indentifier of zone
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: ZoneId
+      responses:
+        "200":
+          description: Successful response to an access point Id request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineZoneInfo'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: queries
+  /queries/zones/{zoneId}/accessPoints:
+    get:
+      tags:
+      - location
+      summary: Radio Node Location Lookup
+      description: Radio Node Location Lookup to retrieve a list of radio nodes associated
+        to a zone.
+      operationId: apGET
+      parameters:
+      - name: zoneId
+        in: path
+        description: Indentifier of zone
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: ZoneId
+      - name: interestRealm
+        in: query
+        description: "Interest realm of access point (e.g. geographical area, a type\
+          \ of industry etc.)."
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: InterestRealm
+      responses:
+        "200":
+          description: Successful response to an access point Id request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineAccessPointList'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: queries
+  /queries/zones/{zoneId}/accessPoints/{accessPointId}:
+    get:
+      tags:
+      - location
+      summary: Radio Node Location Lookup
+      description: Radio Node Location Lookup to retrieve a radio node associated
+        to a zone.
+      operationId: apByIdGET
+      parameters:
+      - name: zoneId
+        in: path
+        description: Indentifier of zone
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: ZoneId
+      - name: accessPointId
+        in: path
+        description: Identifier of access Point
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        x-exportParamName: AccessPointId
+      responses:
+        "200":
+          description: Successful response to an access point Id request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineAccessPointInfo'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: queries
+  /subscriptions/area:
+    get:
+      tags:
+      - location
+      summary: Retrieves information about the subscriptions for this requestor.
+      description: The GET method is used to request information about the subscriptions
+        for this requestor.
+      operationId: areaSubListGET
+      parameters:
+      - name: subscription_type
+        in: query
+        description: Filter subscriptions by type
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - Event
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of links\
+            \ to requestor's subscriptions is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - location
+      summary: Creates subscription to area notifications.
+      description: The POST method is used to create a new subscription to area notifications.
+      operationId: areaSubPOST
+      requestBody:
+        description: Subscription to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_area_body'
+        required: true
+      responses:
+        "201":
+          description: "Indicates successful resource creation, where the resource\
+            \ URI shall be returned in the HTTP Location header field."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "415":
+          description: "Unsupported Media Type :  used to indicate that the server\
+            \ or the client does not support the content type of the entity body."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      callbacks:
+        notification:
+          '{$request.body#/userAreaSubscription.callbackReference}':
+            post:
+              summary: Callback POST used to send a notification
+              description: "Notification from Location service, content based on subscription\
+                \ type"
+              operationId: areaNotificationPOST
+              requestBody:
+                description: Subscription notification
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        userAreaNotification:
+                          $ref: '#/components/schemas/InlineUserAreaNotification'
+                      example:
+                      - userAreaNotification:
+                          notificationType: UserAreaNotification
+                          timeStamp:
+                            seconds: 1673507343
+                            nanoSeconds": 0
+                          address: acr:10.0.0.1
+                          userLocationEvent: ENTERING_AREA_EVENT
+                          _links:
+                            subscription:
+                              href: http://meAppServer.example.com/location/v2/subscriptions/area/subscription123
+                required: true
+              responses:
+                "204":
+                  description: No Content
+      x-swagger-router-controller: subscriptions
+  /subscriptions/area/{subscriptionId}:
+    get:
+      tags:
+      - location
+      summary: Retrieve subscription information
+      description: The GET method is used to retrieve information about this subscription.
+      operationId: areaSubGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the specific zone subscription is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_1'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+    put:
+      tags:
+      - location
+      summary: Updates a subscription information
+      description: The PUT method is used to update the existing subscription.
+      operationId: areaSubPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      requestBody:
+        description: Subscription to be modified
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/area_subscriptionId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated subscription is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/area_subscriptionId_body'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition failed :  used when a condition has failed during\
+            \ conditional requests, e.g. when using ETags to avoid write conflicts\
+            \ when using PUT"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "422":
+          description: "Unprocessable Entity : used to indicate that the server understands\
+            \ the content type of the request entity and that the syntax of the request\
+            \ entity is correct but that the server is unable to process the contained\
+            \ instructions. This error condition can occur if an JSON request body\
+            \ is syntactically correct but semantically incorrect, for example if\
+            \ the target area for the request is considered too large. This error\
+            \ condition can also occur if the capabilities required by the request\
+            \ are not supported."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+    delete:
+      tags:
+      - location
+      summary: Cancel a subscription
+      description: The DELETE method is used to cancel the existing subscription.
+      operationId: areaSubDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+  /subscriptions/distance:
+    get:
+      tags:
+      - location
+      summary: Retrieves all active subscriptions to distance change notifications
+      description: This operation is used for retrieving all active subscriptions
+        to a distance change notifications.
+      operationId: distanceSubListGET
+      responses:
+        "200":
+          description: Response to retrieve area subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineNotificationSubscriptionList'
+    post:
+      tags:
+      - location
+      summary: Creates a subscription for distance change notification
+      description: Creates a subscription to the Location Service for a distance change
+        notification.
+      operationId: distanceSubPOST
+      requestBody:
+        description: Subscription to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InlineUserDistanceNotification'
+            example:
+              userDistanceSubscription:
+                subscriptionType: UserDistanceSubscription
+                clientCorrelator: "0123"
+                callbackReference: http://my.callback.com/user-distance/some-id
+                referenceAddress:
+                - acr:10.0.0.3
+                monitoredAddress:
+                - acr:10.0.0.1
+                - acr:10.0.0.2
+                distance: 100
+                trackingAccuracy: 10
+                criteria: AllWithinDistance
+                checkImmediate: true
+        required: true
+      responses:
+        "201":
+          description: Successful subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineUserDistanceSubscription'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      callbacks:
+        notification:
+          '{$request.body#/userDistanceSubscription.callbackReference}':
+            post:
+              summary: Callback POST used to send a notification
+              description: "Notification from Location service, content based user\
+                \ distance subscription type"
+              operationId: distanceNotificationPOST
+              requestBody:
+                description: User Distance Notification
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        userDistanceNotification:
+                          $ref: '#/components/schemas/UserDistanceNotification'
+                      example:
+                      - userDistanceNotification:
+                          notificationType: UserDistanceNotification
+                          timeStamp:
+                            seconds: 1673507343
+                            nanoSeconds": 0
+                          monitoredUsers:
+                          - user:
+                              address: acr:10.0.0.1
+                              accessPointId: "001010000000000000000000000000001"
+                              zoneId: zone01
+                              timeStamp:
+                                seconds: 1673507343
+                                nanoSeconds": 0
+                            resourceURL: http://meAppServer.example.com/location/v3/queries/users
+                          distanceEvent: AllWithinDistance
+                          _links:
+                            subscription:
+                              href: http://meAppServer.example.com/location/v3/subscriptions/distance/subscription123
+                required: true
+              responses:
+                "204":
+                  description: No Content
+      x-swagger-router-controller: subscriptions
+  /subscriptions/distance/{subscriptionId}:
+    get:
+      tags:
+      - location
+      summary: Retrieve user distance subscription information
+      description: The GET method is used to retrieve information about user distance
+        subscription subscription.
+      operationId: distanceSubGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      responses:
+        "200":
+          description: Subscription information regarding subscription notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineUserDistanceSubscription'
+              example:
+                userDistanceSubscription:
+                  subscriptionType: UserDistanceSubscription
+                  clientCorrelator: "0123"
+                  callbackReference: http://my.callback.com/user-distance/some-id
+                  referenceAddress:
+                  - acr:10.0.0.3
+                  monitoredAddress:
+                  - acr:10.0.0.1
+                  - acr:10.0.0.2
+                  distance: 100
+                  trackingAccuracy: 10
+                  criteria: AllWithinDistance
+                  checkImmediate: true
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+    put:
+      tags:
+      - location
+      summary: Updates a user distance subscription information
+      description: The PUT method is used to update the existing user distance subscription.
+      operationId: distanceSubPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      requestBody:
+        description: Subscription to be modified
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InlineUserDistanceSubscription'
+        required: true
+      responses:
+        "200":
+          description: Successful subscription to response to subscription notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineUserDistanceSubscription'
+              example:
+                userDistanceSubscription:
+                  subscriptionType: UserDistanceSubscription
+                  clientCorrelator: "0123"
+                  callbackReference: http://my.callback.com/user-distance/some-id
+                  referenceAddress:
+                  - acr:10.0.0.3
+                  monitoredAddress:
+                  - acr:10.0.0.1
+                  - acr:10.0.0.2
+                  distance: 100
+                  trackingAccuracy: 10
+                  criteria: AllWithinDistance
+                  checkImmediate: true
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition failed :  used when a condition has failed during\
+            \ conditional requests, e.g. when using ETags to avoid write conflicts\
+            \ when using PUT"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "422":
+          description: "Unprocessable Entity : used to indicate that the server understands\
+            \ the content type of the request entity and that the syntax of the request\
+            \ entity is correct but that the server is unable to process the contained\
+            \ instructions. This error condition can occur if an JSON request body\
+            \ is syntactically correct but semantically incorrect, for example if\
+            \ the target area for the request is considered too large. This error\
+            \ condition can also occur if the capabilities required by the request\
+            \ are not supported."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+    delete:
+      tags:
+      - location
+      summary: Cancel a subscription
+      description: The DELETE method is used to cancel the existing subscription.
+      operationId: distanceSubDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+  /subscriptions/users:
+    get:
+      tags:
+      - location
+      summary: Retrieves information about the subscriptions for the requestor
+      description: 'The GET method is used to request information about the subscriptions
+        for the requestor. '
+      operationId: userSubListGET
+      parameters:
+      - name: subscription_type
+        in: query
+        description: Filter subscriptions by type
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - event
+          - periodic
+      - name: address
+        in: query
+        description: Address of the user
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Response to retrieve user tracking subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineNotificationSubscriptionList'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - location
+      summary: Create subscription to UE location notifications.
+      description: The POST method is used to create a new subscription to UE location
+        notifications.
+      operationId: userSubPOST
+      requestBody:
+        description: Subscription to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_users_body'
+        required: true
+      responses:
+        "201":
+          description: Indicates successful subscription creation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201_1'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      callbacks:
+        notification:
+          '{$request.body#/userLocationEventSubscription.callbackReference}':
+            post:
+              summary: Callback POST used to send a notification
+              description: "Notification from Location service, content based on subscription\
+                \ type"
+              operationId: userNotificationPOST
+              requestBody:
+                description: User LocationEvent Notification
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        userLocationEventNotification:
+                          $ref: '#/components/schemas/InlineUserLocationEventNotification'
+                        userLocationPeriodicNotification:
+                          $ref: '#/components/schemas/InlineUserLocationPeriodicNotification'
+                      example:
+                      - userLocationEventNotification:
+                          notificationType: UserLocationEventNotification
+                          timeStamp:
+                            seconds: 1673507343
+                            nanoseconds: 0
+                          address: acr:10.0.0.1
+                          userLocationEvent: ENTERING_AREA_EVENT
+                          zoneId: zone01
+                          accessPointId: "001010000000000000000000000000001"
+                          _links:
+                            subscription:
+                              href: http://meAppServer.example.com/location/v3/subscriptions/user/subscription123
+                required: true
+              responses:
+                "204":
+                  description: No Content
+      x-swagger-router-controller: subscriptions
+  /subscriptions/users/{subscriptionId}:
+    get:
+      tags:
+      - location
+      summary: Retrieve subscription information
+      description: 'The GET method is used to retrieve information about this subscription. '
+      operationId: userSubGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the specific Location event subscription is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_2'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+    put:
+      tags:
+      - location
+      summary: Updates a subscription information
+      description: The PUT method is used to update the existing subscription.
+      operationId: userSubPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      requestBody:
+        description: Subscription to be modified
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/users_subscriptionId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated subscription is returned. "
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users_subscriptionId_body'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition failed :  used when a condition has failed during\
+            \ conditional requests, e.g. when using ETags to avoid write conflicts\
+            \ when using PUT"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "422":
+          description: "Unprocessable Entity : used to indicate that the server understands\
+            \ the content type of the request entity and that the syntax of the request\
+            \ entity is correct but that the server is unable to process the contained\
+            \ instructions. This error condition can occur if an JSON request body\
+            \ is syntactically correct but semantically incorrect, for example if\
+            \ the target area for the request is considered too large. This error\
+            \ condition can also occur if the capabilities required by the request\
+            \ are not supported."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+    delete:
+      tags:
+      - location
+      summary: Cancel a subscription
+      description: The DELETE method is used to cancel the existing subscription.
+      operationId: userSubDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: "Subscription Identifier, specifically the \"self\" returned\
+          \ in the subscription request"
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uri
+        x-exportParamName: SubscriptionId
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      x-swagger-router-controller: subscriptions
+  /subscriptions/zones:
+    get:
+      tags:
+      - location
+      summary: Retrieves all active subscriptions to zone notifications
+      description: This operation is used for retrieving all active subscriptions
+        to zone notifications.
+      operationId: zoneSubListGET
+      parameters:
+      - name: subscription_type
+        in: query
+        description: "Query parameter to filter on a specific subscription type. Permitted\
+          \ values: -event -status"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: Subscription_type_3
+      - name: zoneId
+        in: query
+        description: The identity of the zone
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+        x-exportParamName: ZoneId_2
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of links\
+            \ to requestor's subscriptions is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_3'
+    post:
+      tags:
+      - location
+      summary: Creates a subscription to zone notifications
+      description: The POST method is used to create a new subscription to zone notifications.
+      operationId: zoneSubPOST
+      requestBody:
+        description: Subscription to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_zones_body'
+        required: true
+      responses:
+        "201":
+          description: Indicates successful resource creation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscriptions_zones_body'
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "401":
+          description: "Unauthorized :  used when the client did not submit credentials."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden :  operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "406":
+          description: "Not Acceptable : used to indicate that the server cannot provide\
+            \ the any of the content formats supported by the client."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "415":
+          description: "Unsupported Media Type :  used to indicate that the server\
+            \ or the client does not support the content type of the entity body."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "422":
+          description: "Unprocessable Entity : used to indicate that the server understands\
+            \ the content type of the request entity and that the syntax of the request\
+            \ entity is correct but that the server is unable to process the contained\
+            \ instructions. This error condition can occur if an JSON request body\
+            \ is syntactically correct but semantically incorrect, for example if\
+            \ the target area for the request is considered too large. This error\
+            \ condition can also occur if the capabilities required by the request\
+            \ are not supported."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "429":
+          description: "Too Many Requests : used when a rate limiter has triggered."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      callbacks:
+        notification:
+          '{$request.body#/zoneLocationEventSubscription.callbackReference}':
+            post:
+              summary: Callback POST used to send a notification
+              description: "Notification from Location service, content based on subscription\
+                \ type"
+              operationId: zoneNotificationPOST
+              requestBody:
+                description: Subscription notification
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        zoneLocationEventNotification:
+                          $ref: '#/components/schemas/InlineZoneLocationEventNotification'
+                        zoneStatusNotification:
+                          $ref: '#/components/schemas/InlineZoneStatusNotification'
+                      example:
+                      - zoneLocationEventNotification:
+                          notificationType: ZoneLocationEventNotification
+                          timeStamp:
+                            seconds: 1673507343
+                            nanoseconds: 0
+                          address: acr:10.0.0.1
+                          zoneId: zone01
+                          _links:
+                            subscription:
+                              href: http://meAppServer.example.com/location/v3/subscriptions/zone/subscription123
+                required: true
+              responses:
+                "204":
+                  description: No Content
+      x-swagger-router-controller: subscriptions
+  /notifications/mec011/appTermination:
+    post:
+      tags:
+      - location
+      summary: MEC011 Application Termination notification for self termination
+      description: Terminates itself.
+      operationId: mec011AppTerminationPOST
+      requestBody:
+        description: Termination notification details
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppTerminationNotification'
+            example:
+              notificationType: AppTerminationNotification
+              operationAction: TERMINATING
+              maxGracefulTimeout: 10
+              links:
+                subscription:
+                  href: http://mec011Server.example.com/mec_app_support/v1/applications/appId1234/subscriptions/sub123
+                confirmTermination:
+                  href: http://mec011Server.example.com/mec_app_support/v1/confirm_termination
+        required: true
+      responses:
+        "204":
+          description: No Content
+      x-swagger-router-controller: notifications
+components:
+  schemas:
+    AccessPointInfo:
+      required:
+      - accessPointId
+      - connectionType
+      - numberOfUsers
+      - operationStatus
+      - resourceURL
+      type: object
+      properties:
+        accessPointId:
+          type: string
+          description: Identifier of access point.
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: string
+        connectionType:
+          $ref: '#/components/schemas/ConnectionType'
+        interestRealm:
+          type: string
+          description: Interest realm of access point.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: string
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        numberOfUsers:
+          type: integer
+          description: Number of users currently on the access point.
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: integer
+        operationStatus:
+          $ref: '#/components/schemas/OperationStatus'
+        resourceURL:
+          type: string
+          description: Self referring URL
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: anyURI
+        timezone:
+          type: string
+          description: Time zone of access point.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: dateTimeStamp
+      description: A type containing access point information.
+      example:
+        locationInfo:
+          altitude: 5.962134
+          orientationMajorAxis: 4
+          shape: 7
+          confidence: 5
+          latitude:
+          - 9.301444243932576
+          - 9.301444243932576
+          offsetAngle: 2
+          accuracy: 0
+          includedAngle: 2
+          velocity:
+            verticalUncertainty: 4
+            horizontalSpeed: 1
+            bearing: 1
+            uncertainty: 6
+            verticalSpeed: 1
+            velocityType: 7
+          accuracySemiMinor: 1
+          innerRadius: 7
+          accuracyAltitude: 6
+          uncertaintyRadius: 1
+          longitude:
+          - 3.616076749251911
+          - 3.616076749251911
+        operationStatus: Serviceable
+        resourceURL: resourceURL
+        numberOfUsers: 0
+        timezone: timezone
+        accessPointId: accessPointId
+        interestRealm: interestRealm
+        connectionType: LTE
+    AccessPointList:
+      required:
+      - resourceURL
+      - zoneId
+      type: object
+      properties:
+        accessPoint:
+          type: array
+          description: Collection of the access point information list.
+          items:
+            $ref: '#/components/schemas/AccessPointInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: AccessPointInfo
+        resourceURL:
+          type: string
+          description: Self referring URL
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: anyURI
+        zoneId:
+          type: string
+          description: Identifier of zone
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: string
+      description: A type containing list of access points.
+      example:
+        resourceURL: resourceURL
+        zoneId: zoneId
+        accessPoint:
+        - locationInfo:
+            altitude: 5.962134
+            orientationMajorAxis: 4
+            shape: 7
+            confidence: 5
+            latitude:
+            - 9.301444243932576
+            - 9.301444243932576
+            offsetAngle: 2
+            accuracy: 0
+            includedAngle: 2
+            velocity:
+              verticalUncertainty: 4
+              horizontalSpeed: 1
+              bearing: 1
+              uncertainty: 6
+              verticalSpeed: 1
+              velocityType: 7
+            accuracySemiMinor: 1
+            innerRadius: 7
+            accuracyAltitude: 6
+            uncertaintyRadius: 1
+            longitude:
+            - 3.616076749251911
+            - 3.616076749251911
+          operationStatus: Serviceable
+          resourceURL: resourceURL
+          numberOfUsers: 0
+          timezone: timezone
+          accessPointId: accessPointId
+          interestRealm: interestRealm
+          connectionType: LTE
+        - locationInfo:
+            altitude: 5.962134
+            orientationMajorAxis: 4
+            shape: 7
+            confidence: 5
+            latitude:
+            - 9.301444243932576
+            - 9.301444243932576
+            offsetAngle: 2
+            accuracy: 0
+            includedAngle: 2
+            velocity:
+              verticalUncertainty: 4
+              horizontalSpeed: 1
+              bearing: 1
+              uncertainty: 6
+              verticalSpeed: 1
+              velocityType: 7
+            accuracySemiMinor: 1
+            innerRadius: 7
+            accuracyAltitude: 6
+            uncertaintyRadius: 1
+            longitude:
+            - 3.616076749251911
+            - 3.616076749251911
+          operationStatus: Serviceable
+          resourceURL: resourceURL
+          numberOfUsers: 0
+          timezone: timezone
+          accessPointId: accessPointId
+          interestRealm: interestRealm
+          connectionType: LTE
+    UserLocationPeriodicSubscription:
+      required:
+      - address
+      - periodicEventInfo
+      - subscriptionType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links'
+        address:
+          type: string
+          description: "Address of user (e.g. ‘sip’ URI, ‘tel’ URI, ‘acr’ URI) to\
+            \ monitor."
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note 1.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        clientCorrelator:
+          type: string
+          description: A correlator that the client can use to tag this particular
+            resource representation during a request to create a resource on the server.
+            See note 2.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        periodicEventInfo:
+          $ref: '#/components/schemas/PeriodicEventInfo'
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the service consumer to request a test notification\
+            \ via HTTP on the callbackReference URI, as specified in ETSI GS MEC 009\
+            \ [4], clause 6.12a."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "UserLocationPeriodicSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      x-etsi-notes: "NOTE 1:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to location server to select an alternative and return only that alternative\
+        \ in the response, as specified in ETSI GS MEC 009 [4], clause 6.12a.\nNOTE\
+        \ 2:\tThis allows the client to recover from communication failures during\
+        \ resource creation and therefore avoids duplicate subscription creation in\
+        \ such situations. In case the element is present, the server shall not alter\
+        \ its value, and shall provide it as part of the representation of this resource.\
+        \ In case the element is not present, the server shall not generate it.\n\
+        NOTE 3:\tAs specified in [17], clause 6.1.6.2.24."
+      x-etsi-ref: 6.3.5
+    ZoneStatusSubscription:
+      required:
+      - subscriptionType
+      - zoneId
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note 1.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        clientCorrelator:
+          type: string
+          description: A correlator that the client can use to tag this particular
+            resource representation during a request to create a resource on the server.
+            See note 2.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        lowerNumberOfUsersAPThreshold:
+          type: integer
+          description: Threshold number of users in an access point which if crossed
+            downward shall cause a notification
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        lowerNumberOfUsersZoneThreshold:
+          type: integer
+          description: Threshold number of users in a zone which if crossed downward
+            shall cause a notification
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        operationStatus:
+          minItems: 0
+          type: array
+          description: List of operation status values to generate notifications for
+            (these apply to all access points within a zone). See note 3.
+          items:
+            $ref: '#/components/schemas/OperationStatus'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: OperationStatus
+        reportingCtrl:
+          $ref: '#/components/schemas/ReportingCtrl'
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the service consumer to request a test notification\
+            \ via HTTP on the callbackReference URI, as specified in ETSI GS\_MEC\
+            \ 009 [4], clause 6.12a."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "ZoneStatusSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        upperNumberOfUsersAPThreshold:
+          type: integer
+          description: Threshold number of users in an access point which if crossed
+            upward shall cause a notification.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        upperNumberOfUsersZoneThreshold:
+          type: integer
+          description: Threshold number of users in a zone which if crossed upward
+            shall cause a notification.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+        zoneId:
+          type: string
+          description: Identifier of zone (e.g. zone001) to monitor.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      x-etsi-notes: "NOTE 1:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to location server to select an alternative and return only that alternative\
+        \ in the response, as specified in ETSI GS MEC 009 [4], clause 6.12a.\nNOTE\
+        \ 2:\tThis allows the client to recover from communication failures during\
+        \ resource creation and therefore avoids duplicate subscription creation in\
+        \ such situations. In case the element is present, the server shall not alter\
+        \ its value, and shall provide it as part of the representation of this resource.\
+        \ In case the element is not present, the server shall not generate it.\n\
+        NOTE 3:\tAs specified in [5], clause 5.2.3.2."
+      x-etsi-ref: 6.3.7
+    ZoneLocationEventSubscription:
+      required:
+      - subscriptionType
+      - zoneId
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links'
+        addressList:
+          minItems: 0
+          type: array
+          description: "List of the users to be monitored. If not present, all the\
+            \ users need to be monitored."
+          items:
+            type: string
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Array(Uri)
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note 1.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        clientCorrelator:
+          type: string
+          description: A correlator that the client can use to tag this particular
+            resource representation during a request to create a resource on the server.
+            See note 2.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        locationEventCriteria:
+          minItems: 0
+          type: array
+          description: 'List of user event values to generate notifications for. '
+          items:
+            $ref: '#/components/schemas/LocationEventType'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Array(LocationEventType)
+        reportingCtrl:
+          $ref: '#/components/schemas/ReportingCtrl'
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the service consumer to request a test notification\
+            \ via HTTP on the callbackReference URI, as specified in ETSI GS\_MEC\
+            \ 009 [4], clause 6.12a."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "ZoneLocationEventSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+        zoneId:
+          type: string
+          description: Identifier of zone (e.g. zone001) to monitor.
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      x-etsi-notes: "NOTE 1:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to location server to select an alternative and return only that alternative\
+        \ in the response, as specified in ETSI GS MEC 009 [4], clause 6.12a.\nNOTE\
+        \ 2:\tThis allows the client to recover from communication failures during\
+        \ resource creation and therefore avoids duplicate subscription creation in\
+        \ such situations. In case the element is present, the server shall not alter\
+        \ its value, and shall provide it as part of the representation of this resource.\
+        \ In case the element is not present, the server shall not generate it."
+      x-etsi-ref: 6.3.6
+    UserLocationEventSubscription:
+      required:
+      - address
+      - subscriptionType
+      type: object
+      properties:
+        address:
+          type: string
+          description: "Address of user (e.g. ‘sip’ URI, ‘tel’ URI, ‘acr’ URI) to\
+            \ monitor."
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note 1.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        clientCorrelator:
+          type: string
+          description: A correlator that the client can use to tag this particular
+            resource representation during a request to create a resource on the server.
+            See note 2.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        locationEventCriteria:
+          minItems: 0
+          type: array
+          description: 'List of user event values to generate notifications for (these
+            apply to address specified). '
+          items:
+            $ref: '#/components/schemas/LocationEventType'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Array(LocationEventType)
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the service consumer to request a test notification\
+            \ via HTTP on the callbackReference URI, as specified in ETSI GS\_MEC\
+            \ 009 [4], clause 6.12a."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "UserLocationEventSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        userEventPara:
+          $ref: '#/components/schemas/UserEventPara'
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      x-etsi-notes: "NOTE 1:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to location server to select an alternative and return only that alternative\
+        \ in the response, as specified in ETSI GS MEC 009 [4], clause 6.12a.\nNOTE\
+        \ 2:\tThis allows the client to recover from communication failures during\
+        \ resource creation and therefore avoids duplicate subscription creation in\
+        \ such situations. In case the element is present, the server shall not alter\
+        \ its value, and shall provide it as part of the representation of this resource.\
+        \ In case the element is not present, the server shall not generate it."
+      x-etsi-ref: 6.3.4
+    UserEventPara:
+      type: object
+      properties:
+        accessPointList:
+          minItems: 0
+          type: array
+          description: One or more access points forming a monitoring area that could
+            be any shape. See note 1.
+          items:
+            type: string
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Array(String)
+        occurrenceInfo:
+          $ref: '#/components/schemas/OccurrenceInfo'
+        reportingLocationReq:
+          type: boolean
+          description: This IE shall be set to true if a location estimate is required
+            for each event report.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: boolean
+        zoneId:
+          type: string
+          description: Identifier of zone (e.g. zone001) to monitor. See note 1.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+      x-etsi-notes: "NOTE 1:\tOnly one of accessPointList and zoneId may be present.\n\
+        NOTE 2:\tAs specified in [17], clause 6.1.6.3.16."
+      x-etsi-ref: 6.5.5
+    OccurrenceInfo:
+      type: string
+      description: The enumeration OccurrenceInfo indicates whether event reporting
+        is one time.
+      enum:
+      - ONE_TIME_EVENT
+      - MULTIPLE_TIME_EVENT
+    WebsockNotifConfig:
+      type: object
+      properties:
+        requestWebsocketUri:
+          type: boolean
+          description: Set to true by the service consumer to indicate that Websocket
+            delivery is requested.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        websocketUri:
+          type: string
+          description: Set by location server to indicate to the service consumer
+            the Websocket URI to be used for delivering notifications.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+      example:
+        requestWebsocketUri: true
+        websocketUri: http://example.com/aeiou
+      x-etsi-ref: 6.5.4
+    UserAreaNotification:
+      required:
+      - _links
+      - address
+      - notificationType
+      - userLocationEvent
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/UserAreaNotification__links'
+        address:
+          type: string
+          description: "Address of user (e.g. ‘sip’ URI, ‘tel’ URI, ‘acr’ URI)."
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+        civicInfo:
+          $ref: '#/components/schemas/CivicAddress'
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        notificationType:
+          type: string
+          description: Shall be set to "UserAreaNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        relativeLocationInfo:
+          $ref: '#/components/schemas/RelativeLocationInfo'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        userLocationEvent:
+          $ref: '#/components/schemas/LocationEventType'
+      x-etsi-notes: "NOTE 1:\tAs specified in [17], clause 6.1.6.2.14.\nNOTE 2:\t\
+        At least one of these attributes shall be present only when reportingLocationReq\
+        \ is set to TRUE in the UserAreaSubscription."
+      x-etsi-ref: 6.4.8
+    ConnectionType:
+      type: string
+      description: This enumeration represents the connection type of an access point
+      enum:
+      - LTE
+      - Wifi
+      - Wimax
+      - 5G NR
+      - UNKNOWN
+    DistanceCriteria:
+      type: string
+      description: "An enumeration, defining the distance criteria between devices."
+      enum:
+      - AllWithinDistance
+      - AnyWithinDistance
+      - AllBeyondDistance
+      - AnyBeyondDistance
+    _links:
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+      description: Hyperlink related to the resource. This shall be only included
+        in the HTTP responses and in HTTP PUT requests.
+      example:
+        self:
+          href: http://example.com/aeiou
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    UserAreaSubscription:
+      required:
+      - addressList
+      - areaDefine
+      - subscriptionType
+      - trackingAccuracy
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links'
+        addressList:
+          minItems: 1
+          type: array
+          description: 'List of the users to be monitored. '
+          items:
+            type: string
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: Array(Uri)
+        areaDefine:
+          $ref: '#/components/schemas/AreaInfo'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note 1.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        clientCorrelator:
+          type: string
+          description: A correlator that the client can use to tag this particular
+            resource representation during a request to create a resource on the server.
+            See note 2.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        locationEventCriteria:
+          minItems: 0
+          type: array
+          description: 'List of user event values to generate notifications for (these
+            apply to address specified). '
+          items:
+            $ref: '#/components/schemas/LocationEventType'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Array(LocationEventType)
+        reportingCtrl:
+          $ref: '#/components/schemas/ReportingCtrl'
+        reportingLocationReq:
+          type: boolean
+          description: This IE shall be set to true if a location estimate is required
+            for each event report.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: boolean
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the service consumer to request a test notification\
+            \ via HTTP on the callbackReference URI, as specified in ETSI GS\_MEC\
+            \ 009 [4], clause 6.12a."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "UserAreaSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        trackingAccuracy:
+          type: number
+          description: Number of meters of acceptable error.
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      x-etsi-notes: "NOTE 1:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to location server to select an alternative and return only that alternative\
+        \ in the response, as specified in ETSI GS MEC 009 [4], clause 6.12a.\nNOTE\
+        \ 2:\tThis allows the client to recover from communication failures during\
+        \ resource creation and therefore avoids duplicate subscription creation in\
+        \ such situations. In case the element is present, the server shall not alter\
+        \ its value, and shall provide it as part of the representation of this resource.\
+        \ In case the element is not present, the server shall not generate it."
+      x-etsi-ref: 6.3.8
+    CivicAddress:
+      required:
+      - country
+      type: object
+      properties:
+        country:
+          type: string
+          description: "The two-letter ISO 3166 country code in capital ASCII letters,\
+            \ e.g., DE or US"
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: String
+        A1:
+          type: string
+          description: "National subdivisions (state, canton, region, province, prefecture)"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        A2:
+          type: string
+          description: "County, parish, gun (JP), district (IN)"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        A3:
+          type: string
+          description: "City, township, shi (JP)"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        A4:
+          type: string
+          description: "City division, borough, city district, ward, chou (JP)"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        A5:
+          type: string
+          description: "Neighbourhood, block"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        A6:
+          type: string
+          description: Group of streets below the neighbourhood level
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        PRD:
+          type: string
+          description: Leading street direction
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        POD:
+          type: string
+          description: Trailing street suffix
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        STS:
+          type: string
+          description: Street suffix or type
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        HNO:
+          type: string
+          description: House number
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        HNS:
+          type: string
+          description: House number suffix
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        LMK:
+          type: string
+          description: Landmark or vanity address
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        LOC:
+          type: string
+          description: Additional location information
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        NAM:
+          type: string
+          description: Name (residence and office occupant)
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        PC:
+          type: string
+          description: Postal/zip code
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        BLD:
+          type: string
+          description: Building (structure)
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        UNIT:
+          type: string
+          description: "Unit (apartment, suite)"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        FLR:
+          type: string
+          description: Floor
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        ROOM:
+          type: string
+          description: Room
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        PLC:
+          type: string
+          description: Place-type
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        PCN:
+          type: string
+          description: Postal community name
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        POBOX:
+          type: string
+          description: Post office box (P.O. box)
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        ADDCODE:
+          type: string
+          description: Additional code
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        SEAT:
+          type: string
+          description: "Seat (desk, cubicle, workstation)"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        RD:
+          type: string
+          description: Primary road or street
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        RDSEC:
+          type: string
+          description: Road clause
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        RDBR:
+          type: string
+          description: Road branch
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        RDSUBBR:
+          type: string
+          description: Road sub-branch
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        PRM:
+          type: string
+          description: Road pre-modifier
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        POM:
+          type: string
+          description: Road post-modifier
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        usageRules:
+          type: string
+          description: "When present, this IE shall carry the value of \"usagerules\"\
+            \ Element of the PIDL-LO XML document, with UTF-8 encoding."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        method:
+          type: string
+          description: "When present, this IE shall contain the method token, carried\
+            \ by the \"method\" Element of the PIDLLO XML document."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        providedBy:
+          type: string
+          description: "When present, this IE shall carry the value of \"provided-by\"\
+            \ Element of the PIDL-LO XML document, with UTF-8 encoding."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+      description: Indicates a Civic address
+      example:
+        POBOX: POBOX
+        usageRules: usageRules
+        country: country
+        PRD: PRD
+        PLC: PLC
+        HNO: HNO
+        PRM: PRM
+        HNS: HNS
+        FLR: FLR
+        A1: A1
+        A2: A2
+        A3: A3
+        A4: A4
+        STS: STS
+        A5: A5
+        A6: A6
+        RDSEC: RDSEC
+        providedBy: providedBy
+        LOC: LOC
+        UNIT: UNIT
+        SEAT: SEAT
+        POD: POD
+        RDBR: RDBR
+        method: method
+        LMK: LMK
+        POM: POM
+        ADDCODE: ADDCODE
+        RD: RD
+        PC: PC
+        PCN: PCN
+        NAM: NAM
+        BLD: BLD
+        ROOM: ROOM
+        RDSUBBR: RDSUBBR
+    LocationInfo:
+      required:
+      - latitude
+      - longitude
+      - shape
+      type: object
+      properties:
+        accuracy:
+          type: integer
+          description: "Horizontal accuracy/(semi-major) uncertainty of location provided\
+            \ in meters, as defined in [14]. Present only if \"shape\" equals 4, 5\
+            \ or 6."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        accuracyAltitude:
+          type: integer
+          description: "Altitude accuracy/uncertainty of location provided in meters,\
+            \ as defined in [14]. Present only if \"shape\" equals 3 or 4."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        accuracySemiMinor:
+          type: integer
+          description: "Horizontal accuracy/(semi-major) uncertainty of location provided\
+            \ in meters, as defined in [14]. Present only if \"shape\" equals 4, 5\
+            \ or 6."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        altitude:
+          type: number
+          description: Location altitude relative to the WGS84 ellipsoid surface.
+          format: float
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Float
+        confidence:
+          type: integer
+          description: "Confidence by which the position of a target entity is known\
+            \ to be within the shape description, expressed as a percentage and defined\
+            \ in [14]. Present only if \"shape\" equals 1, 4 or 6."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        includedAngle:
+          type: integer
+          description: Present only if "shape" equals 6.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        innerRadius:
+          type: integer
+          description: Present only if "shape" equals 6.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        latitude:
+          minItems: 1
+          type: array
+          description: "Location latitude, expressed in the range -90° to +90°. Cardinality\
+            \ greater than one only if \"shape\" equals 7."
+          format: float
+          items:
+            type: number
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: Float
+        longitude:
+          minItems: 1
+          type: array
+          description: "Location longitude, expressed in the range -180° to +180°\
+            . Cardinality greater than one only if \"shape\" equals 7."
+          format: float
+          items:
+            type: number
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: Float
+        offsetAngle:
+          type: integer
+          description: Present only if "shape" equals 6.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        orientationMajorAxis:
+          type: integer
+          description: "Angle of orientation of the major axis, expressed in the range\
+            \ 0° to 180°, as defined in [14]. Present only if \"shape\" equals 4 or\
+            \ 6."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        shape:
+          type: integer
+          description: "Shape information, as detailed in [14], associated with the\
+            \ reported location coordinate: 1 = Ellipsoid_Arc 2 = ellipsoid_Point\
+            \ 3 = ellipsoid_Point_Altitude 4 = ellipsoid_Point_Altitude_Uncert_Ellipsoid\
+            \ 5 = ellipsoid_Point_Uncert_Circle 6 = ellipsoid_Point_Uncert_Ellipse\
+            \ 7 = polygon"
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum_inlined
+        uncertaintyRadius:
+          type: integer
+          description: Present only if "shape" equals 6.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        velocity:
+          $ref: '#/components/schemas/Velocity'
+      example:
+        altitude: 5.962134
+        orientationMajorAxis: 4
+        shape: 7
+        confidence: 5
+        latitude:
+        - 9.301444243932576
+        - 9.301444243932576
+        offsetAngle: 2
+        accuracy: 0
+        includedAngle: 2
+        velocity:
+          verticalUncertainty: 4
+          horizontalSpeed: 1
+          bearing: 1
+          uncertainty: 6
+          verticalSpeed: 1
+          velocityType: 7
+        accuracySemiMinor: 1
+        innerRadius: 7
+        accuracyAltitude: 6
+        uncertaintyRadius: 1
+        longitude:
+        - 3.616076749251911
+        - 3.616076749251911
+      x-etsi-ref: 6.5.3
+    Velocity:
+      required:
+      - bearing
+      - horizontalSpeed
+      - velocityType
+      type: object
+      properties:
+        bearing:
+          type: integer
+          description: "Bearing, expressed in the range 0° to 360°, as defined in\
+            \ [14]."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: UnsignedInt
+        horizontalSpeed:
+          type: integer
+          description: "Horizontal speed, expressed in km/h and defined in [14]."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: UnsignedInt
+        uncertainty:
+          type: integer
+          description: "Horizontal uncertainty, as defined in [14]. Present only if\
+            \ \"velocityType\" equals 3 or 4."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        velocityType:
+          type: integer
+          description: "Velocity information, as detailed in [14], associated with\
+            \ the reported location coordinate: 1 = Horizontal 2 = Horizontal_Vertical\
+            \ 3 = Horizontal_Uncert 4 = Horizontal_Vertical_Uncert"
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum_inlined
+        verticalSpeed:
+          type: integer
+          description: "Vertical speed, expressed in km/h and defined in [14]. Present\
+            \ only if \"velocityType\" equals 2 or 4."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Int
+        verticalUncertainty:
+          type: integer
+          description: "Vertical uncertainty, as defined in [14]. Present only if\
+            \ \"velocityType\" equals 4."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+      description: "Structure with attributes relating to the target entity’s velocity,\
+        \ as defined in [14]."
+      example:
+        verticalUncertainty: 4
+        horizontalSpeed: 1
+        bearing: 1
+        uncertainty: 6
+        verticalSpeed: 1
+        velocityType: 7
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure (inlined)
+    UserDistanceNotification:
+      required:
+      - _links
+      - distanceEvent
+      - monitoredUsers
+      - notificationType
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/UserAreaNotification__links'
+        distanceEvent:
+          $ref: '#/components/schemas/DistanceCriteria'
+        monitoredUsers:
+          $ref: '#/components/schemas/UserList'
+        notificationType:
+          type: string
+          description: Shall be set to "UserDistanceNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      x-etsi-notes: "NOTE:\tAs specified in [6], clause 5.2.3.2."
+      x-etsi-ref: 6.4.9
+    UserDistanceSubscription:
+      required:
+      - checkImmediate
+      - criteria
+      - distance
+      - monitoredAddress
+      - subscriptionType
+      - trackingAccuracy
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/_links'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP. See note 1.
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        checkImmediate:
+          type: boolean
+          description: Check location immediately after establishing notification.
+          x-etsi-mec-cardinality': "1"
+          x-etsi-mec-origin-type': Bool
+        clientCorrelator:
+          type: string
+          description: A correlator that the client can use to tag this particular
+            resource representation during a request to create a resource on the server.
+            See note 2.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        criteria:
+          $ref: '#/components/schemas/DistanceCriteria'
+        distance:
+          type: number
+          description: Distance between users that shall be monitored. The unit is
+            meter.
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+        monitoredAddress:
+          minItems: 1
+          type: array
+          description: "Contains addresses of users to monitor (e.g., ‘sip’ URI, ‘\
+            tel’ URI, ‘acr’ URI). Reference to a group could be provided here if supported\
+            \ by implementation.\nIf the ReferenceAddress is specified, then the distance\
+            \ between each monitored user and reference user(s) will be monitored.\n\
+            If the ReferenceAddress is not present, then the distance between each\
+            \ pair of the monitored users will be monitored. Note that in that case\
+            \ there shall be at least two addresses specified here."
+          items:
+            type: string
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: Array(Uri)
+        referenceAddress:
+          minItems: 0
+          type: array
+          description: "If specified, indicates address of each user that will be\
+            \ used as reference users from which the distances towards monitored users\
+            \ indicated in the Addresses will be monitored (e.g., ‘sip’ URI, ‘tel’\
+            \ URI, ‘acr’ URI). Reference to a group could be provided here if supported\
+            \ by implementation."
+          items:
+            type: string
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: Array(Uri)
+        reportingCtrl:
+          $ref: '#/components/schemas/ReportingCtrl'
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the service consumer to request a test notification\
+            \ via HTTP on the callbackReference URI, as specified in ETSI GS\_MEC\
+            \ 009 [4], clause 6.12a."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        subscriptionType:
+          type: string
+          description: Shall be set to "UserDistanceSubscription".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        trackingAccuracy:
+          type: number
+          description: Number of meters of acceptable error in tracking distance.
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+      example:
+        trackingAccuracy: 5.637377
+        distance: 0.8008282
+        _links:
+          self:
+            href: http://example.com/aeiou
+        callbackReference: http://example.com/aeiou
+        criteria: AllWithinDistance
+        websockNotifConfig:
+          requestWebsocketUri: true
+          websocketUri: http://example.com/aeiou
+        requestTestNotification: true
+        monitoredAddress:
+        - monitoredAddress
+        - monitoredAddress
+        referenceAddress:
+        - referenceAddress
+        - referenceAddress
+        subscriptionType: subscriptionType
+        expiryDeadline:
+          seconds: 5
+          nanoSeconds: 1
+        clientCorrelator: clientCorrelator
+        checkImmediate: true
+        reportingCtrl:
+          maximumCount: 6
+          minimumInterval: 5
+          maximumFrequency: 1
+      x-etsi-notes: "NOTE 1:\tAt least one of callbackReference and websockNotifConfig\
+        \ shall be provided by the service consumer. If both are provided, it is up\
+        \ to location server to select an alternative and return only that alternative\
+        \ in the response, as specified in ETSI GS MEC 009 [4], clause 6.12a.\nNOTE\
+        \ 2:\tThis allows the client to recover from communication failures during\
+        \ resource creation and therefore avoids duplicate subscription creation in\
+        \ such situations. In case the element is present, the server shall not alter\
+        \ its value, and shall provide it as part of the representation of this resource.\
+        \ In case the element is not present, the server shall not generate it.\n\
+        NOTE 3:\tAs specified in [6], clause 5.2.3.2."
+      x-etsi-ref: 6.3.9
+    NotificationSubscriptionList:
+      required:
+      - resourceURL
+      type: object
+      properties:
+        resourceURL:
+          $ref: '#/components/schemas/LinkType'
+        subscription:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+      description: This type contains a list of subscriptions.
+      example:
+        resourceURL:
+          href: http://example.com/aeiou
+        subscription:
+        - subscriptionType: subscriptionType
+          href: http://example.com/aeiou
+        - subscriptionType: subscriptionType
+          href: http://example.com/aeiou
+      x-etsi-ref: 6.3.3
+    OperationStatus:
+      type: string
+      enum:
+      - Serviceable
+      - Unserviceable
+      - Unknown
+    ProblemDetails:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: URI
+        status:
+          type: integer
+          description: The HTTP status code for this occurrence of the problem
+          format: uint32
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uint32
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type"
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        type:
+          type: string
+          description: A URI reference according to IETF RFC 3986 that identifies
+            the problem type
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: URI
+    RetrievalStatus:
+      type: string
+      enum:
+      - Retrieved
+      - NotRetrieved
+      - Error
+    ServiceError:
+      required:
+      - messageId
+      - text
+      type: object
+      properties:
+        messageId:
+          type: string
+          description: "Message identifier, either with prefix SVC or with prefix\
+            \ POL"
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: string
+        text:
+          type: string
+          description: "Message text, with replacement variables marked with %n, where\
+            \ n is an index into the list of <variables> elements, starting at 1"
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: string
+        variables:
+          type: array
+          description: Variables to substitute into text string
+          items:
+            type: string
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: string
+      description: used to indicate a notification termination or cancellation.
+    TerminalDistance:
+      required:
+      - distance
+      type: object
+      properties:
+        accuracy:
+          type: integer
+          description: Accuracy of the provided distance in meters
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: integer
+        distance:
+          type: integer
+          description: Distance from terminal to a location or between two terminals
+            specified in meters
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: integer
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+      description: "A type containing information about the distance from a terminal\
+        \ to a location or between two terminals, in addition the accuracy and a timeStamp\
+        \ of the information are provided."
+      example:
+        distance: 6
+        accuracy: 0
+        timeStamp:
+          seconds: 5
+          nanoSeconds: 1
+    TerminalLocation:
+      required:
+      - address
+      - locationRetrievalStatus
+      type: object
+      properties:
+        address:
+          type: string
+          description: "Address of the terminal to which the location information\
+            \ applies (e.g., 'sip' URI, 'tel' URI, 'acr' URI)."
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: anyURI
+        currentLocation:
+          $ref: '#/components/schemas/LocationInfo'
+        errorInformation:
+          $ref: '#/components/schemas/ServiceError'
+        locationRetrievalStatus:
+          $ref: '#/components/schemas/RetrievalStatus'
+      description: "A type containing device address, retrieval status and location\
+        \ information."
+    LocationEventType:
+      type: string
+      description: This type represents specified event types for UE location report.
+      enum:
+      - ENTERING_AREA_EVENT
+      - LEAVING_AREA_EVENT
+    ReportingCtrl:
+      type: object
+      properties:
+        maximumCount:
+          type: integer
+          description: "Maximum number of notifications. For no maximum, either do\
+            \ not include this element or specify a value of zero. Default value is\
+            \ 0."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        maximumFrequency:
+          type: integer
+          description: Maximum frequency (in seconds) of notifications per subscription.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        minimumInterval:
+          type: integer
+          description: Minimum interval between reports in case frequently reporting.
+            Unit is second.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+      example:
+        maximumCount: 6
+        minimumInterval: 5
+        maximumFrequency: 1
+      x-etsi-ref: 6.5.6
+    PeriodicEventInfo:
+      required:
+      - reportingAmount
+      - reportingInterval
+      type: object
+      properties:
+        reportingAmount:
+          type: number
+          description: Number of event reports
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: ReportingAmount
+        reportingInterval:
+          type: number
+          description: Interval of event reports
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: reportingInterval
+      description: "NOTE: reportingAmount x reportingInterval shall not exceed 8639999\
+        \ (99 days, 23 hours, 59 minutes and 59 seconds) for compatibility with OMA\
+        \ MLP and RLP."
+    RelativeLocationInfo:
+      required:
+      - X
+      - "Y"
+      - mapInfo
+      type: object
+      properties:
+        X:
+          type: number
+          description: Indicates the value (in the unit of meters) on x-axis of the
+            relative location in the Cartesian system. Positive value represents easting
+            from origin.
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        "Y":
+          type: number
+          description: Indicates the value (in the unit of meters) on y-axis of the
+            relative location in the Cartesian system. Positive value represents northing
+            from origin.
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        Z:
+          type: number
+          description: Indicates the value (in the unit of meters) on z-axis of the
+            relative location in the Cartesian system for a 3DPoint. Positive value
+            represents height above origin.
+          format: float
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Float
+        mapInfo:
+          $ref: '#/components/schemas/MapInfo'
+      example:
+        mapInfo:
+          origin:
+            altitude: 6.6835623
+            latitude: 8.762042
+            longitude: 9.018348
+          mapId: mapId
+          ancillaryMapInfo: {}
+        X: 5.025005
+        "Y": 9.965781
+        Z: 9.36931
+      x-etsi-ref: 6.2.3
+    MapInfo:
+      required:
+      - mapId
+      type: object
+      properties:
+        ancillaryMapInfo:
+          type: object
+          description: Ancillary map information may be used to convert coordinates
+            between different coordinate systems.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Not_specified
+        mapId:
+          type: string
+          description: 'Indicates the ID of the map. '
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        origin:
+          $ref: '#/components/schemas/Origin'
+      example:
+        origin:
+          altitude: 6.6835623
+          latitude: 8.762042
+          longitude: 9.018348
+        mapId: mapId
+        ancillaryMapInfo: {}
+      x-etsi-ref: 6.2.4
+    Origin:
+      required:
+      - latitude
+      - longitude
+      type: object
+      properties:
+        altitude:
+          type: number
+          description: Location altitude relative to the WGS84 ellipsoid surface.
+          format: float
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Float
+        latitude:
+          type: number
+          description: "Location latitude, expressed in the range -90° to +90°."
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        longitude:
+          type: number
+          description: "Location longitude, expressed in the range -180° to +180°."
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+      description: Indicates the location of the map origin in the local Cartesian
+        coordinate system.
+      example:
+        altitude: 6.6835623
+        latitude: 8.762042
+        longitude: 9.018348
+      x-etsi-mec-cardinality: 0..1
+      x-etsi-mec-origin-type: Structure(inlined)
+    NotificationResult:
+      type: string
+      description: This enumeration represents the result of a localization associated
+        with a notification
+      enum:
+      - SUCCESS
+      - ABNORMAL
+    AreaInfo:
+      required:
+      - points
+      - shape
+      type: object
+      properties:
+        points:
+          minItems: 1
+          type: array
+          description: Shall include one point if the shape is CIRCLE. Shall include
+            3-15 points if the shape is POLYGON.
+          items:
+            $ref: '#/components/schemas/Point'
+          x-etsi-mec-cardinality: 1..N
+          x-etsi-mec-origin-type: Array(Point)
+        radius:
+          type: integer
+          description: Shall be present if the shape is CIRCLE.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: UnsignedInt
+        shape:
+          type: integer
+          description: "The shape of the area monitored: 1 = CIRCLE. 2 = POLYGON"
+          enum:
+          - 1
+          - 2
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Enum(inlined)
+      x-etsi-ref: 6.5.7
+    Point:
+      required:
+      - latitude
+      - longitude
+      type: object
+      properties:
+        latitude:
+          type: number
+          description: "Location latitude, expressed in the range -90° to +90°."
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+        longitude:
+          type: number
+          description: "Location longitude, expressed in the range -180° to +180°."
+          format: float
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Float
+      x-etsi-ref: 6.5.8
+    TimeStamp:
+      required:
+      - nanoSeconds
+      - seconds
+      type: object
+      properties:
+        nanoSeconds:
+          type: integer
+          description: "The nanoseconds part of the time. Time is defined as Unix-time\
+            \ since January 1, 1970, 00:00:00 UTC."
+          format: uint32
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uint32
+        seconds:
+          type: integer
+          description: "The seconds part of the time. Time is defined as Unix-time\
+            \ since January 1, 1970, 00:00:00 UTC."
+          format: uint32
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uint32
+      example:
+        seconds: 5
+        nanoSeconds: 1
+      x-etsi-ref: 6.5.2
+    UserInfo:
+      required:
+      - accessPointId
+      - address
+      - resourceURL
+      - timeStamp
+      - zoneId
+      type: object
+      properties:
+        address:
+          type: string
+          description: "Address of user (e.g. 'sip' URI, 'tel' URI, 'acr' URI) currently\
+            \ on the access point, see note 1."
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: AnyURI
+        AccessPointId:
+          type: string
+          description: "The identity of the access point the user is currently on,\
+            \ see note 1."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        zoneId:
+          type: string
+          description: "The identity of the zone the user is currently within, see\
+            \ note 1."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        resourceURL:
+          type: string
+          description: "Self-referring URL, see note 1."
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: AnyURI
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        civicInfo:
+          $ref: '#/components/schemas/CivicAddress'
+        ancillaryInfo:
+          type: string
+          description: Reserved for future use.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        relativeLocationInfo:
+          $ref: '#/components/schemas/RelativeLocationInfo'
+      description: "This type represents the information related to a user attached\
+        \ to an access point associated to the MEC host, such access point is in scope\
+        \ of the Location Service instance."
+      example:
+        locationInfo:
+          altitude: 5.962134
+          orientationMajorAxis: 4
+          shape: 7
+          confidence: 5
+          latitude:
+          - 9.301444243932576
+          - 9.301444243932576
+          offsetAngle: 2
+          accuracy: 0
+          includedAngle: 2
+          velocity:
+            verticalUncertainty: 4
+            horizontalSpeed: 1
+            bearing: 1
+            uncertainty: 6
+            verticalSpeed: 1
+            velocityType: 7
+          accuracySemiMinor: 1
+          innerRadius: 7
+          accuracyAltitude: 6
+          uncertaintyRadius: 1
+          longitude:
+          - 3.616076749251911
+          - 3.616076749251911
+        address: http://example.com/aeiou
+        resourceURL: resourceURL
+        AccessPointId: AccessPointId
+        zoneId: zoneId
+        ancillaryInfo: ancillaryInfo
+        civicInfo:
+          POBOX: POBOX
+          usageRules: usageRules
+          country: country
+          PRD: PRD
+          PLC: PLC
+          HNO: HNO
+          PRM: PRM
+          HNS: HNS
+          FLR: FLR
+          A1: A1
+          A2: A2
+          A3: A3
+          A4: A4
+          STS: STS
+          A5: A5
+          A6: A6
+          RDSEC: RDSEC
+          providedBy: providedBy
+          LOC: LOC
+          UNIT: UNIT
+          SEAT: SEAT
+          POD: POD
+          RDBR: RDBR
+          method: method
+          LMK: LMK
+          POM: POM
+          ADDCODE: ADDCODE
+          RD: RD
+          PC: PC
+          PCN: PCN
+          NAM: NAM
+          BLD: BLD
+          ROOM: ROOM
+          RDSUBBR: RDSUBBR
+        relativeLocationInfo:
+          mapInfo:
+            origin:
+              altitude: 6.6835623
+              latitude: 8.762042
+              longitude: 9.018348
+            mapId: mapId
+            ancillaryMapInfo: {}
+          X: 5.025005
+          "Y": 9.965781
+          Z: 9.36931
+        timeStamp:
+          seconds: 5
+          nanoSeconds: 1
+      x-etsi-notes: "NOTE 1:\tAs specified in [5], clause 5.2.2.7.\nNOTE 2: \tAs specified\
+        \ in [5], clause 5.2.2.5."
+      x-etsi-ref: 6.2.2
+    UserList:
+      required:
+      - resourceURL
+      type: object
+      properties:
+        resourceURL:
+          type: string
+          description: Self referring URL
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: anyURI
+        user:
+          type: array
+          description: Collection of the zone information list.
+          items:
+            $ref: '#/components/schemas/UserInfo'
+          x-etsi-mec-cardinality: 0..N
+          x-etsi-mec-origin-type: UserInfo
+      description: A type containing list of users.
+      example:
+        resourceURL: resourceURL
+        user:
+        - locationInfo:
+            altitude: 5.962134
+            orientationMajorAxis: 4
+            shape: 7
+            confidence: 5
+            latitude:
+            - 9.301444243932576
+            - 9.301444243932576
+            offsetAngle: 2
+            accuracy: 0
+            includedAngle: 2
+            velocity:
+              verticalUncertainty: 4
+              horizontalSpeed: 1
+              bearing: 1
+              uncertainty: 6
+              verticalSpeed: 1
+              velocityType: 7
+            accuracySemiMinor: 1
+            innerRadius: 7
+            accuracyAltitude: 6
+            uncertaintyRadius: 1
+            longitude:
+            - 3.616076749251911
+            - 3.616076749251911
+          address: http://example.com/aeiou
+          resourceURL: resourceURL
+          AccessPointId: AccessPointId
+          zoneId: zoneId
+          ancillaryInfo: ancillaryInfo
+          civicInfo:
+            POBOX: POBOX
+            usageRules: usageRules
+            country: country
+            PRD: PRD
+            PLC: PLC
+            HNO: HNO
+            PRM: PRM
+            HNS: HNS
+            FLR: FLR
+            A1: A1
+            A2: A2
+            A3: A3
+            A4: A4
+            STS: STS
+            A5: A5
+            A6: A6
+            RDSEC: RDSEC
+            providedBy: providedBy
+            LOC: LOC
+            UNIT: UNIT
+            SEAT: SEAT
+            POD: POD
+            RDBR: RDBR
+            method: method
+            LMK: LMK
+            POM: POM
+            ADDCODE: ADDCODE
+            RD: RD
+            PC: PC
+            PCN: PCN
+            NAM: NAM
+            BLD: BLD
+            ROOM: ROOM
+            RDSUBBR: RDSUBBR
+          relativeLocationInfo:
+            mapInfo:
+              origin:
+                altitude: 6.6835623
+                latitude: 8.762042
+                longitude: 9.018348
+              mapId: mapId
+              ancillaryMapInfo: {}
+            X: 5.025005
+            "Y": 9.965781
+            Z: 9.36931
+          timeStamp:
+            seconds: 5
+            nanoSeconds: 1
+        - locationInfo:
+            altitude: 5.962134
+            orientationMajorAxis: 4
+            shape: 7
+            confidence: 5
+            latitude:
+            - 9.301444243932576
+            - 9.301444243932576
+            offsetAngle: 2
+            accuracy: 0
+            includedAngle: 2
+            velocity:
+              verticalUncertainty: 4
+              horizontalSpeed: 1
+              bearing: 1
+              uncertainty: 6
+              verticalSpeed: 1
+              velocityType: 7
+            accuracySemiMinor: 1
+            innerRadius: 7
+            accuracyAltitude: 6
+            uncertaintyRadius: 1
+            longitude:
+            - 3.616076749251911
+            - 3.616076749251911
+          address: http://example.com/aeiou
+          resourceURL: resourceURL
+          AccessPointId: AccessPointId
+          zoneId: zoneId
+          ancillaryInfo: ancillaryInfo
+          civicInfo:
+            POBOX: POBOX
+            usageRules: usageRules
+            country: country
+            PRD: PRD
+            PLC: PLC
+            HNO: HNO
+            PRM: PRM
+            HNS: HNS
+            FLR: FLR
+            A1: A1
+            A2: A2
+            A3: A3
+            A4: A4
+            STS: STS
+            A5: A5
+            A6: A6
+            RDSEC: RDSEC
+            providedBy: providedBy
+            LOC: LOC
+            UNIT: UNIT
+            SEAT: SEAT
+            POD: POD
+            RDBR: RDBR
+            method: method
+            LMK: LMK
+            POM: POM
+            ADDCODE: ADDCODE
+            RD: RD
+            PC: PC
+            PCN: PCN
+            NAM: NAM
+            BLD: BLD
+            ROOM: ROOM
+            RDSUBBR: RDSUBBR
+          relativeLocationInfo:
+            mapInfo:
+              origin:
+                altitude: 6.6835623
+                latitude: 8.762042
+                longitude: 9.018348
+              mapId: mapId
+              ancillaryMapInfo: {}
+            X: 5.025005
+            "Y": 9.965781
+            Z: 9.36931
+          timeStamp:
+            seconds: 5
+            nanoSeconds: 1
+    UserLocationEventNotification:
+      required:
+      - _links
+      - notificationType
+      - userLocationEvent
+      type: object
+      properties:
+        accessPointId:
+          type: string
+          description: "The identity of the access point.\nFor the events of \"ENTERING_AREA_EVENT\"\
+            , it indicates the access point that the user is currently within. \n\
+            For the event of \"LEAVING_AREA_EVENT\", it indicates the access point\
+            \ that the user used to be within.\nSee note 2."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        address:
+          type: string
+          description: "Address of user (e.g. ‘sip’ URI, ‘tel’ URI, ‘acr’ URI)."
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        civicInfo:
+          $ref: '#/components/schemas/CivicAddress'
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        notificationType:
+          type: string
+          description: Shall be set to "UserLocationEventNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        relativeLocationInfo:
+          $ref: '#/components/schemas/RelativeLocationInfo'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        userLocationEvent:
+          $ref: '#/components/schemas/LocationEventType'
+        zoneId:
+          type: string
+          description: "The identity of the zone. \nFor the events of \"ENTERING_AREA_EVENT\"\
+            , it is the zone that the user is currently within. \nFor the event of\
+            \ \"LEAVING_AREA_EVENT\", it is the zone that the user used to be within.\n\
+            See note 2."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        _links:
+          $ref: '#/components/schemas/UserAreaNotification__links'
+      x-etsi-notes: "NOTE 1:\tAs specified in [17], clause 6.1.6.2.14.\nNOTE 2:\t\
+        As specified in [5], clause 5.2.2.7.\nNOTE 3:\tAt least one of these attributes\
+        \ shall be present only when reportingLocationReq is set to TRUE in the UserLocationEventSubscription."
+      x-etsi-ref: 6.4.4
+    UserLocationPeriodicNotification:
+      required:
+      - _links
+      - notificationType
+      - result
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/UserAreaNotification__links'
+        accessPointId:
+          type: string
+          description: "The identity of the access point that the user is currently\
+            \ within. \nSee note 2."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        address:
+          type: string
+          description: "Address of user (e.g. ‘sip’ URI, ‘tel’ URI, ‘acr’ URI)."
+          format: uri
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Uri
+        civicInfo:
+          $ref: '#/components/schemas/CivicAddress'
+        isFinalNotification:
+          type: boolean
+          description: Shall be set to true if it is a final notification.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Boolean
+        locationInfo:
+          $ref: '#/components/schemas/LocationInfo'
+        notificationType:
+          type: string
+          description: Shall be set to "UserLocationPeriodicNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        relativeLocationInfo:
+          $ref: '#/components/schemas/RelativeLocationInfo'
+        result:
+          $ref: '#/components/schemas/NotificationResult'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        zoneId:
+          type: string
+          description: "The identity of the zone that the user is currently within.\
+            \ \nSee note 2."
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+      x-etsi-notes: "NOTE 1:\tAs specified in [17], clause 6.1.6.2.14.\nNOTE 2:\t\
+        As specified in [5], clause 5.2.2.7.\nNOTE 3:\tIf the result is SUCCESS, at\
+        \ least one of locationInfo, civicInfo and relativeLocationInfo shall be present."
+      x-etsi-ref: 6.4.5
+    ZoneInfo:
+      required:
+      - numberOfAccessPoints
+      - numberOfUnserviceableAccessPoints
+      - numberOfUsers
+      - resourceURL
+      - zoneId
+      type: object
+      properties:
+        numberOfAccessPoints:
+          type: integer
+          description: The number of access points within the zone
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: unsignedInt
+        numberOfUnserviceableAccessPoints:
+          type: integer
+          description: Number of inoperable access points within the zone.
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: unsignedInt
+        numberOfUsers:
+          type: integer
+          description: The number of users currently on the access point.
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: unsignedInt
+        resourceURL:
+          type: string
+          description: Self referring URL
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: anyURI
+        zoneId:
+          type: string
+          description: Identifier of zone
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: string
+      description: A type containing zone information.
+      example:
+        resourceURL: resourceURL
+        numberOfUsers: 1
+        zoneId: zoneId
+        numberOfAccessPoints: 0
+        numberOfUnserviceableAccessPoints: 6
+    ZoneList:
+      required:
+      - resourceURL
+      type: object
+      properties:
+        resourceURL:
+          type: string
+          description: Self referring URL
+          x-etsi-mec-cardinality: 1
+          x-etsi-mec-origin-type: anyURI
+        zone:
+          type: array
+          description: Collection of the zone information list.
+          items:
+            $ref: '#/components/schemas/ZoneInfo'
+      description: A type containing a list of zones.
+      example:
+        resourceURL: resourceURL
+        zone:
+        - resourceURL: resourceURL
+          numberOfUsers: 1
+          zoneId: zoneId
+          numberOfAccessPoints: 0
+          numberOfUnserviceableAccessPoints: 6
+        - resourceURL: resourceURL
+          numberOfUsers: 1
+          zoneId: zoneId
+          numberOfAccessPoints: 0
+          numberOfUnserviceableAccessPoints: 6
+    ZoneLocationEventNotification:
+      required:
+      - _links
+      - address
+      - notificationType
+      - userLocationEvent
+      - zoneId
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/UserAreaNotification__links'
+        address:
+          type: string
+          description: "Address of user (e.g. ‘sip’ URI, ‘tel’ URI, ‘acr’ URI)."
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+        notificationType:
+          type: string
+          description: Shall be set to "ZoneLocationEventNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        userLocationEvent:
+          $ref: '#/components/schemas/LocationEventType'
+        zoneId:
+          type: string
+          description: 'The identity of the zone. '
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      x-etsi-ref: 6.4.6
+    ZoneStatusNotification:
+      required:
+      - _links
+      - notificationType
+      - zoneId
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/UserAreaNotification__links'
+        accessPointId:
+          type: string
+          description: Identifier of an access point (e.g. ap01). Shall be included
+            when userNumEvent related with access point or operationStatus is included.
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: String
+        notificationType:
+          type: string
+          description: Shall be set to "ZoneStatusNotification".
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        operationStatus:
+          $ref: '#/components/schemas/OperationStatus'
+        timeStamp:
+          $ref: '#/components/schemas/TimeStamp'
+        userNumEvent:
+          type: integer
+          description: "Shall be present when ZoneStatusSubscription includes upperNumberOfUsersZoneThreshold,\
+            \ lowerNumberOfUsersZoneThreshold, upperNumberOfUsersAPThreshold or lowerNumberOfUsersAPThreshold,\
+            \ and the number of users in a zone or an access point crosses the threshold\
+            \ defined in the subscription: 1 = OVER_ZONE_UPPER_THD. 2 = UNDER_ZONE_LOWER_THD.\
+            \ 3 = OVER_AP_UPPER_THD. 4 = UNDER_AP_LOWER_THD."
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
+          x-etsi-mec-cardinality: 0..1
+          x-etsi-mec-origin-type: Enum(inlined)
+        zoneId:
+          type: string
+          description: 'The identity of the zone. '
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      x-etsi-notes: "NOTE:\tAs specified in [5], clause 5.2.3.2."
+      x-etsi-ref: 6.4.7
+    InlineAccessPointInfo:
+      type: object
+      properties:
+        accessPointInfo:
+          $ref: '#/components/schemas/AccessPointInfo'
+      example:
+        accessPointInfo:
+          locationInfo:
+            altitude: 5.962134
+            orientationMajorAxis: 4
+            shape: 7
+            confidence: 5
+            latitude:
+            - 9.301444243932576
+            - 9.301444243932576
+            offsetAngle: 2
+            accuracy: 0
+            includedAngle: 2
+            velocity:
+              verticalUncertainty: 4
+              horizontalSpeed: 1
+              bearing: 1
+              uncertainty: 6
+              verticalSpeed: 1
+              velocityType: 7
+            accuracySemiMinor: 1
+            innerRadius: 7
+            accuracyAltitude: 6
+            uncertaintyRadius: 1
+            longitude:
+            - 3.616076749251911
+            - 3.616076749251911
+          operationStatus: Serviceable
+          resourceURL: resourceURL
+          numberOfUsers: 0
+          timezone: timezone
+          accessPointId: accessPointId
+          interestRealm: interestRealm
+          connectionType: LTE
+    InlineAccessPointList:
+      type: object
+      properties:
+        accessPointList:
+          $ref: '#/components/schemas/AccessPointList'
+      example:
+        accessPointList:
+          resourceURL: resourceURL
+          zoneId: zoneId
+          accessPoint:
+          - locationInfo:
+              altitude: 5.962134
+              orientationMajorAxis: 4
+              shape: 7
+              confidence: 5
+              latitude:
+              - 9.301444243932576
+              - 9.301444243932576
+              offsetAngle: 2
+              accuracy: 0
+              includedAngle: 2
+              velocity:
+                verticalUncertainty: 4
+                horizontalSpeed: 1
+                bearing: 1
+                uncertainty: 6
+                verticalSpeed: 1
+                velocityType: 7
+              accuracySemiMinor: 1
+              innerRadius: 7
+              accuracyAltitude: 6
+              uncertaintyRadius: 1
+              longitude:
+              - 3.616076749251911
+              - 3.616076749251911
+            operationStatus: Serviceable
+            resourceURL: resourceURL
+            numberOfUsers: 0
+            timezone: timezone
+            accessPointId: accessPointId
+            interestRealm: interestRealm
+            connectionType: LTE
+          - locationInfo:
+              altitude: 5.962134
+              orientationMajorAxis: 4
+              shape: 7
+              confidence: 5
+              latitude:
+              - 9.301444243932576
+              - 9.301444243932576
+              offsetAngle: 2
+              accuracy: 0
+              includedAngle: 2
+              velocity:
+                verticalUncertainty: 4
+                horizontalSpeed: 1
+                bearing: 1
+                uncertainty: 6
+                verticalSpeed: 1
+                velocityType: 7
+              accuracySemiMinor: 1
+              innerRadius: 7
+              accuracyAltitude: 6
+              uncertaintyRadius: 1
+              longitude:
+              - 3.616076749251911
+              - 3.616076749251911
+            operationStatus: Serviceable
+            resourceURL: resourceURL
+            numberOfUsers: 0
+            timezone: timezone
+            accessPointId: accessPointId
+            interestRealm: interestRealm
+            connectionType: LTE
+    InlineTerminalDistance:
+      type: object
+      properties:
+        terminalDistance:
+          $ref: '#/components/schemas/TerminalDistance'
+      example:
+        terminalDistance:
+          distance: 6
+          accuracy: 0
+          timeStamp:
+            seconds: 5
+            nanoSeconds: 1
+    InlineUserList:
+      type: object
+      properties:
+        userList:
+          $ref: '#/components/schemas/UserList'
+      example:
+        userList:
+          resourceURL: resourceURL
+          user:
+          - locationInfo:
+              altitude: 5.962134
+              orientationMajorAxis: 4
+              shape: 7
+              confidence: 5
+              latitude:
+              - 9.301444243932576
+              - 9.301444243932576
+              offsetAngle: 2
+              accuracy: 0
+              includedAngle: 2
+              velocity:
+                verticalUncertainty: 4
+                horizontalSpeed: 1
+                bearing: 1
+                uncertainty: 6
+                verticalSpeed: 1
+                velocityType: 7
+              accuracySemiMinor: 1
+              innerRadius: 7
+              accuracyAltitude: 6
+              uncertaintyRadius: 1
+              longitude:
+              - 3.616076749251911
+              - 3.616076749251911
+            address: http://example.com/aeiou
+            resourceURL: resourceURL
+            AccessPointId: AccessPointId
+            zoneId: zoneId
+            ancillaryInfo: ancillaryInfo
+            civicInfo:
+              POBOX: POBOX
+              usageRules: usageRules
+              country: country
+              PRD: PRD
+              PLC: PLC
+              HNO: HNO
+              PRM: PRM
+              HNS: HNS
+              FLR: FLR
+              A1: A1
+              A2: A2
+              A3: A3
+              A4: A4
+              STS: STS
+              A5: A5
+              A6: A6
+              RDSEC: RDSEC
+              providedBy: providedBy
+              LOC: LOC
+              UNIT: UNIT
+              SEAT: SEAT
+              POD: POD
+              RDBR: RDBR
+              method: method
+              LMK: LMK
+              POM: POM
+              ADDCODE: ADDCODE
+              RD: RD
+              PC: PC
+              PCN: PCN
+              NAM: NAM
+              BLD: BLD
+              ROOM: ROOM
+              RDSUBBR: RDSUBBR
+            relativeLocationInfo:
+              mapInfo:
+                origin:
+                  altitude: 6.6835623
+                  latitude: 8.762042
+                  longitude: 9.018348
+                mapId: mapId
+                ancillaryMapInfo: {}
+              X: 5.025005
+              "Y": 9.965781
+              Z: 9.36931
+            timeStamp:
+              seconds: 5
+              nanoSeconds: 1
+          - locationInfo:
+              altitude: 5.962134
+              orientationMajorAxis: 4
+              shape: 7
+              confidence: 5
+              latitude:
+              - 9.301444243932576
+              - 9.301444243932576
+              offsetAngle: 2
+              accuracy: 0
+              includedAngle: 2
+              velocity:
+                verticalUncertainty: 4
+                horizontalSpeed: 1
+                bearing: 1
+                uncertainty: 6
+                verticalSpeed: 1
+                velocityType: 7
+              accuracySemiMinor: 1
+              innerRadius: 7
+              accuracyAltitude: 6
+              uncertaintyRadius: 1
+              longitude:
+              - 3.616076749251911
+              - 3.616076749251911
+            address: http://example.com/aeiou
+            resourceURL: resourceURL
+            AccessPointId: AccessPointId
+            zoneId: zoneId
+            ancillaryInfo: ancillaryInfo
+            civicInfo:
+              POBOX: POBOX
+              usageRules: usageRules
+              country: country
+              PRD: PRD
+              PLC: PLC
+              HNO: HNO
+              PRM: PRM
+              HNS: HNS
+              FLR: FLR
+              A1: A1
+              A2: A2
+              A3: A3
+              A4: A4
+              STS: STS
+              A5: A5
+              A6: A6
+              RDSEC: RDSEC
+              providedBy: providedBy
+              LOC: LOC
+              UNIT: UNIT
+              SEAT: SEAT
+              POD: POD
+              RDBR: RDBR
+              method: method
+              LMK: LMK
+              POM: POM
+              ADDCODE: ADDCODE
+              RD: RD
+              PC: PC
+              PCN: PCN
+              NAM: NAM
+              BLD: BLD
+              ROOM: ROOM
+              RDSUBBR: RDSUBBR
+            relativeLocationInfo:
+              mapInfo:
+                origin:
+                  altitude: 6.6835623
+                  latitude: 8.762042
+                  longitude: 9.018348
+                mapId: mapId
+                ancillaryMapInfo: {}
+              X: 5.025005
+              "Y": 9.965781
+              Z: 9.36931
+            timeStamp:
+              seconds: 5
+              nanoSeconds: 1
+    InlineZoneInfo:
+      type: object
+      properties:
+        zoneInfo:
+          $ref: '#/components/schemas/ZoneInfo'
+      example:
+        zoneInfo:
+          resourceURL: resourceURL
+          numberOfUsers: 1
+          zoneId: zoneId
+          numberOfAccessPoints: 0
+          numberOfUnserviceableAccessPoints: 6
+    InlineZoneList:
+      type: object
+      properties:
+        zoneList:
+          $ref: '#/components/schemas/ZoneList'
+      example:
+        zoneList:
+          resourceURL: resourceURL
+          zone:
+          - resourceURL: resourceURL
+            numberOfUsers: 1
+            zoneId: zoneId
+            numberOfAccessPoints: 0
+            numberOfUnserviceableAccessPoints: 6
+          - resourceURL: resourceURL
+            numberOfUsers: 1
+            zoneId: zoneId
+            numberOfAccessPoints: 0
+            numberOfUnserviceableAccessPoints: 6
+    InlineUserAreaNotification:
+      type: object
+      properties:
+        userAreaNotification:
+          $ref: '#/components/schemas/UserAreaNotification'
+    InlineUserAreaSubscription:
+      type: object
+      properties:
+        userAreaSubscription:
+          $ref: '#/components/schemas/UserAreaSubscription'
+    InlineUserDistanceSubscription:
+      type: object
+      properties:
+        userDistanceSubscription:
+          $ref: '#/components/schemas/UserDistanceSubscription'
+      example:
+        userDistanceSubscription:
+          trackingAccuracy: 5.637377
+          distance: 0.8008282
+          _links:
+            self:
+              href: http://example.com/aeiou
+          callbackReference: http://example.com/aeiou
+          criteria: AllWithinDistance
+          websockNotifConfig:
+            requestWebsocketUri: true
+            websocketUri: http://example.com/aeiou
+          requestTestNotification: true
+          monitoredAddress:
+          - monitoredAddress
+          - monitoredAddress
+          referenceAddress:
+          - referenceAddress
+          - referenceAddress
+          subscriptionType: subscriptionType
+          expiryDeadline:
+            seconds: 5
+            nanoSeconds: 1
+          clientCorrelator: clientCorrelator
+          checkImmediate: true
+          reportingCtrl:
+            maximumCount: 6
+            minimumInterval: 5
+            maximumFrequency: 1
+    InlineZoneLocationEventSubscription:
+      type: object
+      properties:
+        ZoneLocationEventSubscription:
+          $ref: '#/components/schemas/ZoneLocationEventSubscription'
+    InlineZoneStatusSubscription:
+      type: object
+      properties:
+        zoneStatusSubscription:
+          $ref: '#/components/schemas/ZoneStatusSubscription'
+    InlineUserLocationPeriodicSubscription:
+      type: object
+      properties:
+        userLocationPeriodicSubscription:
+          $ref: '#/components/schemas/UserLocationPeriodicSubscription'
+    InlineUserLocationEventSubscription:
+      type: object
+      properties:
+        userLocationEventSubscription:
+          $ref: '#/components/schemas/UserLocationEventSubscription'
+    InlineNotificationSubscriptionList:
+      required:
+      - notificationSubscriptionList
+      type: object
+      properties:
+        notificationSubscriptionList:
+          $ref: '#/components/schemas/NotificationSubscriptionList'
+      example:
+        notificationSubscriptionList:
+          resourceURL:
+            href: http://example.com/aeiou
+          subscription:
+          - subscriptionType: subscriptionType
+            href: http://example.com/aeiou
+          - subscriptionType: subscriptionType
+            href: http://example.com/aeiou
+    InlineUserDistanceNotification:
+      type: object
+      properties:
+        userDistanceNotification:
+          $ref: '#/components/schemas/UserDistanceNotification'
+    InlineUserLocationPeriodicNotification:
+      type: object
+      properties:
+        userLocationPeriodicNotification:
+          $ref: '#/components/schemas/UserLocationPeriodicNotification'
+    InlineUserLocationEventNotification:
+      type: object
+      properties:
+        userLocationEventNotification:
+          $ref: '#/components/schemas/UserLocationEventNotification'
+    InlineZoneLocationEventNotification:
+      type: object
+      properties:
+        userLocationPeriodicNotification:
+          $ref: '#/components/schemas/ZoneLocationEventNotification'
+    InlineZoneStatusNotification:
+      type: object
+      properties:
+        zoneStatusNotification:
+          $ref: '#/components/schemas/ZoneStatusNotification'
+    InlineProblemDetails:
+      type: object
+      properties:
+        problemDetails:
+          $ref: '#/components/schemas/ProblemDetails'
+    InlineProblemDetailsRequired:
+      required:
+      - problemDetails
+      type: object
+      properties:
+        problemDetails:
+          $ref: '#/components/schemas/ProblemDetails'
+    AppTerminationNotification:
+      required:
+      - _links
+      - maxGracefulTimeout
+      - notificationType
+      - operationAction
+      type: object
+      properties:
+        notificationType:
+          type: string
+          description: Shall be set to AppTerminationNotification.
+        operationAction:
+          $ref: '#/components/schemas/OperationActionType'
+        maxGracefulTimeout:
+          type: integer
+          description: Maximum timeout value in seconds for graceful termination or
+            graceful stop of an application instance.
+          format: uint32
+        _links:
+          $ref: '#/components/schemas/AppTerminationNotification__links'
+      description: This type represents the information that the MEC platform notifies
+        the subscribed application instance about  the corresponding application instance
+        termination/stop.
+    OperationActionType:
+      type: string
+      description: Operation that is being performed on the MEC application instance.
+      enum:
+      - STOPPING
+      - TERMINATING
+    Subscription:
+      minItems: 0
+      required:
+      - href
+      - subscriptionType
+      type: object
+      properties:
+        href:
+          type: string
+          description: The URI referring to the subscription.
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: Uri
+        subscriptionType:
+          type: string
+          description: "Type of the subscription. The string shall be set according\
+            \ to the \"subscriptionType\" attribute of the associated subscription\
+            \ data type defined in clauses\_6.3.4, 6.3.5, 6.3.6, 6.3.7 6.3.8 and 6.3.9:\n\
+            \"UserLocationEventSubscription\"\n\"UserLocationPeriodicSubscription\"\
+            \n\"ZoneLocationEventSubscription\"\n\"ZoneStatusSubscription\"\n\"UserAreaSubscription\"\
+            \n\"UserDistanceSubscription\""
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      example:
+        subscriptionType: subscriptionType
+        href: http://example.com/aeiou
+      x-etsi-mec-cardinality: 0..N
+      x-etsi-mec-origin-type: Structure (inlined)
+    LinkType:
+      required:
+      - href
+      type: object
+      properties:
+        href:
+          type: string
+          description: URI referring to a resource
+          format: uri
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: URI
+      example:
+        href: http://example.com/aeiou
+    inline_response_200:
+      required:
+      - notificationSubscriptionList
+      type: object
+      properties:
+        notificationSubscriptionList:
+          $ref: '#/components/schemas/InlineNotificationSubscriptionList'
+      example:
+      - notificationSubscriptionList:
+          subscription:
+          - href: http://meAppServer.example.com/location/v2/subscriptions/area/subscription123
+            subscriptionType: UserAreaSubscription
+          resourceURL:
+            href: http://meAppServer.example.com/location/v2/subscriptions/area
+    subscriptions_area_body:
+      type: object
+      properties:
+        userAreaSubscription:
+          $ref: '#/components/schemas/InlineUserAreaSubscription'
+      example:
+      - userAreaSubscription:
+          subscriptionType: userAreaSubscription
+          clientCorrelator: "0123"
+          callbackReference: http://my.callback.com/area_notification/some-id
+          _links:
+            self:
+              href: http://meAppServer.example.com/location/v2/subscriptions/area/subscription123
+          areaDefine:
+            shape: 1
+            points:
+            - latitude: -80.86302
+              longitude: 41.277306
+            radius: null
+          addressList:
+          - acr:10.0.0.1
+          - acr:10.0.0.2
+          trackingAccuracy: 10.99
+          expiryDeadline:
+            seconds: 1973507343
+            nanoSeconds": 0
+    inline_response_201:
+      type: object
+      properties:
+        userAreaSubscription:
+          $ref: '#/components/schemas/InlineUserAreaSubscription'
+      example:
+      - userAreaSubscription:
+          subscriptionType: userAreaSubscription
+          clientCorrelator: "0123"
+          callbackReference: http://my.callback.com/area_notification/some-id
+          _links:
+            self:
+              href: http://meAppServer.example.com/location/v2/subscriptions/area/subscription123
+          areaDefine: null
+          shape: 1
+          points:
+          - latitude: -80.86302
+            longitude: 41.277306
+          radius: null
+          addressList:
+          - acr:10.0.0.1
+          - acr:10.0.0.2
+          trackingAccuracy: 10.99
+          expiryDeadline:
+            seconds: 1973507343
+            nanoSeconds": 0
+    inline_response_200_1:
+      required:
+      - userAreaSubscription
+      type: object
+      properties:
+        userAreaNotification:
+          $ref: '#/components/schemas/InlineUserAreaSubscription'
+      example:
+      - userAreaNotification:
+          notificationType: UserAreaNotification
+          address: acr:10.0.0.1
+          userLocationEvent: ENTERING_AREA_EVENT
+          _links:
+            subscription:
+              href: http://meAppServer.example.com/location/v2/subscriptions/area/subscription123
+    area_subscriptionId_body:
+      type: object
+      properties:
+        userAreaNotification:
+          $ref: '#/components/schemas/InlineUserAreaSubscription'
+      example:
+      - userAreaNotification:
+          notificationType: UserAreaNotification
+          address: acr:10.0.0.1
+          userLocationEvent: ENTERING_AREA_EVENT
+          _links:
+            subscription:
+              href: http://meAppServer.example.com/location/v2/subscriptions/area/subscription123
+    subscriptions_users_body:
+      type: object
+      properties:
+        userLocationEventSubscription:
+          $ref: '#/components/schemas/InlineUserLocationEventSubscription'
+        userLocationPeriodicSubscription:
+          $ref: '#/components/schemas/InlineUserLocationPeriodicSubscription'
+      example:
+      - userLocationEventSubscription:
+          subscriptionType: UserLocationEventSubscription
+          callbackReference: http://my.callback.com/user-location-notification/some-id
+          address: acr:10.0.0.1
+          locationEventCriteria:
+          - ENTERING_AREA_EVENT
+    inline_response_201_1:
+      type: object
+      properties:
+        userLocationEventSubscription:
+          $ref: '#/components/schemas/UserLocationEventSubscription'
+        userLocationPeriodicSubscription:
+          $ref: '#/components/schemas/UserLocationPeriodicSubscription'
+      example:
+      - userLocationEventSubscription:
+          subscriptionType: UserLocationEventSubscription
+          callbackReference: http://my.callback.com/user-location-notification/some-id
+          address: acr:10.0.0.1
+          locationEventCriteria:
+          - ENTERING_AREA_EVENT
+    inline_response_200_2:
+      required:
+      - UserLocationEventSubscription
+      type: object
+      properties:
+        userLocationEventSubscription:
+          $ref: '#/components/schemas/UserLocationEventSubscription'
+        userLocationPeriodicSubscription:
+          $ref: '#/components/schemas/UserLocationPeriodicSubscription'
+      example:
+      - userLocationEventSubscription:
+          subscriptionType: UserLocationEventSubscription
+          callbackReference: http://my.callback.com/user-location-notification/some-id
+          address: acr:10.0.0.1
+          locationEventCriteria:
+          - ENTERING_AREA_EVENT
+    users_subscriptionId_body:
+      type: object
+      properties:
+        userLocationEventSubscription:
+          $ref: '#/components/schemas/UserLocationEventSubscription'
+        userLocationPeriodicSubscription:
+          $ref: '#/components/schemas/UserLocationPeriodicSubscription'
+      example:
+      - userLocationEventSubscription:
+          subscriptionType: UserLocationEventSubscription
+          callbackReference: http://my.callback.com/user-location-notification/some-id
+          address: acr:10.0.0.1
+          locationEventCriteria:
+          - ENTERING_AREA_EVENT
+    inline_response_200_3:
+      required:
+      - notificationSubscriptionList
+      type: object
+      properties:
+        notificationSubscriptionList:
+          $ref: '#/components/schemas/InlineNotificationSubscriptionList'
+      example:
+      - notificationSubscriptionList:
+          subscription:
+          - href: http://meAppServer.example.com/location/v2/subscriptions/zones/subscription123
+            subscriptionType: ZoneLocationEventSubscription
+          - href: http://meAppServer.example.com/location/v2/subscriptions/zones/subscription456
+            subscriptionType: ZoneStatusSubscription
+          resourceURL:
+            href: http://meAppServer.example.com/location/v2/subscriptions/zones
+    subscriptions_zones_body:
+      type: object
+      properties:
+        zoneLocationEventSubscription:
+          $ref: '#/components/schemas/InlineZoneLocationEventSubscription'
+        zoneStatusSubscription:
+          $ref: '#/components/schemas/InlineZoneStatusSubscription'
+      example:
+      - zoneLocationEventSubscription:
+          subscriptionType: ZoneLocationEventSubscription
+          callbackReference:
+            notifyURL: http://my.callback.com/location_notifications/some-id
+          zoneId: zone01
+          locationEventCriteria:
+          - ENTERING_AREA_EVENT
+          expiryDeadline:
+            seconds: 1977836800
+            nanoseconds: 0
+    UserAreaNotification__links:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/LinkType'
+    AppTerminationNotification__links:
+      required:
+      - subscription
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/LinkType'
+        confirmTermination:
+          $ref: '#/components/schemas/LinkType'
+      description: Object containing hyperlinks related to the resource.
+  responses:
+    "200":
+      description: OK
+    "204":
+      description: No Content
+    "400":
+      description: "Bad Request : used to indicate that incorrect parameters were\
+        \ passed to the request."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "401":
+      description: "Unauthorized :  used when the client did not submit credentials."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "403":
+      description: "Forbidden :  operation is not allowed given the current status\
+        \ of the resource."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "404":
+      description: "Not Found :  used when a client provided a URI that cannot be\
+        \ mapped to a valid resource URI."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "406":
+      description: "Not Acceptable : used to indicate that the server cannot provide\
+        \ the any of the content formats supported by the client."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "412":
+      description: "Precondition failed :  used when a condition has failed during\
+        \ conditional requests, e.g. when using ETags to avoid write conflicts when\
+        \ using PUT"
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "414":
+      description: "URI Too Long : used to indicate that the server is refusing to\
+        \ process the request because the request URI is longer than the server is\
+        \ willing or able to process."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "415":
+      description: "Unsupported Media Type :  used to indicate that the server or\
+        \ the client does not support the content type of the entity body."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "422":
+      description: "Unprocessable Entity : used to indicate that the server understands\
+        \ the content type of the request entity and that the syntax of the request\
+        \ entity is correct but that the server is unable to process the contained\
+        \ instructions. This error condition can occur if an JSON request body is\
+        \ syntactically correct but semantically incorrect, for example if the target\
+        \ area for the request is considered too large. This error condition can also\
+        \ occur if the capabilities required by the request are not supported."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "429":
+      description: "Too Many Requests : used when a rate limiter has triggered."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  parameters:
+    Path.AccessPointId:
+      name: accessPointId
+      in: path
+      description: Identifier of access Point
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+      x-exportParamName: AccessPointId
+    Path.SubscrId:
+      name: subscriptionId
+      in: path
+      description: "Subscription Identifier, specifically the \"self\" returned in\
+        \ the subscription request"
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        format: uri
+      x-exportParamName: SubscriptionId
+    Path.ZoneId:
+      name: zoneId
+      in: path
+      description: Indentifier of zone
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+      x-exportParamName: ZoneId
+    Query.AccessPointId:
+      name: accessPointId
+      in: query
+      description: Identifier of access point
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: AccessPointId
+    Query.Subscription_type_3:
+      name: subscription_type
+      in: query
+      description: "Query parameter to filter on a specific subscription type. Permitted\
+        \ values: -event -status"
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: Subscription_type_3
+    Query.ZoneId_2:
+      name: zoneId
+      in: query
+      description: The identity of the zone
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: ZoneId_2
+    Query.Address:
+      name: address
+      in: query
+      description: "address of users (e.g. \"sip\" URI, \"tel\" URI, \"acr\" URI)"
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: Address
+    Query.AddressMandatory:
+      name: address
+      in: query
+      description: "address of users (e.g. \"sip\" URI, \"tel\" URI, \"acr\" URI)"
+      required: true
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: AddressMandatory
+    Query.InterestRealm:
+      name: interestRealm
+      in: query
+      description: "Interest realm of access point (e.g. geographical area, a type\
+        \ of industry etc.)."
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: InterestRealm
+    Query.Latitude:
+      name: latitude
+      in: query
+      description: Latitude geo position
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: number
+        format: float
+      x-exportParamName: Latitude
+    Query.Longitude:
+      name: longitude
+      in: query
+      description: Longitude geo position
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: number
+        format: float
+      x-exportParamName: Longitude
+    Query.Requester:
+      name: requester
+      in: query
+      description: Entity that is requesting the information
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+      x-exportParamName: Requester
+    Query.ZoneId:
+      name: zoneId
+      in: query
+      description: Identifier of zone
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      x-exportParamName: ZoneId

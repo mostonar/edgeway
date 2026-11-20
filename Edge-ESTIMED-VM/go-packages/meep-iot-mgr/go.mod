@@ -1,0 +1,21 @@
+module github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-iot-mgr
+
+go 1.16
+
+require (
+	github.com/BurntSushi/toml v1.2.0 // indirect
+	github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-sss-mgr v0.0.0
+	github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-logger v0.0.0
+	github.com/eclipse/paho.mqtt.golang v1.4.2
+	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
+	github.com/lib/pq v1.10.7
+	github.com/roymx/viper v1.3.3-0.20190416163942-b9a223fc58a3
+	github.com/streadway/amqp v1.1.0
+
+)
+
+replace (
+	github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-logger => ../../go-packages/meep-logger
+	github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-sss-mgr => ../../go-packages/meep-sss-mgr
+)

@@ -1,0 +1,46 @@
+---
+# - name: Add Docker GPG key
+#   shell: |
+#     set -o pipefail
+#     curl -fsSL {{ docker_gpg_key_url }} | gpg --dearmor --yes -o {{ docker_gpg_key_path }}
+#   args:
+#     executable: /bin/bash
+#     creates: "{{ docker_gpg_key_path }}"
+#   become: true
+
+# - name: Add Docker repository
+#   shell: |
+#     set -o pipefail
+#     echo "deb [arch={{ docker_repo_arch }} signed-by={{ docker_gpg_key_path }}] {{ docker_repo_url }} {{ docker_repo_codename }} {{ docker_repo_component }}" \
+#       | tee {{ docker_repo_list_path }} > /dev/null
+#   args:
+#     executable: /bin/bash
+#     creates: "{{ docker_repo_list_path }}"
+#   become: true
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Download Docker GPG key file
+  ansible.builtin.get_url:
+    url: "{{ docker_gpg_key_url }}"
+    dest: "/etc/apt/keyrings/docker.asc"
+    mode: '0644'
+  become: true
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >
+      deb [arch={{ docker_repo_arch }}
+      signed-by=/etc/apt/keyrings/docker.asc]
+      {{ docker_repo_url }}
+      {{ docker_repo_codename }}
+      {{ docker_repo_component }}
+    filename: docker
+    state: present
+    update_cache: true
+  become: true
