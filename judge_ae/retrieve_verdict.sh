@@ -1,13 +1,15 @@
 #!/bin/bash
 # Keep RETRIEVE-ing a container and print whatever newly appears (debug helper for the detection AE output).
 #   CSE=<CSE base URL incl. CSE name> ./retrieve_verdict.sh             ANALYSIS-AE-3/cnt-verdict, every 1 s
+#   CSE=... SITE=A ./retrieve_verdict.sh                                site A/B/C -> ANALYSIS-AE-1/2/3 (default C)
 #   CSE=... ./retrieve_verdict.sh ANALYSIS-AE-3/cnt-verdict 0.5        target path, interval (s)
 #   CSE=... ORIGIN=CJUDGE-AE-3 ./retrieve_verdict.sh                    retrieve as another originator (default CAdmin)
 # Prints container state changes, and the position of each new CIN with "verdict": "ANOMALY" (yellow).
 # Other verdicts (NORMAL etc.) are not printed. Ctrl+C to stop.
 
 CSE=${CSE:?set CSE=<CSE base URL incl. CSE name>}
-TARGET=${1:-ANALYSIS-AE-3/cnt-verdict}
+case ${SITE:-C} in A|a) N=1 ;; B|b) N=2 ;; C|c) N=3 ;; *) echo "SITE must be A, B or C"; exit 1 ;; esac
+TARGET=${1:-ANALYSIS-AE-$N/cnt-verdict}
 GAP=${2:-1}
 ORIGIN=${ORIGIN:-CAdmin}
 

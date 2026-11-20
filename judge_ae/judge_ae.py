@@ -1,34 +1,35 @@
-# JUDGE-AE-3: site C anomaly judgement AE (oneM2M)
+# JUDGE-AE-<n>: anomaly judgement AE for one site (oneM2M). Run one per site (A=1, B=2, C=3).
 #
 # Usage
-#   python judge_ae.py --cse <CSE base URL incl. CSE name> [--notify <URL>] [--port 9090]
+#   python judge_ae.py --site {A,B,C} --cse <CSE base URL incl. CSE name> [--robots <AE>,<AE>,...]
+#                      [--notify <URL>] [--port 9090]
 #                      [--insecure | --ca <CA file>] [--check-s 1] [--grace-s 30] [--timeout-s 600]
-#                      [--zone-margin 2] [--zone-min 5]
+#                      [--zone-margin 2] [--zone-min 5] [--alive-s 5] [--iot <MEC 033 URL>]
+#   --site  site to judge (default C); sets the AE name, detection AE and robots below.
+#   --robots  robot AE names (default: siteA_AMR_1..4 / siteB_AMR_1..2 / siteC_AMR_1..2).
 #   --notify  URL where the CSE delivers notifications (CSE must reach it). Omit to use a pollingChannel.
 #   --insecure / --ca  for an https CSE with a self-signed certificate.
-#   Example: python judge_ae.py --cse https://<MEC_HOST>/<SANDBOX>/mep-c/meep-acme-mn-cse/acme-cse-mn-mep-c-<SANDBOX> --insecure
+#   --alive-s  CSE liveness check interval. Writes are held while the CSE is down and resent when it is back.
+#   --iot  MEP's MEC 033 registered_iot_platforms URL. While the CSE is down, ask the MEP for the current CSE
+#          and move to it if it changed (AE, containers, subscriptions are created again there).
+#   Example: python judge_ae.py --site C --cse https://<MEC_HOST>/<SANDBOX>/mep-c/meep-acme-mn-cse/acme-cse-mn-mep-c-<SANDBOX> --insecure
 #
-# Resources
-#   subscribes  ANALYSIS-AE-3/cnt-verdict      anomaly reports from the detection AE
-#   subscribes  JUDGE-AE-3/cnt-request         dashboard request  {"type": "zone-clear", "x": 60.0, "y": 14.0}
-#   writes      JUDGE-AE-3/cnt-judgement       no-go zones  {"zones": [{"x1", "y1", "x2", "y2"}, ...]}
+# Resources (n = site number)
+#   subscribes  ANALYSIS-AE-<n>/cnt-verdict    anomaly reports from the detection AE
+#   subscribes  JUDGE-AE-<n>/cnt-request       dashboard request  {"type": "zone-clear", "x": 60.0, "y": 14.0}
+#   writes      JUDGE-AE-<n>/cnt-judgement     no-go zones  {"zones": [{"x1", "y1", "x2", "y2"}, ...]}
 #   writes      <robot>/command                verdict  {"type": "verdict", "case_id", "stage": "suspect"|"final"|"closed",
 #                                                        "site", "target", "pos", "cause": "robot"|"floor", "zone"}
-#   ACP acp_judgement: JUDGE-AE-3 + CAdmin only (the dashboard uses CAdmin)
+#   ACP acp_judgement: JUDGE-AE-<n> + CAdmin only (the dashboard uses CAdmin)
 
-import argparse, json, math, queue, signal, threading, time, uuid
+import argparse, collections, json, math, queue, signal, threading, time, urllib.parse, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import requests
 
-AE_NAME = 'JUDGE-AE-3'
-ORIGIN = 'C' + AE_NAME
-SITE = 'siteC'
-ROBOTS = ['siteC_AMR_1', 'siteC_AMR_2']
-SOURCE = 'ANALYSIS-AE-3/cnt-verdict'
-SUB_RN = 'sub_judge_3'
+SITES = {'A': (1, 4), 'B': (2, 2), 'C': (3, 2)}    # site -> (number, robot count)
 REQ_CNT = 'cnt-request'
-REQUEST = f'{AE_NAME}/{REQ_CNT}'
-SUB_REQ_RN = 'sub_judge_req_3'
+AE_NAME = ORIGIN = SITE = SOURCE = SUB_RN = REQUEST = SUB_REQ_RN = None
+ROBOTS = []
 PCH_RN = 'pch'
 PCH_WAIT_S = 70.0
 CNT = 'cnt-judgement'
@@ -39,8 +40,23 @@ GRACE_S = 30.0
 CASE_TIMEOUT_S = 600.0
 ZONE_MIN = 5.0
 ZONE_MARGIN = 2.0
+ALIVE_S = 5.0
+BACKLOG_MAX = 500
 
 ev = queue.Queue()
+
+
+def configure(site, robots=None):
+    global AE_NAME, ORIGIN, SITE, ROBOTS, SOURCE, SUB_RN, REQUEST, SUB_REQ_RN
+    n, count = SITES[site]
+    AE_NAME = f'JUDGE-AE-{n}'
+    ORIGIN = 'C' + AE_NAME
+    SITE = f'site{site}'
+    ROBOTS = robots or [f'{SITE}_AMR_{i}' for i in range(1, count + 1)]
+    SOURCE = f'ANALYSIS-AE-{n}/cnt-verdict'
+    SUB_RN = f'sub_judge_{n}'
+    REQUEST = f'{AE_NAME}/{REQ_CNT}'
+    SUB_REQ_RN = f'sub_judge_req_{n}'
 
 
 def log(s, hl=False):
@@ -53,6 +69,12 @@ class CSE:
         self.base = base.rstrip('/')
         self.http = requests.Session()
         self.verify = verify
+        self.gen = 0                                   # +1 on every CSE move
+        self.alive, self.ready = threading.Event(), threading.Event()
+        self.alive.set()
+        self.wlock = threading.Lock()
+        self.backlog = collections.deque(maxlen=BACKLOG_MAX)   # CIN writes not yet delivered, oldest first
+        self.holding = False
         if verify is False:
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -72,13 +94,41 @@ class CSE:
             return r.status_code, {}
 
     def cin(self, path, con):
-        c, js = self.req('POST', path, 4, {'m2m:cin': {'cnf': 'application/json:0', 'con': json.dumps(con)}})
-        if c != 201:
-            log(f'[WARN] write to {path} failed ({c})')
-        return c == 201
+        item = (path, con)
+        with self.wlock:
+            self.backlog.append(item)
+            return self.flush(item) if self.alive.is_set() else False
+
+    def flush(self, mine=None):
+        """Send held writes in order (caller holds wlock). Stops at the first one the CSE cannot take."""
+        ok = False
+        while self.backlog:
+            item = self.backlog[0]
+            try:
+                c, _ = self.req('POST', item[0], 4, {'m2m:cin': {'cnf': 'application/json:0', 'con': json.dumps(item[1])}})
+            except requests.RequestException:
+                c = None
+            if c is None or c >= 500:
+                self.alive.clear()
+                if not self.holding:
+                    log(f'[WARN] CSE not reachable -> holding writes for resend ({len(self.backlog)})')
+                self.holding = True
+                return False
+            if c != 201:
+                log(f'[WARN] write to {item[0]} failed ({c})')
+            if item is mine:
+                ok = c == 201
+            self.backlog.popleft()
+        if self.holding:
+            log('Held writes resent')
+            self.holding = False
+        return ok
 
     def la(self, path):
-        c, js = self.req('GET', f'{path}/la')
+        try:
+            c, js = self.req('GET', f'{path}/la')
+        except requests.RequestException:
+            return None, None
         if c != 200:
             return None, None
         cin = js.get('m2m:cin', {})
@@ -193,13 +243,15 @@ def find_pch(cse):
     return f'{AE_NAME}/{PCH_RN}'
 
 
-def pch_loop(cse, ready):
-    path = None
+def pch_loop(cse):
+    path, gen = None, cse.gen
     while True:
+        if gen != cse.gen:
+            path, gen = None, cse.gen
         try:
             if path is None:
                 path = find_pch(cse)
-                ready.set()
+                cse.ready.set()
             c, js = cse.req('GET', f'{path}/pcu', timeout=PCH_WAIT_S)
             if c == 200:
                 on_notify(js)
@@ -216,6 +268,90 @@ def pch_loop(cse, ready):
         except Exception:
             path = None
             time.sleep(5)
+
+
+def mep_cse(cse, iot):
+    """MEC 033 registered_iot_platforms -> (CSE-ID, CSE URL). Picks customServicesTransportInfo whose id is a CSE-ID.
+    The MEP reports an internal host, so the scheme and host of the --iot URL are used instead."""
+    r = cse.http.get(iot, headers={'Accept': 'application/json'}, timeout=3, verify=cse.verify)
+    r.raise_for_status()
+    q = urllib.parse.urlsplit(iot)
+    found = []
+    for p in r.json() or []:
+        if p.get('enabled') is False:
+            continue
+        for ti in p.get('customServicesTransportInfo') or []:
+            tid, name = str(ti.get('id') or ''), ti.get('name')
+            uris = (ti.get('endpoint') or {}).get('uris') or []
+            if tid.startswith('/') and name and uris:
+                u = urllib.parse.urlsplit(uris[0].rstrip('/'))._replace(scheme=q.scheme, netloc=q.netloc)
+                found.append((tid, f'{urllib.parse.urlunsplit(u)}/{name}'))
+    if not found:
+        raise RuntimeError('no CSE in the MEC 033 response')
+    return next((f for f in found if f[1] == cse.base), found[0])
+
+
+def sync(cse, notify):
+    setup_ae(cse, notify)
+    if not notify and not cse.ready.wait(15):
+        raise RuntimeError('pollingChannel not ready')
+    setup(cse, notify)
+
+
+def watch(cse, notify, iot):
+    """Every ALIVE_S: check the CSE. Down -> hold writes (and ask the MEP if --iot). Back or moved -> restore, resend."""
+    up, resync, said = True, False, None
+
+    def say(s):
+        nonlocal said
+        if s != said:
+            log(s, hl=s.startswith('MEP: CSE moved'))
+            said = s
+
+    while True:
+        time.sleep(ALIVE_S)
+        try:
+            c = cse.req('GET', AE_NAME, timeout=3)[0]
+        except requests.RequestException:
+            c = None
+        if c is not None and c < 500:
+            if not up:
+                say(f'CSE reachable ({cse.base})')
+                up, resync = True, True
+            if c == 404:
+                resync = True
+            if resync:
+                try:
+                    sync(cse, notify)
+                    resync = False
+                    say('AE, containers and subscriptions restored')
+                except Exception as e:
+                    say(f'[WARN] restore failed, retrying: {e}')
+                    continue
+            cse.alive.set()
+            with cse.wlock:
+                if cse.backlog:
+                    cse.flush()
+            continue
+        if up:
+            say(f'[WARN] CSE not responding ({c or "no response"}) -> holding writes')
+            up = False
+        cse.alive.clear()
+        if not iot:
+            continue
+        try:
+            tid, url = mep_cse(cse, iot)
+        except Exception as e:
+            say(f'[WARN] MEP not responding -> network down, waiting ({e})')
+            continue
+        if url == cse.base:
+            say(f'MEP: CSE unchanged ({tid}) -> retrying the same CSE')
+            continue
+        say(f'MEP: CSE moved {cse.base} -> {url} ({tid}) -> registering there')
+        cse.base = url
+        cse.ready.clear()
+        cse.gen += 1
+        resync = True
 
 
 def dist(a, b):
@@ -351,8 +487,11 @@ def send(cse, case, stage, cause=None):
 
 
 def main():
-    global CHECK_S, GRACE_S, CASE_TIMEOUT_S, ZONE_MARGIN, ZONE_MIN
+    global CHECK_S, GRACE_S, CASE_TIMEOUT_S, ZONE_MARGIN, ZONE_MIN, ALIVE_S
     ap = argparse.ArgumentParser()
+    ap.add_argument('--site', default='C', type=lambda v: v.upper()[4:] if v.upper().startswith('SITE') else v.upper(), choices=sorted(SITES),
+                    help='site to judge: A, B or C (default C)')
+    ap.add_argument('--robots', help='comma-separated robot AE names (default: all robots of the site)')
     ap.add_argument('--cse', required=True, help='CSE base URL incl. CSE name, e.g. http://<host>:<port>/<CSE name>')
     ap.add_argument('--notify', help='URL where the CSE sends notifications, e.g. http://10.1.2.3:9090. '
                                      'Omit to receive via pollingChannel (when the CSE cannot reach this PC)')
@@ -364,7 +503,12 @@ def main():
     ap.add_argument('--zone-margin', type=float, help=f'no-go zone margin around both locations, m (default {ZONE_MARGIN:g})')
     ap.add_argument('--zone-min', type=float, help=f'no-go zone minimum width/height, m (default {ZONE_MIN:g})')
     ap.add_argument('--timeout-s', type=float, help=f'max case duration s (default {CASE_TIMEOUT_S:.0f})')
+    ap.add_argument('--alive-s', type=float, help=f'CSE liveness check interval s (default {ALIVE_S:g})')
+    ap.add_argument('--iot', help='MEC 033 registered_iot_platforms URL of the MEP. While the CSE is down, '
+                                  'ask it for the current CSE and move there if it changed')
     a = ap.parse_args()
+    configure(a.site, [r.strip() for r in a.robots.split(',') if r.strip()] if a.robots else None)
+    ALIVE_S = a.alive_s or ALIVE_S
     CHECK_S = a.check_s or CHECK_S
     GRACE_S = a.grace_s or GRACE_S
     CASE_TIMEOUT_S = a.timeout_s or CASE_TIMEOUT_S
@@ -380,19 +524,23 @@ def main():
         threading.Thread(target=srv.serve_forever, daemon=True).start()
     setup_ae(cse, a.notify)
     if not a.notify:
-        ready = threading.Event()
-        threading.Thread(target=pch_loop, args=(cse, ready), daemon=True).start()
-        if not ready.wait(15):
+        threading.Thread(target=pch_loop, args=(cse,), daemon=True).start()
+        if not cse.ready.wait(15):
             raise RuntimeError('pollingChannel not ready')
     setup(cse, a.notify)
-    log(f'{AE_NAME} ready: monitoring {SITE} ({", ".join(ROBOTS)})')
+    threading.Thread(target=watch, args=(cse, a.notify, a.iot), daemon=True).start()
+    log(f'{AE_NAME} ready: monitoring {SITE} ({", ".join(ROBOTS)}), CSE check every {ALIVE_S:g} s'
+        + (', CSE move via MEC 033' if a.iot else ''))
     try:
         judge(cse)
     except KeyboardInterrupt:
         pass
     finally:
-        c, _ = cse.req('DELETE', f'{SOURCE}/{SUB_RN}')
-        c2, _ = cse.req('DELETE', f'{REQUEST}/{SUB_REQ_RN}')
+        for p in (f'{SOURCE}/{SUB_RN}', f'{REQUEST}/{SUB_REQ_RN}'):
+            try:
+                cse.req('DELETE', p, timeout=3)
+            except requests.RequestException:
+                pass
         log(f'{AE_NAME} stopped (subscriptions removed)')
         if srv:
             srv.shutdown()
