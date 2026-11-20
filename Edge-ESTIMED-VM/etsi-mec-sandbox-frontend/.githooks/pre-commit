@@ -1,0 +1,35 @@
+#!/bin/bash
+
+CONFIG_FILE="config/.meepctl-repocfg.yaml"
+
+# Check if the file is staged
+if git diff --cached --name-only | grep -q "^${CONFIG_FILE}$"; then
+    echo "Checking ${CONFIG_FILE} for local overrides..."
+
+    STAGED_CONTENT=$(git show :${CONFIG_FILE})
+    ERRORS=0
+
+    check_count() {
+        local pattern="$1"
+        local expected_count="$2"
+        local error_message="$3"
+        local count=$(echo "$STAGED_CONTENT" | grep -Ec "$pattern")
+        if [ "$count" -ne "$expected_count" ]; then
+            echo "❌ ERROR: $error_message (Found $count, expected $expected_count)"
+            ERRORS=$((ERRORS + 1))
+        fi
+    }
+
+    check_count "^[[:space:]]+uid: 1001$" 1 "uid must be reverted to 1001"
+    check_count "^[[:space:]]+gid: 1001$" 1 "gid must be reverted to 1001"
+    check_count "^[[:space:]]+host: try-mec.etsi.org$" 1 "host must be reverted to try-mec.etsi.org"
+    check_count "^[[:space:]]+ca: lets-encrypt$" 1 "ca must be reverted to lets-encrypt"
+    check_count "^[[:space:]]+redirect-uri: https://try-mec.etsi.org/platform-ctrl/v1/authorize$" 2 "BOTH github and gitlab redirect-uris must be reverted to try-mec.etsi.org"
+
+    if [ $ERRORS -gt 0 ]; then
+        echo ""
+        echo "⛔ Commit rejected! Please revert the local environment overrides in ${CONFIG_FILE} before committing."
+        exit 1
+    fi
+fi
+exit 0

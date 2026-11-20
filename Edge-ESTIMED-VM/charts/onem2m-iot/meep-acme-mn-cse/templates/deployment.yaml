@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "meep-acme-mn-cse.fullname" . }}
+  labels:
+    app: {{ template "meep-acme-mn-cse.name" . }}
+    chart: {{ template "meep-acme-mn-cse.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    meepOrigin: {{ .Values.meepOrigin }}
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app: {{ template "meep-acme-mn-cse.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "meep-acme-mn-cse.name" . }}
+        release: {{ .Release.Name }}
+        meepOrigin: {{ .Values.meepOrigin }}
+    spec:
+      serviceAccountName: {{ template "meep-acme-mn-cse.fullname" . }}
+      {{- if .Values.codecov.enabled}}
+      volumes:
+        - name: codecov-storage
+          persistentVolumeClaim:
+            claimName: meep-acme-mn-cse-codecov-pvc
+      {{- end}}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.deployment.port }}
+              protocol: {{ .Values.deployment.protocol }}
+            {{- if eq (toString .Values.image.env.ENABLE_WS | lower) "true" }}
+            - name: websocket
+              containerPort: 8180
+              protocol: TCP
+            {{- end }}
+          env:
+            {{- range $key, $value := .Values.image.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # Add Kubernetes metadata for NodePort retrieval
+            - name: MEEP_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MEEP_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          {{- if .Values.codecov.enabled}}
+          volumeMounts:
+          - name: codecov-storage
+            mountPath: /codecov
+          {{- end}}
+      terminationGracePeriodSeconds: 5
+      initContainers:
+        {{- range $value := .Values.deployment.dependencies.system }}
+        - name: init-system-{{ $value }}
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+          command: ['sh', '-c', 'until nslookup {{ $value }}.kube-system ; do echo waiting for {{ $value }}; sleep 0.25; done;']
+        {{- end}}
+        {{- range $value := .Values.deployment.dependencies.namespace }}
+        - name: init-{{ $value }}
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+          command: ['sh', '-c', 'until nslookup {{ $value }} ; do echo waiting for {{ $value }}; sleep 0.25; done;']
+        {{- end}}

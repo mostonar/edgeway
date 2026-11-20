@@ -1,0 +1,43 @@
+// Created by SDTTool
+// oneM2M Release: 4.12.0
+// Domain:         org.onem2m.common
+[
+
+    // MecDeviceClass: iotDevice
+    {
+        "type"      : "mec:iotDev",
+        "lname"     : "iotDevice",
+        "sdttype"   : "mecdevice",
+        "cnd"       : "org.onem2m.common.mec.device.iotDevice",
+        "attributes": [
+            // Property: deviceId
+            { "sname" : "devId", "lname" : "deviceId", "type" : "string", "car" : "01", "oc" : "O" },  //0 Optional, 1..N, cardinality, oc: OnCreate Mandatory, Update, Optional, Np: Not provisioned
+            // Property: gspi
+            { "sname" : "gspi", "lname" : "gspi", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: pei
+            { "sname" : "mpei", "lname" : "mec-pei", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: supi
+            { "sname" : "supi", "lname" : "supi", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: msisdn
+            { "sname" : "msisdn", "lname" : "msisdn", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: imei
+            { "sname" : "imei", "lname" : "imei", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: imsi
+            { "sname" : "imsi", "lname" : "imsi", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: iccid
+            { "sname" : "iccid", "lname" : "iccid", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: requestedIotPlatformId
+            { "sname" : "rIPId", "lname" : "requestedIotPlatformId", "type" : "string", "car" : "01" },
+            // Property: requestedUserTransportId
+            { "sname" : "rUTId", "lname" : "requestedUserTransportId", "type" : "string", "car" : "01", "oc" : "O" },
+            // Property: requestedMecTrafficRule
+            { "sname" : "rMTRe", "lname" : "requestedMecTrafficRule",  "type" : "list", "car" : "01", "oc" : "O" },
+            // Property: enabled
+            { "sname" : "enabd",  "lname" : "enabled",     "type" : "boolean",   "car" : "1",  "oc" : "M" }
+        ],
+        "children"  : [
+            // Module class
+        ]
+    }
+
+]

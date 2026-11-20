@@ -1,0 +1,222 @@
+/**
+ * @file api.dox
+ * @brief Structured API index for Doxygen (Go symbols are declared here so links resolve).
+ *
+ * @details
+ * Doxygen does not parse Go natively in this configuration. This file declares
+ * the public catalog API in a C-like form that matches
+ * `github.com/InterDigitalInc/AdvantEDGE/go-packages/meep-nw-simu-catalog`.
+ * Implementation remains in the `.go` sources (see the Files tab).
+ *
+ * @ingroup nw_simu_catalog
+ */
+
+/** @addtogroup nw_simu_catalog */
+/** @{ */
+
+/* -------------------------------------------------------------------------- */
+/* Simulator type constants                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Linux TC / CouchDB listing (default). NEM is not used. */
+#define TypeInternal "internal"
+
+/** OMNeT++/Simu5G NEM on radio host S. Listing uses GET /v1/scenarios. */
+#define TypeSimu5G "simu5g"
+
+/** OAI NEM on radio host S. Listing uses the same NEM catalog contract. */
+#define TypeOAI "oai"
+
+/* -------------------------------------------------------------------------- */
+/* Errors                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief MEEP_NEM_URL is empty after FromEnv().
+ * @details Distinct from ErrNemUnavailable so logs can show a config mistake.
+ */
+const char *ErrNemURLEmpty;
+
+/**
+ * @brief NEM catalog could not be fetched or parsed.
+ * @details Wrapped around request, transport, non-2xx HTTP, and JSON errors.
+ *          Test with errors.Is.
+ */
+const char *ErrNemUnavailable;
+
+/**
+ * @brief NEM POST /v1/instances returned HTTP 409 (already active).
+ */
+const char *ErrNemConflict;
+
+/**
+ * @brief NEM rejected the instance request (HTTP 400 or missing ids).
+ */
+const char *ErrNemBadRequest;
+
+/* -------------------------------------------------------------------------- */
+/* Config                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @struct Config
+ * @brief Catalog switch loaded from the process environment.
+ *
+ * @details Type selects the listing backend. NemURL is the NEM REST base
+ * (trailing slash stripped). TimeoutMs is used by New() when no custom
+ * HTTP client is supplied (default 3000).
+ */
+struct Config {
+	const char *Type;   /**< TypeInternal, TypeSimu5G, or TypeOAI. */
+	const char *NemURL; /**< NEM base URL. */
+	int TimeoutMs;      /**< Listing HTTP timeout in milliseconds. */
+	int ActivateTimeoutMs; /**< Instance POST/DELETE timeout in milliseconds. */
+
+	/**
+	 * @brief Reports whether listing must be fetched from NEM.
+	 * @return true when Type is TypeSimu5G or TypeOAI.
+	 */
+	bool UsesNem();
+
+	/**
+	 * @brief HTTP client timeout derived from TimeoutMs.
+	 * @return Duration; uses 3000 ms when TimeoutMs is not positive.
+	 */
+	long Timeout();
+
+	/**
+	 * @brief HTTP client timeout for POST/DELETE /v1/instances.
+	 * @return Duration; uses 180000 ms when ActivateTimeoutMs is not positive.
+	 */
+	long ActivateTimeout();
+};
+
+/**
+ * @brief Loads Config from MEEP_NW_SIMULATOR_TYPE, MEEP_NEM_URL, MEEP_NEM_TIMEOUT_MS.
+ * @details Type is trimmed and lower-cased; empty becomes TypeInternal.
+ *          NemURL trailing '/' is stripped. Invalid timeout keeps 3000 ms.
+ * @return Config populated from the environment.
+ */
+Config FromEnv(void);
+
+/**
+ * @struct NemScenario
+ * @brief One scenario entry from NEM GET /v1/scenarios.
+ */
+struct NemScenario {
+	const char *ID;          /**< Catalog id; used as dropdown name. */
+	const char *Description; /**< Human-readable description. */
+	const char *BundleDir;   /**< Path of the scenario bundle on host S. */
+};
+
+/**
+ * @struct Client
+ * @brief HTTP client for NEM GET {NemURL}/v1/scenarios.
+ */
+struct Client {
+	Config cfg; /**< Snapshot from New(). */
+
+	/**
+	 * @brief Returns the configuration snapshot stored in the client.
+	 * @return Copy of the Config passed to New().
+	 */
+	Config Cfg();
+
+	/**
+	 * @brief Fetches the NEM catalog. Does not fall back to CouchDB.
+	 * @param ctx Optional request context; may be NULL.
+	 * @return Slice of NemScenario (possibly empty).
+	 * @retval ErrNemURLEmpty     Config.NemURL is empty.
+	 * @retval ErrNemUnavailable  nil client, transport/HTTP/JSON failure.
+	 * @note meep-platform-ctrl maps any error to HTTP 502.
+	 */
+	NemScenario *ListNemScenarios(void *ctx);
+
+	/**
+	 * @brief POST /v1/instances and wait for READY.
+	 * @return Instance with sandbox_id (instance-id), bridge, and endpoints.
+	 */
+	Instance *CreateInstance(void *ctx, CreateInstanceRequest req);
+
+	/**
+	 * @brief GET /v1/instances/{sandbox_id}.
+	 */
+	Instance *GetInstance(void *ctx, const char *sandbox_id);
+
+	/**
+	 * @brief DELETE /v1/instances/{sandbox_id}. 204/200/404 are success.
+	 */
+	void DeleteInstance(void *ctx, const char *sandbox_id, bool retain_artifacts);
+};
+
+/**
+ * @brief Constructs a catalog client.
+ * @param cfg Catalog configuration (type, NEM URL, timeout).
+ * @param httpClient Optional HTTP client; NULL uses Config::Timeout.
+ * @return Non-NULL Client pointer.
+ */
+Client *New(Config cfg, void *httpClient);
+
+/**
+ * @struct CreateInstanceRequest
+ * @brief POST /v1/instances JSON body.
+ */
+struct CreateInstanceRequest {
+	const char *SandboxID;    /**< MEC sandbox name; NEM instance-id. */
+	const char *ScenarioID;   /**< NEM catalog id. */
+	const char *SimTimeLimit; /**< Default 300s. */
+	const char *WebhookURL;   /**< Optional. */
+};
+
+/**
+ * @struct Instance
+ * @brief READY payload from POST /v1/instances.
+ */
+struct Instance {
+	const char *SandboxID;
+	const char *State;
+	const char *ScenarioID;
+	int Slot;
+	int BridgePort;
+};
+
+/**
+ * @brief Builds a set of non-empty NEM scenario ids.
+ * @param scenarios Catalog entries from Client::ListNemScenarios.
+ * @return Map keyed by NemScenario.ID; empty ids are skipped.
+ */
+void *IDSet(NemScenario *scenarios);
+
+/* -------------------------------------------------------------------------- */
+/* Merge / filter                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Keeps CouchDB documents whose name or id is in nemIDs.
+ *
+ * @param docs   Raw CouchDB scenario JSON documents.
+ * @param nemIDs Set of NEM ids from IDSet().
+ *
+ * @return Matching documents (possibly empty). Invalid JSON is skipped.
+ *
+ * @note NEM ids with no companion are omitted. Prefer MergeNemWithCompanions()
+ *       for the platform-ctrl dropdown.
+ */
+unsigned char **FilterCompanionDocs(unsigned char **docs, void *nemIDs);
+
+/**
+ * @brief Builds the GET /scenarios payload when type is simu5g or oai.
+ *
+ * @details For each NEM id: use a matching CouchDB document if present,
+ * otherwise emit stub `{"id":id,"name":id,"description":...}`.
+ * Order follows the NEM catalog. CouchDB-only names (e.g. 4g-macro) are
+ * not included.
+ *
+ * @param nem  NEM catalog from ListNemScenarios().
+ * @param docs Raw CouchDB scenario documents.
+ *
+ * @return JSON documents for meep-model JSONMarshallScenarioList.
+ */
+unsigned char **MergeNemWithCompanions(NemScenario *nem, unsigned char **docs);
+
+/** @} */

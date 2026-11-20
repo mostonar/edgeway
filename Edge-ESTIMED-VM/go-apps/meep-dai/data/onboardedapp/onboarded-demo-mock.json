@@ -1,0 +1,30 @@
+{
+  "appList": [
+    {
+      "appDId": "dummy-chart",
+      "appName": "test",
+      "appProvider": "test",
+      "appSoftVersion": "1.0.0",
+      "appDVersion": "1.0.0",
+      "appDescription": "A mock application for DAI testing",
+      "appLocation": [
+        {
+          "countryCode": "zone1-edge1"
+        }
+      ]
+    },
+    {
+      "appDId": "meep-demo-app",
+      "appName": "demo-app",
+      "appProvider": "InterDigital",
+      "appSoftVersion": "1.0.0",
+      "appDVersion": "1.0.0",
+      "appDescription": "Demo Application",
+      "appLocation": [
+        {
+          "countryCode": "zone1-edge1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+; /home/etsi/frameworks/ACME-oneM2M-CSE/acme.ini
+;
+; Auto-generated configuration file for the [ACME] CSE.
+;
+; This file was created by the on-boarding process and can be modified manually by
+; editing the values below, or by adding new sections to override the default values.
+;
+; The file is in the INI format. Lines starting with a semicolon (;) are comments.
+; The configuration is divided into sections, each section starting with a section
+; name in square brackets ([section.name]). The section name is followed by a list
+; of key-value pairs, one per line, in the format key=value. The key and value are
+; separated by an equal sign (=).
+; 
+; created: 2024-11-21 06:28:46
+;
+; CSE type: IN
+; Environment: Development
+;
+
+[basic.config]
+cseType=$SERVER_TYPE
+cseID=$CSE_BASE_RI
+cseName=$CSE_BASE_NAME
+adminID=CAdmin
+networkInterface=0.0.0.0
+cseHost=$SERVER_IP
+httpPort=$SERVER_PORT
+databaseType=memory
+logLevel=debug
+consoleTheme=dark
+
+[cse]
+poa=https://$SERVER_IP:443/$SVC_PATH
+
+[mqtt]
+enable=$MQTT_ENABLE
+address=$MQTT_HOST
+keepalive=45
+
+[mqtt.websocket]
+enable=$MQTT_ENABLE
+port=$MQTT_PORT
+;transport=websockets
+path=$WEBSOCK_ETPATH
+
+[mqtt.security]
+useTLS=true
+
+[cse.registration]
+; Edit this to add more allowed originators.
+;allowedCSROriginators=/$CSE_BASE_RI,/acme-mep-id-mn-cse,/id-in,/id-mn,/id-asn,/mep-id-mn-cse
+allowedCSROriginators=/*
+;address=https://${basic.config:registrarCseHost}:${basic.config:registrarCsePort}
+
+[textui]
+startWithTUI=false
+
+[cse.operation.requests]
+enable=true
+
+[http]
+enableUpperTesterEndpoint=true
+enableStructureEndpoint=true
+root=/
+address=https://${basic.config:cseHost}:${basic.config:httpPort}${http:externalRoot}
+externalRoot=/$SVC_PATH/
+
+[webui]
+root=/webui
+
+[coap]
+enable=$ENABLE_COAP
+port=5683
+
+[websocket]
+enable=false
+port=8180

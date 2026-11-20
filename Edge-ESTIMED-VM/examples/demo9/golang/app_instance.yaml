@@ -1,0 +1,18 @@
+# This file defines the configuration of demo9 edge application. All fields are required to run demo-6 on MEC Sandbox 
+
+# Set where mec application is running either on MEC Sandbox or AdvantEDGE. Expected fields: sandbox | advantedge
+mode: 'sandbox'
+# Set MEC plateform address 
+sandbox: 'mec-platform.etsi.org'
+# Set if sandbox url uses https. Expected fields: true | false 
+https: true 
+# Set the mec platform name demo-6 will run on. Example field: mep1
+mecplatform: 'mep1'
+# Set host address of demo-6. 
+localurl: 'http://'
+# Set host port number of demo-6. Example field: '8093'
+port: '80'
+# Callback base URL
+callbackUrl: 'http://mec-platform.etsi.org'
+# Callback port for listener
+callbackPort: '31121'

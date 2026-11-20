@@ -1,0 +1,269 @@
+# yaml-language-server: $schema=none
+---
+# ============================================================
+# MEC Sandbox Deployment
+# - Install meepctl
+# - Build & deploy frontend
+# - Configure & deploy backend
+# ============================================================
+
+# --- Install meepctl ---
+
+- name: Install meepctl
+  shell: |
+    cd {{ mec_sandbox_dir }}/go-apps/meepctl
+    bash install.sh
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ target_home }}/.nvm/versions/node/v{{ node_version }}/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    GOPATH: "{{ target_home }}/gocode"
+    HOME: "{{ target_home }}"
+  register: meepctl_install
+  changed_when: "'install' in meepctl_install.stdout"
+
+- name: Show meepctl install output
+  debug:
+    msg: "{{ meepctl_install.stdout_lines | default([]) }}"
+
+- name: Verify meepctl is available
+  command: "{{ target_home }}/gocode/bin/meepctl version"
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ target_home }}/.nvm/versions/node/v{{ node_version }}/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+  register: meepctl_version
+  changed_when: false
+  failed_when: meepctl_version.rc != 0
+
+- name: Show meepctl version
+  debug:
+    msg: "meepctl installed: {{ meepctl_version.stdout }}"
+
+# --- Configure meepctl ---
+
+- name: "meepctl config ip"
+  shell: "meepctl config ip {{ mec_host_address }}"
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+  register: config_ip
+
+- name: Show meepctl config ip output
+  debug:
+    msg: "{{ config_ip.stdout_lines | default([]) }}"
+
+- name: "meepctl config gitdir"
+  shell: "meepctl config gitdir {{ mec_sandbox_dir }}"
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+  register: config_gitdir
+
+- name: Show meepctl config gitdir output
+  debug:
+    msg: "{{ config_gitdir.stdout_lines | default([]) }}"
+
+# --- Build & Deploy Frontend ---
+
+- name: Build frontend
+  shell: |
+    cd {{ mec_frontend_dir }}
+    bash build.sh
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ target_home }}/.nvm/versions/node/v{{ node_version }}/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+  register: frontend_build
+
+- name: Show frontend build output
+  debug:
+    msg: "{{ frontend_build.stdout_lines | default([]) }}"
+
+- name: Deploy frontend
+  shell: |
+    cd {{ mec_frontend_dir }}
+    bash deploy.sh
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ target_home }}/.nvm/versions/node/v{{ node_version }}/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+  register: frontend_deploy
+
+- name: Show frontend deploy output
+  debug:
+    msg: "{{ frontend_deploy.stdout_lines | default([]) }}"
+
+# --- Configure secrets ---
+
+- name: Configure secrets via python script
+  shell: "python3 {{ mec_sandbox_dir }}/config/configure-secrets.py set {{ mec_sandbox_dir }}/config/secrets.yaml"
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+  register: config_secrets
+
+- name: Show configure secrets output
+  debug:
+    msg: "{{ config_secrets.stdout_lines | default([]) }}"
+
+# --- Deploy dependencies (with retries, ignoring thanos/prometheus failures) ---
+
+- name: Deploy dependencies (meepctl deploy dep)
+  shell: "meepctl deploy dep all -f 2>&1 | tee /tmp/meepctl_deploy_dep.log"
+  args:
+    executable: /bin/bash
+    chdir: "{{ mec_sandbox_dir }}"
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+    KUBECONFIG: "{{ target_home }}/.kube/config"
+  register: dep_deploy
+  until: >
+    dep_deploy.rc == 0 or
+    'thanos' in (dep_deploy.stderr | default('') | lower) or
+    'prometheus' in (dep_deploy.stderr | default('') | lower) or
+    'thanos' in (dep_deploy.stdout | default('') | lower) or
+    'prometheus' in (dep_deploy.stdout | default('') | lower)
+  retries: 3
+  delay: 10
+  ignore_errors: true
+
+- name: Check for non-thanos/prometheus failures in deploy dep
+  fail:
+    msg: |
+      Dependency deployment failed after retries.
+      Output: {{ dep_deploy.stdout | default('') }}
+      Errors: {{ dep_deploy.stderr | default('') }}
+      Note: thanos and prometheus failures are expected and can be ignored.
+  when: >
+    dep_deploy.rc is defined and dep_deploy.rc != 0 and
+    'thanos' not in (dep_deploy.stderr | default('') | lower) and
+    'prometheus' not in (dep_deploy.stderr | default('') | lower) and
+    'thanos' not in (dep_deploy.stdout | default('') | lower) and
+    'prometheus' not in (dep_deploy.stdout | default('') | lower)
+
+# --- Build all ---
+
+- name: "Build all (meepctl build --nolint all)"
+  shell: "meepctl build --nolint all 2>&1 | tee /tmp/meepctl_build.log"
+  args:
+    executable: /bin/bash
+    chdir: "{{ mec_sandbox_dir }}"
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ target_home }}/.nvm/versions/node/v{{ node_version }}/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    GOPATH: "{{ target_home }}/gocode"
+    HOME: "{{ target_home }}"
+    KUBECONFIG: "{{ target_home }}/.kube/config"
+  register: build_all
+  when: rebuild | default(true) | bool
+
+- name: Show build all output
+  debug:
+    msg: "{{ build_all.stdout_lines | default([]) }}"
+  when: rebuild | default(true) | bool
+
+# --- Dockerize all ---
+
+- name: "Dockerize all (meepctl dockerize all)"
+  shell: "sg docker -c 'meepctl dockerize all 2>&1 | tee /tmp/meepctl_dockerize.log'"
+  args:
+    executable: /bin/bash
+    chdir: "{{ mec_sandbox_dir }}"
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ target_home }}/.nvm/versions/node/v{{ node_version }}/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    GOPATH: "{{ target_home }}/gocode"
+    HOME: "{{ target_home }}"
+    KUBECONFIG: "{{ target_home }}/.kube/config"
+  register: dockerize_all
+  when: rebuild | default(true) | bool
+
+- name: Show dockerize all output
+  debug:
+    msg: "{{ dockerize_all.stdout_lines | default([]) }}"
+  when: rebuild | default(true) | bool
+
+# --- Prune docker images ---
+
+- name: "Prune dangling Docker images"
+  shell: "docker image prune -f"
+  args:
+    executable: /bin/bash
+  become: true
+  when: rebuild | default(true) | bool
+
+# --- Deploy core ---
+
+- name: "Deploy core (meepctl deploy core)"
+  shell: "meepctl deploy core all 2>&1 | tee /tmp/meepctl_deploy_core.log"
+  args:
+    executable: /bin/bash
+    chdir: "{{ mec_sandbox_dir }}"
+  become: true
+  become_user: "{{ target_user }}"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:/snap/bin:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ target_home }}"
+    KUBECONFIG: "{{ target_home }}/.kube/config"
+  register: deploy_core
+
+- name: Show deploy core output
+  debug:
+    msg: "{{ deploy_core.stdout_lines | default([]) }}"
+
+# --- Import pre-loaded network scenarios ---
+
+- name: Get meep-platform-ctrl service ClusterIP
+  shell: "kubectl get svc meep-platform-ctrl -o jsonpath='{.spec.clusterIP}'"
+  register: platform_ctrl_ip
+  become: true
+  environment:
+    KUBECONFIG: "{{ target_home }}/.kube/config"
+
+- name: Load, convert, and import scenarios to platform-ctrl API
+  ansible.builtin.shell: |
+    for f in "{{ mec_frontend_dir }}"/networks/*.yaml; do
+      if [ -f "$f" ]; then
+        name=$(basename "$f" .yaml)
+        python3 -c "import sys, yaml, json; sc = yaml.safe_load(open('$f')); sc['name'] = '$name'; print(json.dumps(sc))" | \
+        curl -s -X POST -H "Content-Type: application/json" -d @- "http://{{ platform_ctrl_ip.stdout }}/platform-ctrl/v1/scenarios/$name"
+      fi
+    done
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ target_user }}"
+  ignore_errors: true
+
+- name: "MEC Sandbox deployment complete"
+  debug:
+    msg: |
+      MEC Sandbox fully deployed!
+      Access at: https://{{ mec_host_address }}

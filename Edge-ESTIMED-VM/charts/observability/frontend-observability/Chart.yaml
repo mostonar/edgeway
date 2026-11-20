@@ -1,0 +1,4 @@
+apiVersion: v2
+name: frontend-observability
+description: Grafana Alloy for React Frontend Telemetry
+version: 0.1.0

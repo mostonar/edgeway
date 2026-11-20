@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  strategy:
+    type: Recreate
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      {{- if .Values.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      containers:
+        - name: tilt
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GITDIR
+              value: {{ .Values.gitdir | quote }}
+            - name: WORKDIR
+              value: {{ .Values.workdir | quote }}
+            - name: SUDO_UID
+              value: {{ .Values.permissions.uid | quote }}
+            - name: SUDO_GID
+              value: {{ .Values.permissions.gid | quote }}
+          ports:
+            - containerPort: 10350
+              name: web
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+            - name: kube-config
+              mountPath: /root/.kube/config
+              subPath: config
+            - name: meepctl-yaml
+              mountPath: /root/.meepctl.yaml
+              subPath: .meepctl.yaml
+            - name: gitdir
+              mountPath: {{ .Values.gitdir }}
+            - name: workdir
+              mountPath: {{ .Values.workdir }}
+            - name: meepctl-bin
+              mountPath: /usr/local/bin/meepctl
+              subPath: meepctl
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: kube-config
+          hostPath:
+            path: {{ .Values.homedir }}/.kube
+            type: Directory
+        - name: meepctl-yaml
+          hostPath:
+            path: {{ .Values.homedir }}
+            type: Directory
+        - name: gitdir
+          hostPath:
+            path: {{ .Values.gitdir }}
+            type: Directory
+        - name: workdir
+          hostPath:
+            path: {{ .Values.workdir }}
+            type: Directory
+        - name: meepctl-bin
+          hostPath:
+            path: {{ .Values.homedir }}/gocode/bin
+            type: Directory

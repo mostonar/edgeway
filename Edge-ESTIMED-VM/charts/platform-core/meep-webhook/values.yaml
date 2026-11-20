@@ -1,0 +1,39 @@
+# Default values for meep-initializer.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+serviceAccount: meep-webhook
+configMap: meep-webhook
+initializerConfig: meep-webhook
+meepOrigin: core
+
+deployment:
+  replicas: 1
+  port: 443
+  protocol: TCP
+  dependency:
+    redis: meep-redis-master
+    coredns: kube-dns
+
+service:
+  type: ClusterIP
+  port: 443
+
+image:
+  repository: meep-webhook
+  tag: latest
+  pullPolicy: Always
+
+sidecar:
+  name: meep-tc-sidecar
+  image:
+    repository: meep-docker-registry:30001/meep-tc-sidecar
+    tag: latest
+    pullPolicy: IfNotPresent
+  dependency: kube-dns
+
+webhook:
+  name: meep-webhook.idcc.com
+  cabundle: ""
+  cert: ""
+  key: ""

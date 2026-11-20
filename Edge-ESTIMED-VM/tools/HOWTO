@@ -1,0 +1,31 @@
+cd ~/AdvantEDGE/tools
+# swagger code generator
+wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen/3.0.29/swagger-codegen-3.0.29.jar
+
+cd ~/AdvantEDGE/
+
+# Java docker machine
+docker pull gizmotronic/oracle-java8
+docker run -it --rm -v `pwd`:/opt/local/etsi gizmotronic/oracle-java8 /bin/bash
+
+# Using command line
+cd /opt/local/etsi
+java -jar ./tools/swagger-codegen-cli-3.0.29.jar generate -h
+java -jar ./tools/swagger-codegen-cli-3.0.29.jar generate --api-package ./tools/swagger-/templates/go-server/ -i ./go-apps/meep-dai/api/swagger.yaml -l go-server -o ./out/go-server
+java -jar ./tools/swagger-codegen-cli-3.0.29.jar generate --api-package ./tools/swagger-/templates/go/ -i ./go-apps/meep-dai/api/swagger.yaml -l go -o ./out/go
+java -jar ./tools/swagger-codegen-cli-3.0.29.jar generate --api-package ./tools/swagger-/templates/go/ -i ./examples/demo4-ue/src/demo-server/backend/api/swagger.yaml -l go -o ./out/demo-server
+java -jar ./tools/swagger-codegen-cli-3.0.29.jar generate --api-package ./tools/swagger-/templates/go/ -i ./examples/demo4-ue/src/onboarded-demo/api/swagger.yaml -l go -o ./out/onboarded-demo
+chown -R 1000:1000 ./out
+
+# using script with required MEC xxx already cloned:
+#   gs011-app-enablement-api
+#   gs012-rnis-api
+#   gs013-location-api
+#   gs014-ue-identity-api
+#   gs015-bandwith-mgmt-api
+#   gs016-dev-app-api
+#   gs028-wai-api
+#   gs030-vis-api
+#   gs040-federation-api
+docker run -it --rm -v `pwd`:/opt/local/etsi gizmotronic/oracle-java8 /bin/bash -c "cd /opt/local/etsi && ./generate_stub.sh"
+

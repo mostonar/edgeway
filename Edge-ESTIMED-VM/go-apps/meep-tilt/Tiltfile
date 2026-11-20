@@ -1,0 +1,289 @@
+# ============================================
+# MEC Sandbox Tiltfile
+# ============================================
+# Automates the build > dockerize > deploy cycle for meepctl.
+#
+# Usage:
+#   tilt up              # Start watching (platform must already be deployed)
+#   tilt down            # Stop watching
+#
+# Tilt UI: http://localhost:10350
+#
+# What this does:
+#   - Watches go-apps/<app>/ for Go code changes > build + dockerize + restart pods
+#   - Watches charts/<sandbox-app>/ for chart changes > re-dockerize meep-virt-engine + redeploy
+#   - Watches charts/<core-app>/ for chart changes > redeploy core app
+#   - Provides manual buttons for dep management
+# ============================================
+
+# ---- Configuration ----
+REPO_ROOT = '../..'
+
+# Core apps: Go source + chart changes trigger build/dockerize/deploy
+CORE_APPS = [
+    'meep-auth-svc',
+    'meep-mon-engine',
+    'meep-platform-ctrl',
+    'meep-sandbox-api',
+    'meep-virt-engine',
+    'meep-webhook',
+]
+
+# Sandbox MEC API apps: Go source changes trigger build/dockerize/restart
+# Chart changes trigger meep-virt-engine re-dockerize + redeploy
+SANDBOX_APPS = [
+    'meep-ams',            # MEC021
+    'meep-app-enablement', # MEC011
+    'meep-dai',            # MEC016
+    'meep-federation',     # MEC040
+    'meep-gis-engine',
+    'meep-iot',            # MEC033
+    'meep-loc-serv',       # MEC013
+    'meep-metrics-engine',
+    'meep-rnis',           # MEC012
+    'meep-sandbox-ctrl',
+    'meep-sss',            # MEC046
+    'meep-tm',             # MEC015
+    'meep-vis',            # MEC030
+    'meep-wais',           # MEC028
+]
+
+# Dependency apps: manual buttons only (these rarely change)
+DEP_APPS = [
+    'meep-cert-manager',
+    'meep-couchdb',
+    'meep-docker-registry',
+    'meep-grafana',
+    'meep-influxdb',
+    'meep-ingress',
+    'meep-kube-state-metrics',
+    'meep-open-map-tiles',
+    'meep-postgis',
+    'meep-prometheus',
+    'meep-redis',
+    'meep-thanos',
+    'meep-thanos-archive',
+]
+
+# ============================================
+# Helper: restart all K8s deployments using a given image name
+# ============================================
+# Sandbox deployments have unpredictable names (e.g. mep1-mec033-1 uses meep-iot image).
+# This finds ALL deployments across ALL namespaces using the given image and restarts them.
+def restart_deploys_by_image_cmd(app):
+    col_spec = 'NS:.metadata.namespace,NAME:.metadata.name,IMAGE:.spec.template.spec.containers' + '[0]' + '.image'
+    cmd = 'echo "Restarting deployments using image: ' + app + '..." && '
+    cmd = cmd + 'kubectl get deploy -A -o custom-columns=' + col_spec + ' --no-headers '
+    cmd = cmd + '| grep ' + app + ' '
+    cmd = cmd + '| while read NS NAME IMAGE; do '
+    cmd = cmd + 'echo "  Restarting $NS/$NAME"; '
+    cmd = cmd + 'kubectl rollout restart deploy "$NAME" -n "$NS"; '
+    cmd = cmd + 'done; '
+    cmd = cmd + 'echo "Done."'
+    return cmd
+
+# ============================================
+# CORE APPS - Go code changes
+# ============================================
+# When Go source code changes:
+#   build > dockerize > force redeploy via meepctl
+# ============================================
+
+for app in CORE_APPS:
+    # Skip meep-virt-engine here; it gets special handling below
+    if app == 'meep-virt-engine':
+        continue
+
+    local_resource(
+        app + ':code',
+        cmd='echo "=== [' + app + '] Go code changed ===" && cd ' + REPO_ROOT + ' && meepctl build ' + app + ' --nolint && chown -R $SUDO_UID:$SUDO_GID go-apps/' + app + ' && meepctl dockerize ' + app + ' && chown -R $SUDO_UID:$SUDO_GID bin/' + app + ' && meepctl deploy core ' + app + ' --force',
+        deps=[REPO_ROOT + '/go-apps/' + app + '/'],
+        ignore=[
+            REPO_ROOT + '/go-apps/' + app + '/vendor/',
+        ],
+        auto_init=False,
+        trigger_mode=TRIGGER_MODE_MANUAL,
+        labels=['core'],
+    )
+
+# ============================================
+# CORE APPS - Chart changes
+# ============================================
+# When a core app's Helm chart changes:
+#   force redeploy only (no build/dockerize needed)
+# ============================================
+
+for app in CORE_APPS:
+    if app == 'meep-virt-engine':
+        continue
+
+    local_resource(
+        app + ':chart',
+        cmd='echo "=== [' + app + '] Helm chart changed ===" && cd ' + REPO_ROOT + ' && meepctl deploy core ' + app + ' --force',
+        deps=[REPO_ROOT + '/charts/' + app + '/'],
+        auto_init=False,
+        trigger_mode=TRIGGER_MODE_MANUAL,
+        labels=['core'],
+    )
+
+# ============================================
+# SANDBOX APPS - Go code changes
+# ============================================
+# When sandbox app Go source changes:
+#   build > dockerize > restart all K8s deployments using that image
+#   (sandbox deployments have dynamic names, so we find them by image)
+# ============================================
+
+for app in SANDBOX_APPS:
+    local_resource(
+        app + ':code',
+        cmd='echo "=== [' + app + '] Go code changed ===" && cd ' + REPO_ROOT + ' && meepctl build ' + app + ' --nolint && chown -R $SUDO_UID:$SUDO_GID go-apps/' + app + ' && meepctl dockerize ' + app + ' && chown -R $SUDO_UID:$SUDO_GID bin/' + app + ' && ' + restart_deploys_by_image_cmd(app),
+        deps=[REPO_ROOT + '/go-apps/' + app + '/'],
+        ignore=[
+            REPO_ROOT + '/go-apps/' + app + '/vendor/',
+        ],
+        auto_init=False,
+        trigger_mode=TRIGGER_MODE_MANUAL,
+        labels=['sandbox'],
+    )
+
+# ============================================
+# MEEP-VIRT-ENGINE - Special handling
+# ============================================
+# meep-virt-engine bundles ALL sandbox Helm charts as docker-data.
+# Triggers:
+#   1. Own Go code changes > build + dockerize + deploy -f
+#   2. ANY sandbox chart changes > dockerize + deploy -f
+#      (because charts are packaged into virt-engine's Docker image)
+# ============================================
+
+# 1. meep-virt-engine own Go code changes
+local_resource(
+    'meep-virt-engine:code',
+    cmd='echo "=== [meep-virt-engine] Go code changed ===" && cd ' + REPO_ROOT + ' && meepctl build meep-virt-engine --nolint && chown -R $SUDO_UID:$SUDO_GID go-apps/meep-virt-engine && meepctl dockerize meep-virt-engine && chown -R $SUDO_UID:$SUDO_GID bin/meep-virt-engine && meepctl deploy core meep-virt-engine --force',
+    deps=[REPO_ROOT + '/go-apps/meep-virt-engine/'],
+    ignore=[
+        REPO_ROOT + '/go-apps/meep-virt-engine/vendor/',
+    ],
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['core'],
+)
+
+# 2. meep-virt-engine chart change (its own chart)
+local_resource(
+    'meep-virt-engine:chart',
+    cmd='echo "=== [meep-virt-engine] Helm chart changed ===" && cd ' + REPO_ROOT + ' && meepctl deploy core meep-virt-engine --force',
+    deps=[REPO_ROOT + '/charts/meep-virt-engine/'],
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['core'],
+)
+
+# 3. ANY sandbox app chart changes > re-dockerize + redeploy meep-virt-engine
+#    (because sandbox charts are packaged inside virt-engine's Docker image)
+sandbox_chart_deps = [REPO_ROOT + '/charts/' + app + '/' for app in SANDBOX_APPS]
+local_resource(
+    'meep-virt-engine:sandbox-charts',
+    cmd='echo "=== [meep-virt-engine] Sandbox chart changed ===" && echo "Re-dockerizing meep-virt-engine to bundle updated charts..." && cd ' + REPO_ROOT + ' && meepctl dockerize meep-virt-engine && chown -R $SUDO_UID:$SUDO_GID bin/meep-virt-engine && meepctl deploy core meep-virt-engine --force',
+    deps=sandbox_chart_deps,
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['core'],
+)
+
+# ============================================
+# DEPENDENCY APPS - Manual buttons
+# ============================================
+# Dependencies are deployed once and rarely change.
+# These are manual-trigger buttons in the Tilt UI.
+# ============================================
+
+local_resource(
+    'dep:deploy-all',
+    cmd='cd ' + REPO_ROOT + ' && meepctl deploy dep all',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['dep'],
+)
+
+local_resource(
+    'dep:delete-all',
+    cmd='cd ' + REPO_ROOT + ' && meepctl delete dep',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['dep'],
+)
+
+for app in DEP_APPS:
+    local_resource(
+        'dep:' + app,
+        cmd='cd ' + REPO_ROOT + ' && meepctl deploy dep ' + app + ' --force',
+        auto_init=False,
+        trigger_mode=TRIGGER_MODE_MANUAL,
+        labels=['dep'],
+    )
+
+# ============================================
+# UTILITY - Manual buttons
+# ============================================
+
+local_resource(
+    'util:deploy-core-all',
+    cmd='cd ' + REPO_ROOT + ' && meepctl deploy core all',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['util'],
+)
+
+local_resource(
+    'util:delete-core-all',
+    cmd='cd ' + REPO_ROOT + ' && meepctl delete core',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['util'],
+)
+
+local_resource(
+    'util:build-all',
+    cmd='cd ' + REPO_ROOT + ' && meepctl build all && chown -R $SUDO_UID:$SUDO_GID .',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['util'],
+)
+
+local_resource(
+    'util:dockerize-all',
+    cmd='cd ' + REPO_ROOT + ' && meepctl dockerize all && chown -R $SUDO_UID:$SUDO_GID bin/',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['util'],
+)
+
+local_resource(
+    'util:docker-prune',
+    cmd='docker image prune -f',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['util'],
+)
+
+local_resource(
+    'util:pod-status',
+    cmd='kubectl get pods -A | grep meep-',
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['util'],
+)
+
+# ============================================
+# meep-ingress-certs - chart-only core app (no Go code)
+# ============================================
+local_resource(
+    'meep-ingress-certs:chart',
+    cmd='echo "=== [meep-ingress-certs] Chart changed ===" && cd ' + REPO_ROOT + ' && meepctl deploy core meep-ingress-certs --force',
+    deps=[REPO_ROOT + '/charts/meep-ingress-certs/'],
+    auto_init=False,
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    labels=['core'],
+)

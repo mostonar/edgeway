@@ -1,0 +1,88 @@
+---
+# Kubernetes master setup
+
+- name: Check if Kubernetes control plane is already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kube_admin_conf
+  become: true
+
+- name: Initialize Kubernetes control plane if not already initialized
+  when: not kube_admin_conf.stat.exists
+  block:
+    - name: Wait for containerd to be ready
+      command: crictl --runtime-endpoint unix:///run/containerd/containerd.sock info
+      register: crictl_info
+      retries: 5
+      delay: 5
+      until: crictl_info.rc == 0
+      become: true
+      changed_when: false
+
+    - name: Initialize Kubernetes control plane
+      command: kubeadm init --pod-network-cidr={{ pod_network_cidr }}
+      args:
+        creates: /etc/kubernetes/admin.conf
+      register: kubernetes_kubeadm_init
+      become: true
+
+- name: Create .kube directory for {{ target_user }}
+  file:
+    path: "{{ target_home }}/.kube"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0700'
+
+- name: Copy admin.conf to user kubeconfig
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ target_home }}/.kube/config"
+    remote_src: true
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0600'
+  become: true
+
+- name: Create root kubeconfig directory
+  file:
+    path: /root/.kube
+    state: directory
+    mode: '0700'
+  when: target_user != 'root'
+
+- name: Copy admin.conf to root kubeconfig
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    remote_src: true
+    mode: '0600'
+  when: target_user != 'root'
+
+# - name: Enable scheduling on control plane node
+#   command: kubectl taint --kubeconfig={{ target_home }}/.kube/config nodes --all node-role.kubernetes.io/control-plane-
+#   when: '"node-role.kubernetes.io/control-plane" in kubernetes_taints.stdout'
+#   changed_when: false
+
+- name: Get kubeadm join command
+  command: kubeadm token create --print-join-command
+  register: kubeadm_join_cmd
+  changed_when: false
+
+- name: Save join command to file on master
+  copy:
+    content: "{{ kubeadm_join_cmd.stdout }}"
+    dest: /tmp/kubeadm_join.sh
+    mode: '0755'
+
+- name: Fetch join command to control node
+  fetch:
+    src: /tmp/kubeadm_join.sh
+    dest: /tmp/kubeadm_join.sh
+    flat: true
+
+- name: Print kubeadm init info
+  debug:
+    msg:
+      - "kubeadm init finished. If this is first master, kubeconfig copied to /root/.kube/config"
+      - "Join command for workers saved"

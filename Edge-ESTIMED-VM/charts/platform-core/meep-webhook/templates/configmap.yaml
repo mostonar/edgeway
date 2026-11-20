@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMap }}
+data:
+  sidecarconfig.yaml: |
+    containers:
+    - name: {{ .Values.sidecar.name }}
+      image: "{{ .Values.sidecar.image.repository }}:{{ .Values.sidecar.image.tag }}"
+      imagePullPolicy: {{ .Values.sidecar.image.pullPolicy }}
+      securityContext:
+        capabilities:
+          add:
+            - NET_ADMIN
+    initContainers:
+    - name: init-{{ .Values.sidecar.dependency }}
+      image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        privileged: true
+      command: ['sh', '-c', 'sysctl -w net.ipv4.ip_forward=1 || true; until nslookup {{ .Values.sidecar.dependency }}.kube-system ; do echo waiting for {{ .Values.sidecar.dependency }}; sleep 0.25; done;']

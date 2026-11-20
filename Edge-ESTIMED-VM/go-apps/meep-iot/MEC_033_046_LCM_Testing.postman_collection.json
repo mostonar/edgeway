@@ -1,0 +1,654 @@
+{
+  "info": {
+    "name": "MEC 033 & 046 LCM Testing",
+    "description": "Comprehensive LCM Testing for IoT API (MEC 033) and Sensor Sharing Service API (MEC 046).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://10.98.111.115/iots/v1",
+      "type": "string"
+    },
+    {
+      "key": "sss_base_url",
+      "value": "http://10.110.109.193/sens/v1",
+      "type": "string"
+    },
+    {
+      "key": "iotPlatformId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subscriptionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "MEC 033 - IoT API",
+      "item": [
+        {
+          "name": "1. POST /registered_iot_platforms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if(jsonData.iotPlatformId) {",
+                  "    pm.environment.set('iotPlatformId', jsonData.iotPlatformId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iotPlatformId\": \"my-postman-iot-platform\",\n  \"userTransportInfo\": [\n    {\n      \"id\": \"mqtt-01\",\n      \"name\": \"my-mqtt\",\n      \"type\": \"MB_TOPIC_BASED\",\n      \"protocol\": \"MQTT\",\n      \"version\": \"3.1.1\",\n      \"endpoint\": { \"addresses\": [ { \"host\": \"192.168.20.167\", \"port\": 1883 } ] },\n      \"security\": {},\n      \"implSpecificInfo\": {}\n    }\n  ],\n  \"customServicesTransportInfo\": [],\n  \"enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/registered_iot_platforms",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_iot_platforms"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. GET /registered_iot_platforms",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/registered_iot_platforms",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_iot_platforms"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. GET /registered_iot_platforms/{iotPlatformId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/registered_iot_platforms/{{iotPlatformId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_iot_platforms",
+                "{{iotPlatformId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. PUT /registered_iot_platforms/{iotPlatformId}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iotPlatformId\": \"{{iotPlatformId}}\",\n  \"userTransportInfo\": [],\n  \"customServicesTransportInfo\": [],\n  \"enabled\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/registered_iot_platforms/{{iotPlatformId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_iot_platforms",
+                "{{iotPlatformId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. DELETE /registered_iot_platforms/{iotPlatformId}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/registered_iot_platforms/{{iotPlatformId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_iot_platforms",
+                "{{iotPlatformId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. POST /registered_devices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if(jsonData.deviceId) {",
+                  "    pm.environment.set('deviceId', jsonData.deviceId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"my-postman-device\",\n  \"requestedIotPlatformId\": \"{{iotPlatformId}}\",\n  \"deviceAuthenticationInfo\": \"auth-123\",\n  \"enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/registered_devices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_devices"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. GET /registered_devices/{deviceId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/registered_devices/{{deviceId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_devices",
+                "{{deviceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.5. PUT /registered_devices/{deviceId}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"requestedIotPlatformId\": \"{{iotPlatformId}}\",\n  \"deviceAuthenticationInfo\": \"auth-123-updated\",\n  \"enabled\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/registered_devices/{{deviceId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_devices",
+                "{{deviceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. DELETE /registered_devices/{deviceId}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/registered_devices/{{deviceId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "registered_devices",
+                "{{deviceId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "MEC 046 - SSS API",
+      "item": [
+        {
+          "name": "1. POST /subscriptions/sensor_discovery",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if(jsonData.subscriptionId) {",
+                  "    pm.environment.set('subscriptionId', jsonData.subscriptionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"callbackReference\": \"http://example.com/callback\",\n  \"sensorType\": [\"AE\"]\n}"
+            },
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_discovery",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_discovery"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. GET /subscriptions/sensor_discovery",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_discovery",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_discovery"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. GET /subscriptions/sensor_discovery/{subscriptionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_discovery/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_discovery",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. PUT /subscriptions/sensor_discovery/{subscriptionId}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"callbackReference\": \"http://example.com/callback_updated\",\n  \"sensorType\": [\"AE\", \"CNT\"]\n}"
+            },
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_discovery/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_discovery",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. DELETE /subscriptions/sensor_discovery/{subscriptionId}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_discovery/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_discovery",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. GET /queries/sensor_discovery",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/queries/sensor_discovery",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "queries",
+                "sensor_discovery"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. POST /subscriptions/sensor_status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if(jsonData.subscriptionId) {",
+                  "    pm.environment.set('subscriptionId', jsonData.subscriptionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"callbackReference\": \"http://example.com/status\",\n  \"sensorId\": \"sensor-123\"\n}"
+            },
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_status",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. GET /subscriptions/sensor_status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_status",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "9. GET /subscriptions/sensor_status/{subscriptionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_status/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_status",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "10. PUT /subscriptions/sensor_status/{subscriptionId}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"callbackReference\": \"http://example.com/status_updated\",\n  \"sensorId\": \"sensor-123\"\n}"
+            },
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_status/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_status",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "11. DELETE /subscriptions/sensor_status/{subscriptionId}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_status/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_status",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "12. GET /queries/sensor_status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/queries/sensor_status",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "queries",
+                "sensor_status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "13. POST /subscriptions/sensor_data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if(jsonData.subscriptionId) {",
+                  "    pm.environment.set('subscriptionId', jsonData.subscriptionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"callbackReference\": \"http://example.com/data\",\n  \"sensorId\": \"sensor-123\"\n}"
+            },
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_data",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_data"
+              ]
+            }
+          }
+        },
+        {
+          "name": "14. GET /subscriptions/sensor_data",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_data",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_data"
+              ]
+            }
+          }
+        },
+        {
+          "name": "15. GET /subscriptions/sensor_data/{subscriptionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_data/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_data",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "16. PUT /subscriptions/sensor_data/{subscriptionId}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"callbackReference\": \"http://example.com/data_updated\",\n  \"sensorId\": \"sensor-123\"\n}"
+            },
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_data/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_data",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "17. DELETE /subscriptions/sensor_data/{subscriptionId}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{sss_base_url}}/subscriptions/sensor_data/{{subscriptionId}}",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "subscriptions",
+                "sensor_data",
+                "{{subscriptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "18. GET /queries/sensor_data",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{sss_base_url}}/queries/sensor_data",
+              "host": [
+                "{{sss_base_url}}"
+              ],
+              "path": [
+                "queries",
+                "sensor_data"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/vars.json
+# Global defaults
+target_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
+target_home: "{% if target_user == 'root' %}/root{% else %}/home/{{ target_user }}{% endif %}"
+
+apt_base_packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - software-properties-common
+  - git
+  - unzip
+  - tar
+  - python3
+  - python3-pip
+  - python3-venv
+  - acl
+
+disable_swap: true
+
+# Container runtime
+docker_package_state: present
+# Upstream containerd version; the distro suffix is derived from the host's
+# release so the same pin works on jammy (22.04), noble (24.04), etc.
+containerd_upstream_version: "2.2.5-1"
+containerd_version: >-
+  {{ containerd_upstream_version }}~ubuntu.{{ ansible_facts['distribution_version'] }}~{{ ansible_facts['distribution_release'] }}
+containerd_config_path: /etc/containerd/config.toml
+
+# Docker (latest from official repo, no version pin)
+docker_gpg_key_url: "https://download.docker.com/linux/ubuntu/gpg"
+docker_gpg_key_path: "/usr/share/keyrings/docker-archive-keyring.gpg"
+docker_repo_list_path: "/etc/apt/sources.list.d/docker.list"
+docker_repo_url: "https://download.docker.com/linux/ubuntu"
+docker_repo_component: "stable"
+# System facts for repo (calculated dynamically in tasks, but you can override if needed)
+docker_repo_arch: >-
+  {{
+    'amd64' if ansible_facts['architecture'] == 'x86_64'
+    else 'arm64' if ansible_facts['architecture'] == 'aarch64'
+    else ansible_facts['architecture']
+  }}
+docker_repo_codename: "{{ ansible_facts['lsb']['codename'] | default(ansible_facts['distribution_release']) }}"
+
+# Kubernetes
+kubernetes_version: "v1.35.1" # exact version for package installation/pinning
+kubernetes_version_series: "v1.35" # minor version for repo URL
+
+kubernetes_repo_apt_key_url: >-
+  https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version_series }}/deb/Release.key
+kubernetes_repo_apt_entry: >-
+  deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg]
+  https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version_series }}/deb/ /
+kubeadm_cluster_name: "mec-sandbox"
+pod_network_cidr: "192.168.0.0/16"
+service_cidr: "10.96.0.0/12"
+apiserver_advertise_address: "127.0.0.1"
+
+# CNI (Calico)
+calico_version: "v3.31.4"
+calico_operator_crds_manifest: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/operator-crds.yaml"
+calico_operator_manifest: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml"
+calico_custom_resources_manifest: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/custom-resources-bpf.yaml"
+
+# Helm
+helm_version: "v3.14.4"
+
+# Development environment (optional role)
+install_dev_env: true
+go_version: "1.25.0"
+go_tar: "go{{ go_version }}.linux-amd64.tar.gz"
+go_url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+node_major: 24
+node_version: "24.18.0"
+npm_version: "12.0.1"
+eslint_version: "9.39.5"
+# Must stay on v2.x: the repo's .golangci.yml uses the v2 config schema
+# (version: "2"), which golangci-lint v1 cannot parse.
+golangci_lint_version: "v2.12.2"
+# Python venv for the kubernetes.core collection. Ubuntu 24.04 marks the system
+# interpreter externally-managed (PEP 668) and its python3-kubernetes apt package
+# is 22.6.0, below the kubernetes>=24.2.0 that kubernetes.core requires — so the
+# modules get their own venv instead of the system interpreter.
+k8s_python_venv: /opt/ansible-k8s-venv
+k8s_python_interpreter: "{{ k8s_python_venv }}/bin/python3"
+k8s_python_packages:
+  - kubernetes>=24.2.0
+  - pyyaml
+  - jsonpatch
+
+# MEC Sandbox paths (derived from target_home)
+install_mec_sandbox: true
+mec_sandbox_dir: "{{ target_home }}/etsi-mec-sandbox"
+mec_frontend_dir: "{{ target_home }}/etsi-mec-sandbox-frontend"
+
+# Optional local registry & CA trust
+docker_registry_host: "meep-docker-registry" # e.g., "registry.local:5000"
+docker_insecure_registries: [] # e.g., ["registry.local:5000"]
+docker_registry_mirrors: [] # e.g., ["https://mirror.gcr.io"]
+trust_k8s_ca_for_runtime: true # if true, copy /etc/kubernetes/pki/ca.crt to runtime trust store

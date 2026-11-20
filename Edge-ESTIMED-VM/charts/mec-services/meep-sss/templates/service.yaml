@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name }}
+  labels:
+    app: {{ template "meep-sss.name" . }}
+    chart: {{ template "meep-sss.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    meepOrigin: {{ .Values.meepOrigin }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: {{ template "meep-sss.name" . }}
+    release: {{ .Release.Name }}
+  ports:
+    - name: sss
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.deployment.port }}
+      {{- if .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+    - name: onem2m
+      port: 31122
+      targetPort: 31122
+    {{- if .Values.prometheus.monitor.enabled}}
+    - name: metrics
+      port: {{ .Values.prometheus.monitor.port }}
+      targetPort: {{ .Values.prometheus.monitor.port }}
+      protocol: TCP
+    {{- end}}
+

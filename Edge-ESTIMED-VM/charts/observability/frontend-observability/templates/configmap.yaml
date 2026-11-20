@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+data:
+  config.alloy: |
+    logging {
+      level = "info"
+    }
+
+    faro.receiver "frontend" {
+      server {
+        listen_address = "0.0.0.0"
+        listen_port = 12345
+        cors_allowed_origins = ["*"]
+      }
+
+      output {
+        logs = [loki.echo.stdout.receiver]
+      }
+    }
+
+    loki.echo "stdout" { }

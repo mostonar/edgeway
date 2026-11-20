@@ -1,0 +1,2858 @@
+openapi: 3.0.0
+info:
+  title: ETSI GS MEC 033 IoT API
+  description: ETSI GS MEC 033 IoT API described using OpenAPI.
+  contact:
+    name: ETSI Forge
+    url: https://forge.etsi.org/rep/mec/gs021-amsi-api
+    email: cti_support@etsi.org
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 3.1.1
+externalDocs:
+  description: "ETSI GS MEC 033 IoT API, v3.3.1"
+  url: https://www.etsi.org/deliver/etsi_gs/MEC/001_099/033/03.01.01_60/gs_mec033v030101p.pdf
+servers:
+- url: https://localhost/sandboxname/iots/v1
+tags:
+- name: reg-dev
+  description: registered_devices
+- name: reg-iot-plat
+  description: registered_iot_platforms
+paths:
+  /registered_devices:
+    get:
+      tags:
+      - reg-dev
+      summary: Retrieve information about all devices with a valid traffic rule association
+        - see clause 5.2.2.
+      description: The GET method may be used by a service consumer to retrieve information
+        about all devices with a valid traffic rule association. This method is typically
+        used in the "registered devices query" procedure as described in clause 5.2.2.
+      operationId: registereddevicesGET
+      parameters:
+      - name: filter
+        in: query
+        description: "Attribute-based filtering parameters according to ETSI GS MEC\
+          \ 009 [i.1]. The API producer shall support receiving the following filtering\
+          \ parameters as part of the URI query string: \"(eq,enabled,TRUE)\".\n"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: fields
+        in: query
+        description: |
+          The list may contain one or more of the following attributes from the DeviceInfo data type:
+          - deviceMetadata
+          - gpsi
+          - msisdn
+          - deviceId
+          - requestedMecTrafficRule
+          - requestedIotPlatformId
+          - requestedUserTransportId
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of registered\
+            \ devices is returned. The response body shall contain a list of resources\
+            \ that match the attribute filter."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - reg-dev
+      summary: Register a new device - see clause 5.2.3.
+      description: The POST method may be used by a service consumer to register a
+        new device. This method is typically used in the "device registration" procedure
+        as described in clause 5.2.3.
+      operationId: registereddevicesPOST
+      requestBody:
+        description: Payload body in the request contains the information associated
+          to the IoT device to be registered.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registered_devices_body'
+        required: true
+      responses:
+        "201":
+          description: "Upon success, the HTTP response shall include a \"Location\"\
+            \ HTTP header that contains the resource URI of the registered device."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/registered_devices_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /registered_devices/{registeredDeviceId}:
+    get:
+      tags:
+      - reg-dev
+      summary: Retrieve information about a device - see clause 5.2.4.
+      description: The GET method may be used by a service consumer to retrieve information
+        about a device. This method is typically used in the "device registration
+        query" procedure as described in clause 5.2.4.
+      operationId: registereddevicesByIdGET
+      parameters:
+      - name: registeredDeviceId
+        in: path
+        description: The unique identifier of the registered device.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing information about\
+            \ the registered device is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/registered_devices_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - reg-dev
+      summary: Update information about a  device including its association to a valid
+        traffic rule - see clauses 5.2.5 and 5.4.3.
+      description: The PUT method may be used by a service consumer to update a device
+        registration including its association to a valid traffic rule. This method
+        is typically used in the "device registration update" procedure as described
+        in clause 5.2.5 and in the "user transport assignment" procedure as described
+        in clause 5.4.3.
+      operationId: registereddevicesByIdPUT
+      parameters:
+      - name: registeredDeviceId
+        in: path
+        description: The unique identifier of the registered device.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: One or more updated attributes that are allowed to be changed
+          are included in the DeviceInfo data structure in the payload body of the
+          request. .
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registered_devices_registeredDeviceId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated DeviceInfo is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/registered_devices_registeredDeviceId_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition failed: used when a condition has failed during\
+            \ conditional requests, e.g. when using ETags to avoid write conflicts\
+            \ when using PUT"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - reg-dev
+      summary: Deregister a device - see clause 5.2.6.
+      description: The DELETE method may be used by a service consumer to deregister
+        a device. This method is typically used in the "device deregistration" procedure
+        as described in clause 5.2.6.
+      operationId: registereddevicesByIdDELETE
+      parameters:
+      - name: registeredDeviceId
+        in: path
+        description: The unique identifier of the registered device.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /registered_iot_platforms:
+    get:
+      tags:
+      - reg-iot-plat
+      summary: Retrieve information about all IoT platforms - see clause 5.3.2.
+      description: The GET method may be used by an authorized service consumer to
+        retrieve the information of all currently registered IoT platforms. This method
+        is typically used in the "registered IoT platforms query" procedure as described
+        in clause 5.3.2.
+      operationId: registerediotplatformsGET
+      parameters:
+      - name: fields
+        in: query
+        description: |
+          The list shall contain the following attributes from the IotPlatformInfo data type:
+          - iotPlatformId
+          - enabled
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of registered\
+            \ IoT platforms is returned."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IotPlatformInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - reg-iot-plat
+      summary: Register a IoT platform - see clause 5.3.4.
+      description: The POST method may be used by a service consumer to register a
+        new IoT platform. This method is typically used in the "IoT platform registration"
+        procedure as described in clause 5.3.4.
+      operationId: registerediotplatformsPOST
+      requestBody:
+        description: Payload body in the request contains the information associated
+          to the IoT platform to be registered.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registered_iot_platforms_body'
+        required: true
+      responses:
+        "201":
+          description: "Upon success, the HTTP response shall include a \"Location\"\
+            \ HTTP header that contains the resource URI of the registered IoT platform."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/registered_iot_platforms_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /registered_iot_platforms/{registeredIotPlatformId}:
+    get:
+      tags:
+      - reg-iot-plat
+      summary: Discover native services and obtain information about user transports
+        provided by a IoT platform - see clauses 5.3.3 and 5.4.2.
+      description: 'The GET method may be used by a service consumer to obtain information
+        about a IoT platform. This method is typically used in the "IoT platform information
+        request" procedure as described in clause 5.3.3 and in the "user transport
+        query" procedure as described in clause 5.4.2. '
+      operationId: registerediotplatformsByIdGET
+      parameters:
+      - name: registeredIotPlatformId
+        in: path
+        description: The unique identifier of the registered IoT platform.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: fields
+        in: query
+        description: |
+          The list may contain one or more of the following attributes from the IotPlatformInfo data type:
+          - userTransportInfo
+          - customServiceTransportInfo
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing information about\
+            \ the registered IoT platform is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_1'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - reg-iot-plat
+      summary: Update information about a IoT platform - see clause 5.3.5.
+      description: The PUT method may be used by a service consumer to update a IoT
+        platform registration. This method is typically used in the "IoT platform
+        update" procedure as described in clause 5.3.5.
+      operationId: registerediotplatformsByIdPUT
+      parameters:
+      - name: registeredIotPlatformId
+        in: path
+        description: The unique identifier of the registered IoT platform.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: One or more updated attributes that are allowed to be changed
+          are included in the IotPlatformInfo data structure in the payload body of
+          the request. .
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registered_iot_platforms_registeredIotPlatformId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated IotPlatformInfo is returned."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/registered_iot_platforms_registeredIotPlatformId_body'
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "412":
+          description: "Precondition failed: used when a condition has failed during\
+            \ conditional requests, e.g. when using ETags to avoid write conflicts\
+            \ when using PUT"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - reg-iot-plat
+      summary: Deregister a IoT platform - see clause 5.3.6.
+      description: The DELETE method may be used by a service consumer to deregister
+        a IoT platform. This method is typically used in the "IoT platform deregistration"
+        procedure as described in clause 5.3.6.
+      operationId: registerediotplatformsByIdDELETE
+      parameters:
+      - name: registeredIotPlatformId
+        in: path
+        description: The unique identifier of the registered IoT platform.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          description: A URI reference according to IETF RFC 3986 that identifies
+            the problem type
+          format: uri
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type"
+        status:
+          type: integer
+          description: The HTTP status code for this occurrence of the problem
+          format: uint32
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+          format: uri
+    DeviceInfo:
+      title: DeviceInfo
+      required:
+      - deviceAuthenticationInfo
+      - deviceId
+      - enabled
+      type: object
+      properties:
+        deviceAuthenticationInfo:
+          type: string
+          description: "Information needed for secondary authentication of the IoT\
+            \ device to the data network - see ETSI TS 129 561 [i.4] and ETSI TS 129\
+            \ 061 [i.5] for 5G and LTE procedures, respectively. This attribute is\
+            \ implementation dependent and should be logically linked to the identifiers\
+            \ of the IoT device listed hereafter."
+        deviceMetadata:
+          type: array
+          description: 'Additional information about the IoT device. This attribute
+            is implementation dependent and may be expressed as an array of keyvalue
+            pairs. '
+          items:
+            $ref: '#/components/schemas/KeyValuePair'
+        gpsi:
+          type: string
+          description: GPSI of the IoT device if 5G-enabled (see note 1).
+        pei:
+          type: string
+          description: PEI of the IoT device if 5G-enabled (see note 1).
+        supi:
+          type: string
+          description: SUPI of the IoT device if 5G-enabled (see note 1).
+        msisdn:
+          type: string
+          description: MSISDN of the IoT device if LTE-enabled (see note 1).
+        imei:
+          type: string
+          description: IMEI of the IoT device if LTE-enabled (see note 1).
+        imsi:
+          type: string
+          description: IMSI of the IoT device if LTE-enabled (see note 1).
+        iccid:
+          type: string
+          description: ICCID of the IoT device (see note 1).
+        deviceId:
+          type: string
+          description: Human-readable identifier of the IoT device.
+        requestedMecTrafficRule:
+          type: array
+          description: "MEC traffic rules the IoT device is requested to be associated\
+            \ to (see note 2). The data type definition is as per ETSI GS\_MEC 010-2\
+            \ [i.6]."
+          items:
+            $ref: '#/components/schemas/TrafficRuleDescriptor'
+        requestedIotPlatformId:
+          type: string
+          description: IoT platform to which the IoT device is requested to be associated
+            to (see note 2).
+        requestedUserTransportId:
+          type: string
+          description: User transport to which the IoT device is requested to be associated
+            to (see note 2).
+        deviceSpecificMessageFormats:
+          $ref: '#/components/schemas/DeviceSpecificMessageFormats'
+        downlinkInfo:
+          $ref: '#/components/schemas/DownlinkInfo'
+        clientCertificate:
+          type: string
+          description: Client-side SSL/TLS certificate to be used by the MEC IoTS
+            to interact with the user transport provided by the associated IoT platform
+            in case the MEC IoTS acts on behalf of the IoT device.
+        enabled:
+          type: boolean
+          description: Indication whether the IoT device has a valid associated traffic
+            rule (TRUE) or not (FALSE). See note 3.
+      description: "NOTE 1: At least one attribute among gpsi, pei, supi, msisdn,\
+        \ imei, imsi, and iccid should be provided. Sufficient security\n        measures\
+        \ shall be put in place when any attribute among PEI, SUPI, IMEI, and IMSI\
+        \ is disclosed over the API.\nNOTE 2: Until a valid traffic rule is not provided,\
+        \ the device will not be able to use the IoTS. A valid traffic rule is provided\n\
+        \        by one of the following options:\n        • the requestedMecTrafficRule\
+        \ attribute;\n        • the requestedIotPlatformId attribute when the IoT\
+        \ platform offers only one user transport;\n        • the combination of requestedIotPlatformId\
+        \ and requestedUserTransportId.\nNOTE 3: Enabled is a pseudo-attribute which\
+        \ needs to be maintained by the IoTS based on the presence or not of a valid\n\
+        \        traffic rule associated to the device. It cannot be set directly\
+        \ by the service consumer. \n"
+      example:
+        deviceSpecificMessageFormats:
+          eventMsgFormat:
+            includeDeviceMetadata: true
+            includeIccid: true
+            includeDeviceAddr: true
+            includeImei: true
+            includeImsi: true
+            includeSupi: true
+            selectedSerializer: JSON
+            eventTopic: eventTopic
+            includeDeviceId: true
+            includePei: true
+          uplinkMsgFormat:
+            includeDeviceMetadata: true
+            includeIccid: true
+            includeDeviceAddr: true
+            includeImei: true
+            uplinkTopic: uplinkTopic
+            includeImsi: true
+            includeSupi: true
+            selectedSerializer: null
+            includeDevicePort: true
+            includeDeviceId: true
+            includePei: true
+        clientCertificate: clientCertificate
+        downlinkInfo:
+          downlinkTopic: downlinkTopic
+          devicePort: 5
+        imsi: imsi
+        supi: supi
+        deviceId: deviceId
+        requestedMecTrafficRule:
+        - action: SEE_DESCRIPTION
+          trafficRuleId: trafficRuleId
+          dstInterface:
+            interfaceType: TUNNEL
+            dstIPAddress: dstIPAddress
+            srcMACAddress: srcMACAddress
+            dstMACAddress: dstMACAddress
+            tunnelInfo:
+              tunnelSrcAddress: tunnelSrcAddress
+              tunnelType: GTP-U
+              tunnelSpecificData: tunnelSpecificData
+              tunnelDstAddress: tunnelDstAddress
+          filterType: per FLOW
+          priority: 0
+          trafficFilter:
+          - srcTunnelPort:
+            - srcTunnelPort
+            - srcTunnelPort
+            dstAddress:
+            - dstAddress
+            - dstAddress
+            srcAddress:
+            - srcAddress
+            - srcAddress
+            srcPort:
+            - srcPort
+            - srcPort
+            uri:
+            - uri
+            - uri
+            tC: 5
+            protocol:
+            - protocol
+            - protocol
+            dstTunnelPort:
+            - dstTunnelPort
+            - dstTunnelPort
+            dSCP: 1
+            dstPort:
+            - dstPort
+            - dstPort
+            packetLabel:
+            - packetLabel
+            - packetLabel
+            qCI: 6
+            srcTunnelAddress:
+            - srcTunnelAddress
+            - srcTunnelAddress
+            tag:
+            - tag
+            - tag
+            tgtTunnelAddress:
+            - tgtTunnelAddress
+            - tgtTunnelAddress
+          - srcTunnelPort:
+            - srcTunnelPort
+            - srcTunnelPort
+            dstAddress:
+            - dstAddress
+            - dstAddress
+            srcAddress:
+            - srcAddress
+            - srcAddress
+            srcPort:
+            - srcPort
+            - srcPort
+            uri:
+            - uri
+            - uri
+            tC: 5
+            protocol:
+            - protocol
+            - protocol
+            dstTunnelPort:
+            - dstTunnelPort
+            - dstTunnelPort
+            dSCP: 1
+            dstPort:
+            - dstPort
+            - dstPort
+            packetLabel:
+            - packetLabel
+            - packetLabel
+            qCI: 6
+            srcTunnelAddress:
+            - srcTunnelAddress
+            - srcTunnelAddress
+            tag:
+            - tag
+            - tag
+            tgtTunnelAddress:
+            - tgtTunnelAddress
+            - tgtTunnelAddress
+        - action: SEE_DESCRIPTION
+          trafficRuleId: trafficRuleId
+          dstInterface:
+            interfaceType: TUNNEL
+            dstIPAddress: dstIPAddress
+            srcMACAddress: srcMACAddress
+            dstMACAddress: dstMACAddress
+            tunnelInfo:
+              tunnelSrcAddress: tunnelSrcAddress
+              tunnelType: GTP-U
+              tunnelSpecificData: tunnelSpecificData
+              tunnelDstAddress: tunnelDstAddress
+          filterType: per FLOW
+          priority: 0
+          trafficFilter:
+          - srcTunnelPort:
+            - srcTunnelPort
+            - srcTunnelPort
+            dstAddress:
+            - dstAddress
+            - dstAddress
+            srcAddress:
+            - srcAddress
+            - srcAddress
+            srcPort:
+            - srcPort
+            - srcPort
+            uri:
+            - uri
+            - uri
+            tC: 5
+            protocol:
+            - protocol
+            - protocol
+            dstTunnelPort:
+            - dstTunnelPort
+            - dstTunnelPort
+            dSCP: 1
+            dstPort:
+            - dstPort
+            - dstPort
+            packetLabel:
+            - packetLabel
+            - packetLabel
+            qCI: 6
+            srcTunnelAddress:
+            - srcTunnelAddress
+            - srcTunnelAddress
+            tag:
+            - tag
+            - tag
+            tgtTunnelAddress:
+            - tgtTunnelAddress
+            - tgtTunnelAddress
+          - srcTunnelPort:
+            - srcTunnelPort
+            - srcTunnelPort
+            dstAddress:
+            - dstAddress
+            - dstAddress
+            srcAddress:
+            - srcAddress
+            - srcAddress
+            srcPort:
+            - srcPort
+            - srcPort
+            uri:
+            - uri
+            - uri
+            tC: 5
+            protocol:
+            - protocol
+            - protocol
+            dstTunnelPort:
+            - dstTunnelPort
+            - dstTunnelPort
+            dSCP: 1
+            dstPort:
+            - dstPort
+            - dstPort
+            packetLabel:
+            - packetLabel
+            - packetLabel
+            qCI: 6
+            srcTunnelAddress:
+            - srcTunnelAddress
+            - srcTunnelAddress
+            tag:
+            - tag
+            - tag
+            tgtTunnelAddress:
+            - tgtTunnelAddress
+            - tgtTunnelAddress
+        enabled: true
+        gpsi: gpsi
+        requestedUserTransportId: requestedUserTransportId
+        iccid: iccid
+        pei: pei
+        requestedIotPlatformId: requestedIotPlatformId
+        deviceMetadata:
+        - value: value
+          key: key
+        - value: value
+          key: key
+        deviceAuthenticationInfo: deviceAuthenticationInfo
+        imei: imei
+        msisdn: msisdn
+    IotPlatformInfo:
+      title: IotPlatformInfo
+      required:
+      - enabled
+      - iotPlatformId
+      - userTransportInfo
+      type: object
+      properties:
+        iotPlatformId:
+          type: string
+          description: Identifier of the IoT platform.
+        userTransportInfo:
+          minItems: 1
+          type: array
+          description: Information about the user transport(s)  provided by the IoT
+            platform.
+          items:
+            $ref: '#/components/schemas/MBTransportInfo'
+        customServicesTransportInfo:
+          minItems: 0
+          type: array
+          description: "Transport enabling access to vendor-specific services provided\
+            \ by the IoT platform. The data type definition is as per ETSI GS MEC\
+            \ 011 [i.2]."
+          items:
+            $ref: '#/components/schemas/TransportInfo'
+        enabled:
+          type: boolean
+          description: Indication whether the IoT platform is capable of providing
+            user transports and vendor-specific services (TRUE) or not (FALSE).
+      example:
+        iotPlatformId: iotPlatformId
+        customServicesTransportInfo:
+        - implSpecificInfo: implSpecificInfo
+          protocol: protocol
+          endpoint: null
+          security: null
+          name: name
+          description: description
+          id: id
+          type: null
+          version: version
+        - implSpecificInfo: implSpecificInfo
+          protocol: protocol
+          endpoint: null
+          security: null
+          name: name
+          description: description
+          id: id
+          type: null
+          version: version
+        userTransportInfo:
+        - implSpecificInfo:
+            uplinkTopics:
+            - uplinkTopics
+            - uplinkTopics
+            downlinkTopics:
+            - downlinkTopics
+            - downlinkTopics
+            eventTopics:
+            - eventTopics
+            - eventTopics
+          protocol: protocol
+          endpoint:
+            uris:
+            - uris
+            - uris
+            addresses:
+            - port: 0
+              host: host
+            - port: 0
+              host: host
+            fqdn:
+            - fqdn
+            - fqdn
+            alternative: alternative
+          security:
+            extensions: extensions
+            oAuth2Info:
+              tokenEndpoint: http://example.com/aeiou
+              grantTypes:
+              - OAUTH2_AUTHORIZATION_CODE
+              - OAUTH2_AUTHORIZATION_CODE
+          name: name
+          description: description
+          id: id
+          type: REST_HTTP
+          version: version
+        - implSpecificInfo:
+            uplinkTopics:
+            - uplinkTopics
+            - uplinkTopics
+            downlinkTopics:
+            - downlinkTopics
+            - downlinkTopics
+            eventTopics:
+            - eventTopics
+            - eventTopics
+          protocol: protocol
+          endpoint:
+            uris:
+            - uris
+            - uris
+            addresses:
+            - port: 0
+              host: host
+            - port: 0
+              host: host
+            fqdn:
+            - fqdn
+            - fqdn
+            alternative: alternative
+          security:
+            extensions: extensions
+            oAuth2Info:
+              tokenEndpoint: http://example.com/aeiou
+              grantTypes:
+              - OAUTH2_AUTHORIZATION_CODE
+              - OAUTH2_AUTHORIZATION_CODE
+          name: name
+          description: description
+          id: id
+          type: REST_HTTP
+          version: version
+        enabled: true
+    MBTransportInfo:
+      title: MBTransportInfo
+      required:
+      - endpoint
+      - id
+      - implSpecificInfo
+      - name
+      - protocol
+      - security
+      - type
+      - version
+      type: object
+      properties:
+        id:
+          type: string
+          description: "The identifier of this transport as per ETSI GS\_MEC\_011\
+            \ [i.2]."
+        name:
+          type: string
+          description: "The name of this transport as per ETSI GS\_MEC\_011\_[i.2]."
+        description:
+          type: string
+          description: "Human-readable description of this transport as per ETSI GS\_\
+            MEC 011 [i.2]."
+        type:
+          $ref: '#/components/schemas/TransportType'
+        protocol:
+          type: string
+          description: "The name of the protocol used. Being the transport of MB_TOPIC_BASED\
+            \ type, this attribute should be typically set to \"MQTT\" or \"AMQP.\""
+        version:
+          type: string
+          description: "The version of the protocol used as per ETSI GS\_MEC\_011\_\
+            [i.2]."
+        endpoint:
+          $ref: '#/components/schemas/EndPointInfo'
+        security:
+          $ref: '#/components/schemas/SecurityInfo'
+        implSpecificInfo:
+          $ref: '#/components/schemas/ImplSpecificInfo'
+      example:
+        implSpecificInfo:
+          uplinkTopics:
+          - uplinkTopics
+          - uplinkTopics
+          downlinkTopics:
+          - downlinkTopics
+          - downlinkTopics
+          eventTopics:
+          - eventTopics
+          - eventTopics
+        protocol: protocol
+        endpoint:
+          uris:
+          - uris
+          - uris
+          addresses:
+          - port: 0
+            host: host
+          - port: 0
+            host: host
+          fqdn:
+          - fqdn
+          - fqdn
+          alternative: alternative
+        security:
+          extensions: extensions
+          oAuth2Info:
+            tokenEndpoint: http://example.com/aeiou
+            grantTypes:
+            - OAUTH2_AUTHORIZATION_CODE
+            - OAUTH2_AUTHORIZATION_CODE
+        name: name
+        description: description
+        id: id
+        type: REST_HTTP
+        version: version
+    EventMsg:
+      title: EventMsg
+      required:
+      - eventTopic
+      - selectedSerializer
+      type: object
+      properties:
+        eventTopic:
+          type: string
+          description: 'Topic where the message containing application-specific information
+            should be published. '
+        selectedSerializer:
+          $ref: '#/components/schemas/SerializerType'
+        includeDeviceAddr:
+          type: boolean
+          description: Indication whether to include the IP address of the IoT device
+            (TRUE) or not (FALSE).
+        includeDeviceMetadata:
+          type: boolean
+          description: Indication whether to include the metadata about the IoT device
+            (TRUE) or not (FALSE).
+        includePei:
+          type: boolean
+          description: Indication whether to include the PEI of the IoT device (TRUE)
+            or not (FALSE).
+        includeSupi:
+          type: boolean
+          description: Indication whether to include the SUPI of the IoT device (TRUE)
+            or not (FALSE).
+        includeImei:
+          type: boolean
+          description: Indication whether to include the IMEI of the IoT device (TRUE)
+            or not (FALSE).
+        includeImsi:
+          type: boolean
+          description: Indication whether to include the IMSI of the IoT device (TRUE)
+            or not (FALSE).
+        includeIccid:
+          type: boolean
+          description: Indication whether to include the ICCID of the IoT device (TRUE)
+            or not (FALSE).
+        includeDeviceId:
+          type: boolean
+          description: Indication whether to include the human-readable identified
+            of the IoT device (TRUE) or not (FALSE).
+      example:
+        includeDeviceMetadata: true
+        includeIccid: true
+        includeDeviceAddr: true
+        includeImei: true
+        includeImsi: true
+        includeSupi: true
+        selectedSerializer: JSON
+        eventTopic: eventTopic
+        includeDeviceId: true
+        includePei: true
+    UplinkMsg:
+      title: UplinkMsg
+      required:
+      - selectedSerializer
+      - uplinkTopic
+      type: object
+      properties:
+        uplinkTopic:
+          type: string
+          description: "Topic where the message containing the data generated by the\
+            \ IoT device(s) should be published, in order to be consumed by the end\
+            \ IoT application(s)."
+        selectedSerializer:
+          $ref: '#/components/schemas/SerializerType'
+        includeDevicePort:
+          type: boolean
+          description: Indication whether to include the UDP port of the remote IoT
+            device (TRUE) or not (FALSE).
+        includeDeviceAddr:
+          type: boolean
+          description: Indication whether to include the IP address of the IoT device
+            (TRUE) or not (FALSE).
+        includeDeviceMetadata:
+          type: boolean
+          description: Indication whether to include the metadata about the IoT device
+            (TRUE) or not (FALSE).
+        includePei:
+          type: boolean
+          description: Indication whether to include the PEI of the IoT device (TRUE)
+            or not (FALSE).
+        includeSupi:
+          type: boolean
+          description: Indication whether to include the SUPI of the IoT device (TRUE)
+            or not (FALSE).
+        includeImei:
+          type: boolean
+          description: Indication whether to include the IMEI of the IoT device (TRUE)
+            or not (FALSE).
+        includeImsi:
+          type: boolean
+          description: Indication whether to include the IMSI of the IoT device (TRUE)
+            or not (FALSE).
+        includeIccid:
+          type: boolean
+          description: Indication whether to include the ICCID of the IoT device (TRUE)
+            or not (FALSE).
+        includeDeviceId:
+          type: boolean
+          description: Indication whether to include the human-readable identified
+            of the IoT device (TRUE) or not (FALSE).
+      example:
+        includeDeviceMetadata: true
+        includeIccid: true
+        includeDeviceAddr: true
+        includeImei: true
+        uplinkTopic: uplinkTopic
+        includeImsi: true
+        includeSupi: true
+        selectedSerializer: null
+        includeDevicePort: true
+        includeDeviceId: true
+        includePei: true
+    DeviceSpecificMessageFormats:
+      type: object
+      properties:
+        eventMsgFormat:
+          $ref: '#/components/schemas/EventMsg'
+        uplinkMsgFormat:
+          $ref: '#/components/schemas/UplinkMsg'
+      description: Format of the messages to be published by the MEC IoTS on the user
+        transport provided by the associated IoT platform in case the MEC IoTS acts
+        on behalf of the IoT device.
+      example:
+        eventMsgFormat:
+          includeDeviceMetadata: true
+          includeIccid: true
+          includeDeviceAddr: true
+          includeImei: true
+          includeImsi: true
+          includeSupi: true
+          selectedSerializer: JSON
+          eventTopic: eventTopic
+          includeDeviceId: true
+          includePei: true
+        uplinkMsgFormat:
+          includeDeviceMetadata: true
+          includeIccid: true
+          includeDeviceAddr: true
+          includeImei: true
+          uplinkTopic: uplinkTopic
+          includeImsi: true
+          includeSupi: true
+          selectedSerializer: null
+          includeDevicePort: true
+          includeDeviceId: true
+          includePei: true
+    DownlinkInfo:
+      type: object
+      properties:
+        downlinkTopic:
+          type: string
+          description: Topic associated to the IoT device. This topic should be used
+            by an end IoT application to send downlink data to the IoT device.
+        devicePort:
+          type: integer
+          description: "UDP port to be used by the MEC IoTS for the outgoing downlink\
+            \ packets towards the IoT device. In case a default value is used, this\
+            \ attribute is optional."
+      description: Downlink communication configuration of the user transport provided
+        by the associated IoT platform in case the MEC IoTS acts on behalf of the
+        IoT device.
+      example:
+        downlinkTopic: downlinkTopic
+        devicePort: 5
+    ImplSpecificInfo:
+      type: object
+      properties:
+        eventTopics:
+          minItems: 0
+          type: array
+          description: Topics used to publish events related to the established session
+            between the IoT device(s) and the end IoT application(s) on the user transport.
+          items:
+            type: string
+        uplinkTopics:
+          type: array
+          description: "Topics used to publish data generated by the IoT device(s)\
+            \ on the user transport, in order to be consumed by the end IoT application(s)."
+          items:
+            type: string
+        downlinkTopics:
+          type: array
+          description: "Topics used to publish data generated by the IoT applications(s)\
+            \ on the user transport, in order to be consumed by the end IoT device(s)."
+          items:
+            type: string
+      description: Additional implementation specific details of the transport.
+      example:
+        uplinkTopics:
+        - uplinkTopics
+        - uplinkTopics
+        downlinkTopics:
+        - downlinkTopics
+        - downlinkTopics
+        eventTopics:
+        - eventTopics
+        - eventTopics
+    SerializerType:
+      type: string
+      description: The enumeration SerializerType represents types of serializers.
+      enum:
+      - JSON
+      - XML
+      - PROTOBUF3
+    TransportInfo:
+      title: TransportInfo
+      required:
+      - endpoint
+      - id
+      - name
+      - protocol
+      - security
+      - type
+      - version
+      type: object
+      properties:
+        id:
+          type: string
+          description: The identifier of this transport.
+        name:
+          type: string
+          description: The name of this transport.
+        description:
+          type: string
+          description: Human-readable description of this transport.
+        type:
+          $ref: '#/components/schemas/TransportType'
+        protocol:
+          type: string
+          description: The name of the protocol used. Shall be set to "HTTP" for a
+            REST API.
+        version:
+          type: string
+          description: The version of the protocol used.
+        endpoint:
+          $ref: '#/components/schemas/EndPointInfo'
+        security:
+          $ref: '#/components/schemas/SecurityInfo'
+        implSpecificInfo:
+          type: string
+          description: Additional implementation specific details of the transport.
+      example:
+        implSpecificInfo: implSpecificInfo
+        protocol: protocol
+        endpoint: null
+        security: null
+        name: name
+        description: description
+        id: id
+        type: null
+        version: version
+    TransportType:
+      type: string
+      description: Enumeration representing types of transports.
+      enum:
+      - REST_HTTP
+      - MB_TOPIC_BASED
+      - MB_ROUTING
+      - MB_PUBSUB
+      - RPC
+      - RPC_STREAMING
+      - WEBSOCKET
+    EndPointInfo:
+      title: EndPointInfo
+      type: object
+      properties:
+        uris:
+          type: array
+          description: "Entry point information of the service as string, formatted\
+            \ according to URI syntax (see IETF RFC 3986 [8]). Shall be used for REST\
+            \ APIs. See note."
+          items:
+            type: string
+        fqdn:
+          type: array
+          description: Fully Qualified Domain Name of the service. See note.
+          items:
+            type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Addresses'
+        alternative:
+          type: string
+          description: "Entry point information of the service in a format defined\
+            \ by an implementation, or in an external specification. See\_note."
+      description: "NOTE: Exactly one of \"uris\", \"fqdn\", \"addresses\" or \"alternative\"\
+        \ shall be present. \n"
+      example:
+        uris:
+        - uris
+        - uris
+        addresses:
+        - port: 0
+          host: host
+        - port: 0
+          host: host
+        fqdn:
+        - fqdn
+        - fqdn
+        alternative: alternative
+    SecurityInfo:
+      type: object
+      properties:
+        oAuth2Info:
+          $ref: '#/components/schemas/OAuth2Info'
+        extensions:
+          type: string
+          description: "Extensions for alternative transport mechanisms. These extensions\
+            \ depend on the actual transport and are out of scope of the present document.\
+            \ For instance, such extensions may be used to signal the necessary parameters\
+            \ for the client to use TLS-based authorization defined for alternative\
+            \ transports (see ETSI GS MEC 009 [5] for more information).\n"
+      example:
+        extensions: extensions
+        oAuth2Info:
+          tokenEndpoint: http://example.com/aeiou
+          grantTypes:
+          - OAUTH2_AUTHORIZATION_CODE
+          - OAUTH2_AUTHORIZATION_CODE
+    Addresses:
+      required:
+      - host
+      - port
+      type: object
+      properties:
+        host:
+          type: string
+          description: Host portion of the address.
+        port:
+          type: integer
+          description: Port portion of the address.
+      description: Entry point information of the service as one or more pairs of
+        IP address and port. See note.
+      example:
+        port: 0
+        host: host
+    OAuth2Info:
+      required:
+      - grantTypes
+      type: object
+      properties:
+        grantTypes:
+          type: array
+          description: "List of supported OAuth 2.0 grant types.\nEach entry shall\
+            \ be one of the following permitted values:\n- OAUTH2_AUTHORIZATION_CODE:\
+            \ Authorization code grant type\n- OAUTH2_IMPLICIT_GRANT: Implicit grant\
+            \ type\n- OAUTH2_RESOURCE_OWNER: Resource owner password credentials grant\
+            \ type\n- OAUTH2_CLIENT_CREDENTIALS: Client credentials grant type\nOnly\
+            \ the value \"OAUTH2_CLIENT_CREDENTIALS\" is supported in the present\
+            \ document.\n"
+          items:
+            type: string
+            enum:
+            - OAUTH2_AUTHORIZATION_CODE
+            - OAUTH2_IMPLICIT_GRANT
+            - OAUTH2_RESOURCE_OWNER
+            - OAUTH2_CLIENT_CREDENTIALS
+        tokenEndpoint:
+          type: string
+          description: The token endpoint. Shall be present unless the grant type
+            is OAUTH2_IMPLICIT_GRANT.
+          format: uri
+      description: "Parameters related to use of OAuth 2.0. Shall be present in case\
+        \ OAuth 2.0 (see IETF RFC 6749 [13]) is supported to secure the provision\
+        \ of the service over the transport."
+      example:
+        tokenEndpoint: http://example.com/aeiou
+        grantTypes:
+        - OAUTH2_AUTHORIZATION_CODE
+        - OAUTH2_AUTHORIZATION_CODE
+    TrafficRuleDescriptor:
+      title: TrafficRuleDescriptor
+      required:
+      - action
+      - filterType
+      - priority
+      - trafficFilter
+      - trafficRuleId
+      type: object
+      properties:
+        trafficRuleId:
+          type: string
+          description: Identifies the traffic rule.
+        filterType:
+          type: string
+          description: "Definition of filter type: per FLOW or PACKET\n\nIf it is\
+            \ per FLOW, the filter matches upstream (e.g. UE->EPC) packets and downstream\
+            \ (e.g. EPC->UE) packets are handled by the same context.\n"
+          enum:
+          - per FLOW
+          - per PACKET
+        priority:
+          type: integer
+          description: "Priority of this traffic rule within the range 0 to 255. If\
+            \ traffic rule conflicts, the one with higher priority take precedence.\
+            \ See note\_1."
+        trafficFilter:
+          type: array
+          description: The filter used to identify specific flow/packets that need
+            to be handled by the MEC host.
+          items:
+            $ref: '#/components/schemas/TrafficFilter'
+        action:
+          type: string
+          description: "Identifies the action of the MEC host data plane, when a packet\
+            \ matches the trafficFilter, the example actions include:\nDROP,\nFORWARD_DECAPSULATED,\n\
+            FORWARD_ENCAPSULATED,\nPASSTHROUGH,\nDUPLICATE_DECAPSULATED,\nDUPLICATE_ENCAPSULATED "
+          enum:
+          - SEE_DESCRIPTION
+        dstInterface:
+          $ref: '#/components/schemas/InterfaceDescriptor'
+      description: "NOTE 1: Value indicates the priority in descending order, i.e.\
+        \ with 0 as the highest priority and 255 as the lowest\n        priority.\n\
+        NOTE 2: Some applications (like inline/tap) require two interfaces. The first\
+        \ interface in the case of inline/tap is on the\n        client (e.g. UE)\
+        \ side and the second on the core network (e.g. EPC) side. \n"
+      example:
+        action: SEE_DESCRIPTION
+        trafficRuleId: trafficRuleId
+        dstInterface:
+          interfaceType: TUNNEL
+          dstIPAddress: dstIPAddress
+          srcMACAddress: srcMACAddress
+          dstMACAddress: dstMACAddress
+          tunnelInfo:
+            tunnelSrcAddress: tunnelSrcAddress
+            tunnelType: GTP-U
+            tunnelSpecificData: tunnelSpecificData
+            tunnelDstAddress: tunnelDstAddress
+        filterType: per FLOW
+        priority: 0
+        trafficFilter:
+        - srcTunnelPort:
+          - srcTunnelPort
+          - srcTunnelPort
+          dstAddress:
+          - dstAddress
+          - dstAddress
+          srcAddress:
+          - srcAddress
+          - srcAddress
+          srcPort:
+          - srcPort
+          - srcPort
+          uri:
+          - uri
+          - uri
+          tC: 5
+          protocol:
+          - protocol
+          - protocol
+          dstTunnelPort:
+          - dstTunnelPort
+          - dstTunnelPort
+          dSCP: 1
+          dstPort:
+          - dstPort
+          - dstPort
+          packetLabel:
+          - packetLabel
+          - packetLabel
+          qCI: 6
+          srcTunnelAddress:
+          - srcTunnelAddress
+          - srcTunnelAddress
+          tag:
+          - tag
+          - tag
+          tgtTunnelAddress:
+          - tgtTunnelAddress
+          - tgtTunnelAddress
+        - srcTunnelPort:
+          - srcTunnelPort
+          - srcTunnelPort
+          dstAddress:
+          - dstAddress
+          - dstAddress
+          srcAddress:
+          - srcAddress
+          - srcAddress
+          srcPort:
+          - srcPort
+          - srcPort
+          uri:
+          - uri
+          - uri
+          tC: 5
+          protocol:
+          - protocol
+          - protocol
+          dstTunnelPort:
+          - dstTunnelPort
+          - dstTunnelPort
+          dSCP: 1
+          dstPort:
+          - dstPort
+          - dstPort
+          packetLabel:
+          - packetLabel
+          - packetLabel
+          qCI: 6
+          srcTunnelAddress:
+          - srcTunnelAddress
+          - srcTunnelAddress
+          tag:
+          - tag
+          - tag
+          tgtTunnelAddress:
+          - tgtTunnelAddress
+          - tgtTunnelAddress
+    TrafficFilter:
+      title: TrafficFilter
+      type: object
+      properties:
+        srcAddress:
+          type: array
+          description: "An IP address or a range of IP addresses.\nFor IPv4, the IP\
+            \ address could be an IP address plus mask, or an individual IP address,\
+            \ or a range of IP addresses.\nFor IPv6, the IP address could be an IP\
+            \ prefix, or a range of IP prefixes."
+          items:
+            type: string
+        dstAddress:
+          type: array
+          description: "An IP address or a range of IP addresses.\nFor IPv4, the IP\
+            \ address could be an IP address plus mask, or an individual IP address,\
+            \ or a range of IP addresses.\nFor IPv6, the IP address could be an IP\
+            \ prefix, or a range of IP prefixes."
+          items:
+            type: string
+        srcPort:
+          type: array
+          description: A port or a range of ports.
+          items:
+            type: string
+        dstPort:
+          type: array
+          description: A port or a range of ports.
+          items:
+            type: string
+        protocol:
+          type: array
+          description: Specify the protocol of the traffic filter.
+          items:
+            type: string
+        tag:
+          type: array
+          description: Used for tag based traffic rule.
+          items:
+            type: string
+        uri:
+          type: array
+          description: "An URI label, in application layer, i.e. in HTTP message,\
+            \ is used to filter the traffic."
+          items:
+            type: string
+        packetLabel:
+          type: array
+          description: "A customized packet label in network layer, as defined by\
+            \ the owner of the MEC platform, is used to filter the traffic."
+          items:
+            type: string
+        srcTunnelAddress:
+          type: array
+          description: Used for GTP tunnel based traffic rule.
+          items:
+            type: string
+        tgtTunnelAddress:
+          type: array
+          description: Used for GTP tunnel based traffic rule.
+          items:
+            type: string
+        srcTunnelPort:
+          type: array
+          description: Used for GTP tunnel based traffic rule.
+          items:
+            type: string
+        dstTunnelPort:
+          type: array
+          description: Used for GTP tunnel based traffic rule.
+          items:
+            type: string
+        qCI:
+          type: integer
+          description: Used to match all packets that have the same QCI.
+        dSCP:
+          type: integer
+          description: Used to match all IPv4 packets that have the same DSCP.
+        tC:
+          type: integer
+          description: Used to match all IPv6 packets that have the same TC.
+      example:
+        srcTunnelPort:
+        - srcTunnelPort
+        - srcTunnelPort
+        dstAddress:
+        - dstAddress
+        - dstAddress
+        srcAddress:
+        - srcAddress
+        - srcAddress
+        srcPort:
+        - srcPort
+        - srcPort
+        uri:
+        - uri
+        - uri
+        tC: 5
+        protocol:
+        - protocol
+        - protocol
+        dstTunnelPort:
+        - dstTunnelPort
+        - dstTunnelPort
+        dSCP: 1
+        dstPort:
+        - dstPort
+        - dstPort
+        packetLabel:
+        - packetLabel
+        - packetLabel
+        qCI: 6
+        srcTunnelAddress:
+        - srcTunnelAddress
+        - srcTunnelAddress
+        tag:
+        - tag
+        - tag
+        tgtTunnelAddress:
+        - tgtTunnelAddress
+        - tgtTunnelAddress
+    InterfaceDescriptor:
+      title: InterfaceDescriptor
+      required:
+      - interfaceType
+      type: object
+      properties:
+        interfaceType:
+          type: string
+          description: "Type of interface: TUNNEL, MAC, IP, etc."
+          enum:
+          - TUNNEL
+          - MAC
+          - IP
+        tunnelInfo:
+          $ref: '#/components/schemas/TunnelInfo'
+        srcMACAddress:
+          type: string
+          description: "If the interface type is MAC, the source address identifies\
+            \ the MAC address of the interface."
+        dstMACAddress:
+          type: string
+          description: "If the interface type is MAC, the destination address identifies\
+            \ the MAC address of the destination. Only used for dstInterface."
+        dstIPAddress:
+          type: string
+          description: "If the interface type is IP, the destination address identifies\
+            \ the IP address of the destination. Only used for dstInterface."
+      example:
+        interfaceType: TUNNEL
+        dstIPAddress: dstIPAddress
+        srcMACAddress: srcMACAddress
+        dstMACAddress: dstMACAddress
+        tunnelInfo:
+          tunnelSrcAddress: tunnelSrcAddress
+          tunnelType: GTP-U
+          tunnelSpecificData: tunnelSpecificData
+          tunnelDstAddress: tunnelDstAddress
+    TunnelInfo:
+      title: TunnelInfo
+      required:
+      - tunnelDstAddress
+      - tunnelSrcAddress
+      - tunnelType
+      type: object
+      properties:
+        tunnelType:
+          type: string
+          description: "Type of tunnel: GTP-U, GRE, etc."
+          enum:
+          - GTP-U
+          - GRE
+        tunnelDstAddress:
+          type: string
+          description: Destination address of the tunnel.
+        tunnelSrcAddress:
+          type: string
+          description: Source address of the tunnel.
+        tunnelSpecificData:
+          type: string
+          description: Parameters specific to the tunnel.
+      example:
+        tunnelSrcAddress: tunnelSrcAddress
+        tunnelType: GTP-U
+        tunnelSpecificData: tunnelSpecificData
+        tunnelDstAddress: tunnelDstAddress
+    KeyValuePair:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+      description: Key-value pairs for device metadata
+      example:
+        value: value
+        key: key
+    inline_response_200:
+      type: object
+      properties:
+        items:
+          $ref: '#/components/schemas/DeviceInfo'
+      example:
+        items:
+          deviceSpecificMessageFormats:
+            eventMsgFormat:
+              includeDeviceMetadata: true
+              includeIccid: true
+              includeDeviceAddr: true
+              includeImei: true
+              includeImsi: true
+              includeSupi: true
+              selectedSerializer: JSON
+              eventTopic: eventTopic
+              includeDeviceId: true
+              includePei: true
+            uplinkMsgFormat:
+              includeDeviceMetadata: true
+              includeIccid: true
+              includeDeviceAddr: true
+              includeImei: true
+              uplinkTopic: uplinkTopic
+              includeImsi: true
+              includeSupi: true
+              selectedSerializer: null
+              includeDevicePort: true
+              includeDeviceId: true
+              includePei: true
+          clientCertificate: clientCertificate
+          downlinkInfo:
+            downlinkTopic: downlinkTopic
+            devicePort: 5
+          imsi: imsi
+          supi: supi
+          deviceId: deviceId
+          requestedMecTrafficRule:
+          - action: SEE_DESCRIPTION
+            trafficRuleId: trafficRuleId
+            dstInterface:
+              interfaceType: TUNNEL
+              dstIPAddress: dstIPAddress
+              srcMACAddress: srcMACAddress
+              dstMACAddress: dstMACAddress
+              tunnelInfo:
+                tunnelSrcAddress: tunnelSrcAddress
+                tunnelType: GTP-U
+                tunnelSpecificData: tunnelSpecificData
+                tunnelDstAddress: tunnelDstAddress
+            filterType: per FLOW
+            priority: 0
+            trafficFilter:
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+          - action: SEE_DESCRIPTION
+            trafficRuleId: trafficRuleId
+            dstInterface:
+              interfaceType: TUNNEL
+              dstIPAddress: dstIPAddress
+              srcMACAddress: srcMACAddress
+              dstMACAddress: dstMACAddress
+              tunnelInfo:
+                tunnelSrcAddress: tunnelSrcAddress
+                tunnelType: GTP-U
+                tunnelSpecificData: tunnelSpecificData
+                tunnelDstAddress: tunnelDstAddress
+            filterType: per FLOW
+            priority: 0
+            trafficFilter:
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+          enabled: true
+          gpsi: gpsi
+          requestedUserTransportId: requestedUserTransportId
+          iccid: iccid
+          pei: pei
+          requestedIotPlatformId: requestedIotPlatformId
+          deviceMetadata:
+          - value: value
+            key: key
+          - value: value
+            key: key
+          deviceAuthenticationInfo: deviceAuthenticationInfo
+          imei: imei
+          msisdn: msisdn
+    registered_devices_body:
+      type: object
+      properties:
+        DeviceInfo:
+          $ref: '#/components/schemas/DeviceInfo'
+      example:
+        DeviceInfo:
+          deviceSpecificMessageFormats:
+            eventMsgFormat:
+              includeDeviceMetadata: true
+              includeIccid: true
+              includeDeviceAddr: true
+              includeImei: true
+              includeImsi: true
+              includeSupi: true
+              selectedSerializer: JSON
+              eventTopic: eventTopic
+              includeDeviceId: true
+              includePei: true
+            uplinkMsgFormat:
+              includeDeviceMetadata: true
+              includeIccid: true
+              includeDeviceAddr: true
+              includeImei: true
+              uplinkTopic: uplinkTopic
+              includeImsi: true
+              includeSupi: true
+              selectedSerializer: null
+              includeDevicePort: true
+              includeDeviceId: true
+              includePei: true
+          clientCertificate: clientCertificate
+          downlinkInfo:
+            downlinkTopic: downlinkTopic
+            devicePort: 5
+          imsi: imsi
+          supi: supi
+          deviceId: deviceId
+          requestedMecTrafficRule:
+          - action: SEE_DESCRIPTION
+            trafficRuleId: trafficRuleId
+            dstInterface:
+              interfaceType: TUNNEL
+              dstIPAddress: dstIPAddress
+              srcMACAddress: srcMACAddress
+              dstMACAddress: dstMACAddress
+              tunnelInfo:
+                tunnelSrcAddress: tunnelSrcAddress
+                tunnelType: GTP-U
+                tunnelSpecificData: tunnelSpecificData
+                tunnelDstAddress: tunnelDstAddress
+            filterType: per FLOW
+            priority: 0
+            trafficFilter:
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+          - action: SEE_DESCRIPTION
+            trafficRuleId: trafficRuleId
+            dstInterface:
+              interfaceType: TUNNEL
+              dstIPAddress: dstIPAddress
+              srcMACAddress: srcMACAddress
+              dstMACAddress: dstMACAddress
+              tunnelInfo:
+                tunnelSrcAddress: tunnelSrcAddress
+                tunnelType: GTP-U
+                tunnelSpecificData: tunnelSpecificData
+                tunnelDstAddress: tunnelDstAddress
+            filterType: per FLOW
+            priority: 0
+            trafficFilter:
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+          enabled: true
+          gpsi: gpsi
+          requestedUserTransportId: requestedUserTransportId
+          iccid: iccid
+          pei: pei
+          requestedIotPlatformId: requestedIotPlatformId
+          deviceMetadata:
+          - value: value
+            key: key
+          - value: value
+            key: key
+          deviceAuthenticationInfo: deviceAuthenticationInfo
+          imei: imei
+          msisdn: msisdn
+    registered_devices_registeredDeviceId_body:
+      type: object
+      properties:
+        DeviceInfo:
+          $ref: '#/components/schemas/DeviceInfo'
+      example:
+        DeviceInfo:
+          deviceSpecificMessageFormats:
+            eventMsgFormat:
+              includeDeviceMetadata: true
+              includeIccid: true
+              includeDeviceAddr: true
+              includeImei: true
+              includeImsi: true
+              includeSupi: true
+              selectedSerializer: JSON
+              eventTopic: eventTopic
+              includeDeviceId: true
+              includePei: true
+            uplinkMsgFormat:
+              includeDeviceMetadata: true
+              includeIccid: true
+              includeDeviceAddr: true
+              includeImei: true
+              uplinkTopic: uplinkTopic
+              includeImsi: true
+              includeSupi: true
+              selectedSerializer: null
+              includeDevicePort: true
+              includeDeviceId: true
+              includePei: true
+          clientCertificate: clientCertificate
+          downlinkInfo:
+            downlinkTopic: downlinkTopic
+            devicePort: 5
+          imsi: imsi
+          supi: supi
+          deviceId: deviceId
+          requestedMecTrafficRule:
+          - action: SEE_DESCRIPTION
+            trafficRuleId: trafficRuleId
+            dstInterface:
+              interfaceType: TUNNEL
+              dstIPAddress: dstIPAddress
+              srcMACAddress: srcMACAddress
+              dstMACAddress: dstMACAddress
+              tunnelInfo:
+                tunnelSrcAddress: tunnelSrcAddress
+                tunnelType: GTP-U
+                tunnelSpecificData: tunnelSpecificData
+                tunnelDstAddress: tunnelDstAddress
+            filterType: per FLOW
+            priority: 0
+            trafficFilter:
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+          - action: SEE_DESCRIPTION
+            trafficRuleId: trafficRuleId
+            dstInterface:
+              interfaceType: TUNNEL
+              dstIPAddress: dstIPAddress
+              srcMACAddress: srcMACAddress
+              dstMACAddress: dstMACAddress
+              tunnelInfo:
+                tunnelSrcAddress: tunnelSrcAddress
+                tunnelType: GTP-U
+                tunnelSpecificData: tunnelSpecificData
+                tunnelDstAddress: tunnelDstAddress
+            filterType: per FLOW
+            priority: 0
+            trafficFilter:
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+            - srcTunnelPort:
+              - srcTunnelPort
+              - srcTunnelPort
+              dstAddress:
+              - dstAddress
+              - dstAddress
+              srcAddress:
+              - srcAddress
+              - srcAddress
+              srcPort:
+              - srcPort
+              - srcPort
+              uri:
+              - uri
+              - uri
+              tC: 5
+              protocol:
+              - protocol
+              - protocol
+              dstTunnelPort:
+              - dstTunnelPort
+              - dstTunnelPort
+              dSCP: 1
+              dstPort:
+              - dstPort
+              - dstPort
+              packetLabel:
+              - packetLabel
+              - packetLabel
+              qCI: 6
+              srcTunnelAddress:
+              - srcTunnelAddress
+              - srcTunnelAddress
+              tag:
+              - tag
+              - tag
+              tgtTunnelAddress:
+              - tgtTunnelAddress
+              - tgtTunnelAddress
+          enabled: true
+          gpsi: gpsi
+          requestedUserTransportId: requestedUserTransportId
+          iccid: iccid
+          pei: pei
+          requestedIotPlatformId: requestedIotPlatformId
+          deviceMetadata:
+          - value: value
+            key: key
+          - value: value
+            key: key
+          deviceAuthenticationInfo: deviceAuthenticationInfo
+          imei: imei
+          msisdn: msisdn
+    registered_iot_platforms_body:
+      type: object
+      properties:
+        IoTPlatformInfo:
+          $ref: '#/components/schemas/IotPlatformInfo'
+      example:
+        IoTPlatformInfo:
+          iotPlatformId: iotPlatformId
+          customServicesTransportInfo:
+          - implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            endpoint: null
+            security: null
+            name: name
+            description: description
+            id: id
+            type: null
+            version: version
+          - implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            endpoint: null
+            security: null
+            name: name
+            description: description
+            id: id
+            type: null
+            version: version
+          userTransportInfo:
+          - implSpecificInfo:
+              uplinkTopics:
+              - uplinkTopics
+              - uplinkTopics
+              downlinkTopics:
+              - downlinkTopics
+              - downlinkTopics
+              eventTopics:
+              - eventTopics
+              - eventTopics
+            protocol: protocol
+            endpoint:
+              uris:
+              - uris
+              - uris
+              addresses:
+              - port: 0
+                host: host
+              - port: 0
+                host: host
+              fqdn:
+              - fqdn
+              - fqdn
+              alternative: alternative
+            security:
+              extensions: extensions
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - OAUTH2_AUTHORIZATION_CODE
+                - OAUTH2_AUTHORIZATION_CODE
+            name: name
+            description: description
+            id: id
+            type: REST_HTTP
+            version: version
+          - implSpecificInfo:
+              uplinkTopics:
+              - uplinkTopics
+              - uplinkTopics
+              downlinkTopics:
+              - downlinkTopics
+              - downlinkTopics
+              eventTopics:
+              - eventTopics
+              - eventTopics
+            protocol: protocol
+            endpoint:
+              uris:
+              - uris
+              - uris
+              addresses:
+              - port: 0
+                host: host
+              - port: 0
+                host: host
+              fqdn:
+              - fqdn
+              - fqdn
+              alternative: alternative
+            security:
+              extensions: extensions
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - OAUTH2_AUTHORIZATION_CODE
+                - OAUTH2_AUTHORIZATION_CODE
+            name: name
+            description: description
+            id: id
+            type: REST_HTTP
+            version: version
+          enabled: true
+    inline_response_200_1:
+      type: object
+      properties:
+        IotPlatformInfo:
+          $ref: '#/components/schemas/IotPlatformInfo'
+      example:
+        IotPlatformInfo:
+          iotPlatformId: iotPlatformId
+          customServicesTransportInfo:
+          - implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            endpoint: null
+            security: null
+            name: name
+            description: description
+            id: id
+            type: null
+            version: version
+          - implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            endpoint: null
+            security: null
+            name: name
+            description: description
+            id: id
+            type: null
+            version: version
+          userTransportInfo:
+          - implSpecificInfo:
+              uplinkTopics:
+              - uplinkTopics
+              - uplinkTopics
+              downlinkTopics:
+              - downlinkTopics
+              - downlinkTopics
+              eventTopics:
+              - eventTopics
+              - eventTopics
+            protocol: protocol
+            endpoint:
+              uris:
+              - uris
+              - uris
+              addresses:
+              - port: 0
+                host: host
+              - port: 0
+                host: host
+              fqdn:
+              - fqdn
+              - fqdn
+              alternative: alternative
+            security:
+              extensions: extensions
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - OAUTH2_AUTHORIZATION_CODE
+                - OAUTH2_AUTHORIZATION_CODE
+            name: name
+            description: description
+            id: id
+            type: REST_HTTP
+            version: version
+          - implSpecificInfo:
+              uplinkTopics:
+              - uplinkTopics
+              - uplinkTopics
+              downlinkTopics:
+              - downlinkTopics
+              - downlinkTopics
+              eventTopics:
+              - eventTopics
+              - eventTopics
+            protocol: protocol
+            endpoint:
+              uris:
+              - uris
+              - uris
+              addresses:
+              - port: 0
+                host: host
+              - port: 0
+                host: host
+              fqdn:
+              - fqdn
+              - fqdn
+              alternative: alternative
+            security:
+              extensions: extensions
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - OAUTH2_AUTHORIZATION_CODE
+                - OAUTH2_AUTHORIZATION_CODE
+            name: name
+            description: description
+            id: id
+            type: REST_HTTP
+            version: version
+          enabled: true
+    registered_iot_platforms_registeredIotPlatformId_body:
+      type: object
+      properties:
+        IotPlatformInfo:
+          $ref: '#/components/schemas/IotPlatformInfo'
+      example:
+        IotPlatformInfo:
+          iotPlatformId: iotPlatformId
+          customServicesTransportInfo:
+          - implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            endpoint: null
+            security: null
+            name: name
+            description: description
+            id: id
+            type: null
+            version: version
+          - implSpecificInfo: implSpecificInfo
+            protocol: protocol
+            endpoint: null
+            security: null
+            name: name
+            description: description
+            id: id
+            type: null
+            version: version
+          userTransportInfo:
+          - implSpecificInfo:
+              uplinkTopics:
+              - uplinkTopics
+              - uplinkTopics
+              downlinkTopics:
+              - downlinkTopics
+              - downlinkTopics
+              eventTopics:
+              - eventTopics
+              - eventTopics
+            protocol: protocol
+            endpoint:
+              uris:
+              - uris
+              - uris
+              addresses:
+              - port: 0
+                host: host
+              - port: 0
+                host: host
+              fqdn:
+              - fqdn
+              - fqdn
+              alternative: alternative
+            security:
+              extensions: extensions
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - OAUTH2_AUTHORIZATION_CODE
+                - OAUTH2_AUTHORIZATION_CODE
+            name: name
+            description: description
+            id: id
+            type: REST_HTTP
+            version: version
+          - implSpecificInfo:
+              uplinkTopics:
+              - uplinkTopics
+              - uplinkTopics
+              downlinkTopics:
+              - downlinkTopics
+              - downlinkTopics
+              eventTopics:
+              - eventTopics
+              - eventTopics
+            protocol: protocol
+            endpoint:
+              uris:
+              - uris
+              - uris
+              addresses:
+              - port: 0
+                host: host
+              - port: 0
+                host: host
+              fqdn:
+              - fqdn
+              - fqdn
+              alternative: alternative
+            security:
+              extensions: extensions
+              oAuth2Info:
+                tokenEndpoint: http://example.com/aeiou
+                grantTypes:
+                - OAUTH2_AUTHORIZATION_CODE
+                - OAUTH2_AUTHORIZATION_CODE
+            name: name
+            description: description
+            id: id
+            type: REST_HTTP
+            version: version
+          enabled: true
+  responses:
+    "200":
+      description: OK
+    "204":
+      description: No Content
+    "400":
+      description: "Bad Request: used to indicate that incorrect parameters were passed\
+        \ to the request."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "403":
+      description: "Forbidden: operation is not allowed given the current status of\
+        \ the resource."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "404":
+      description: "Not Found: used when a client provided a URI that cannot be mapped\
+        \ to a valid resource URI."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    "412":
+      description: "Precondition failed: used when a condition has failed during conditional\
+        \ requests, e.g. when using ETags to avoid write conflicts when using PUT"
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'

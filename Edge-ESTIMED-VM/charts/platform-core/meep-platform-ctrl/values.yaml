@@ -1,0 +1,85 @@
+# Default values for meep-platform-ctrl.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+serviceAccount: meep-platform-ctrl
+
+deployment:
+  replicas: 1
+  port: 80
+  protocol: TCP
+  altPort: 8080
+  dependencies:
+    system:
+      - kube-dns
+    namespace:
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      - matchExpressions:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+
+image:
+  repository: meep-platform-ctrl
+  tag: latest
+  pullPolicy: Always
+  env:
+    MEEP_SVC_PATH: /platform-ctrl/v1
+    MEEP_NW_SIMULATOR_TYPE: internal
+    MEEP_NEM_URL: ""
+    MEEP_NEM_TIMEOUT_MS: "3000"
+  envSecret:
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  hosts:
+    - name: ''
+      paths:
+        - /
+        - /api
+        - /alt
+        - /alt/api
+        - /platform-ctrl
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/api$ $scheme://$http_host/api/ permanent;
+      rewrite ^/alt$ $scheme://$http_host/alt/ permanent;
+      rewrite ^/alt/api$ $scheme://$http_host/alt/api/ permanent;
+    # nginx.ingress.kubernetes.io/auth-url: <-- set by 'meepctl deploy' when auth enabled
+  labels: {}
+  tls:
+
+prometheus:
+  monitor:
+    enabled: true
+    port: 9000
+    interval: 10s
+    additionalLabels: {}
+    relabelings: []
+    scrapeTimeout: 5s
+
+codecov:
+  enabled: false
+  location: "<WORKDIR>/codecov/meep-platform-ctrl"
+
+user:
+  frontend:
+    enabled: false
+    location: "<WORKDIR>/user/frontend"
+    mountpath: "/user-frontend"
+
+  swagger:
+    enabled: false
+
+meepOrigin: core

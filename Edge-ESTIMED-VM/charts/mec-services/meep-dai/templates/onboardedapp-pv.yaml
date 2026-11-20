@@ -1,0 +1,32 @@
+{{- if .Values.onboardedapp.enabled}}
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: meep-dai-onboardedapp-pv
+spec:
+  storageClassName: nfs
+  volumeMode: Filesystem
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Recycle
+  mopuntOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    server: 172.29.10.52
+    path: /mnt/nfs/mec_sandbox
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: meep-dai-onboardedapp-pvc
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+{{- end}}

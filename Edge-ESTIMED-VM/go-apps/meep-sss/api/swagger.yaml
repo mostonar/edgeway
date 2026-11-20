@@ -1,0 +1,1581 @@
+openapi: 3.0.0
+info:
+  title: ETSI GS MEC 046 Sensors Sharing Service APIs
+  description: GS MEC 046 Sensors Sharing Service APIs described using OpenAPI.
+  contact:
+    name: ETSI Forge
+    url: https://forge.etsi.org/rep/mec/gs046-ss-api
+    email: cti_support@etsi.org
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 3.1.1
+externalDocs:
+  description: "GS MEC 046 Sensors Sharing Service APIs, v3.3.1"
+  url: https://www.etsi.org/deliver/etsi_gs/MEC/001_099/033/03.01.01_60/gs_mec046v030101p.pdf
+servers:
+- url: https://localhost/sandboxname/sens/v1
+tags:
+- name: sensor-discovery-lookup
+  description: The Sensor Discovery Lookup is the procedure for applications acquiring
+    the sensor(s) currently available and the related characteristics
+- name: sensor-discovery-subscription
+  description: The Sensor Discovery Subscription is the procedure for applications
+    to request to receive notifications about sensors when sensor information changes
+- name: sensor-status-lookup
+  description: The Sensor Status Lookup is the procedure for applications acquiring
+    the status (e.g. active or error state) of sensor(s)
+- name: sensor-status-subscription
+  description: The Sensor Status Subscription is the procedure for applications to
+    request to receive notifications about sensors when they change their status
+- name: sensor-data-lookup
+  description: The Sensor Data Lookup is the procedure for applications to acquire
+    the last data collected by the sensor(s)
+- name: sensor-data-subscription
+  description: The Sensor Data Subscription is the procedure for applications to request
+    to receive notifications every time new data are collected from the sensor(s)
+- name: sensor-management
+  description: The Sensor Management is the procedure for a MEC application to configure
+    specific parameter(s) on the sensor(s)
+paths:
+  /queries/sensor_discovery:
+    get:
+      tags:
+      - sensor-discovery-lookup
+      summary: The GET method is used to query the available sensors
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.3.3.1-1\
+        \ and 7.3.3.1-2."
+      operationId: SensorDiscoveryLookupGET
+      parameters:
+      - name: sensorInfo
+        in: query
+        description: Object containing the characteristics of the sensor(s) to be
+          selected for the query
+        required: false
+        style: form
+        explode: true
+        schema:
+          $ref: '#/components/schemas/SensorInfo'
+      responses:
+        "200":
+          description: "Upon success, a response body containing the available sensors\
+            \ is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorDiscoveryInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions/sensor_discovery:
+    get:
+      tags:
+      - sensor-discovery-subscription
+      summary: The GET method is used to request information about the subscriptions
+        related to sensor discovery for this requestor
+      description: "This method shall support the URI query parameter, request and\
+        \ response data structures, and response codes, as specified in Tables 7.4.3.1-1\
+        \ and 7.4.3.1-2."
+      operationId: SensorDiscoverySubscriptionGET
+      parameters:
+      - name: subscriptionId
+        in: query
+        description: Object containing the characteristics of the sensor(s) to be
+          selected for the query
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of links\
+            \ to requestor's sensor discovery subscriptions is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - sensor-discovery-subscription
+      summary: The POST method is used to create a new subscription to sensor discovery
+        notifications
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Table 7.4.3.4-1"
+      operationId: SensorDiscoverySubscriptionPOST
+      requestBody:
+        description: This type represents a subscription to notifications from the
+          Sensor-sharing Service regarding events related to changes in sensor information
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_sensor_discovery_body'
+        required: true
+      responses:
+        "201":
+          description: "Indicates successful resource creation, where the resource\
+            \ URI shall be returned in the HTTP Location header field"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorDiscoveryEventSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions/sensor_discovery/{subscriptionId}:
+    get:
+      tags:
+      - sensor-discovery-subscription
+      summary: The GET method is used to request information about the subscriptions
+        related to sensor status for this requestor
+      description: "This method shall support the URI query parameter, request and\
+        \ response data structures, and response codes, as specified in Tables 7.7.3.1-1\
+        \ and 7.7.3.1-2."
+      operationId: SensorDiscoveryIndividualSubscriptionGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: Unique identifiers of the subscription
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of links\
+            \ to requestor's sensor status subscriptions is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - sensor-discovery-subscription
+      summary: The POST method is used to create a new subscription to sensor discovery
+        notifications
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Table 7.4.3.4-1"
+      operationId: SensorDiscoverySubscriptionPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: It uniquely identifies the created individual application mobility
+          service
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: New SensorDiscoveryEventSubscription is included as entity body
+          of the request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/sensor_discovery_subscriptionId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated sensor discovery subscription is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - sensor-discovery-subscription
+      summary: The DELETE method is used to cancel the existing subscription. Cancellation
+        can be made by deleting the resource that represents existing sensor discovery
+        subscription
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Tables 7.5.3.5-1 and 7.5.3.5-2"
+      operationId: SensorDiscoverySubscriptionDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: It uniquely identifies the created individual application mobility
+          service
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: "Upon success, a response 204 No Content without any response\
+            \ body is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /queries/sensor_status:
+    get:
+      tags:
+      - sensor-status-lookup
+      summary: The GET method is used to query the available status
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.6.3.1-1\
+        \ and 7.6.3.1-2"
+      operationId: SensorStatusLookupGET
+      parameters:
+      - name: sensorIdentifier
+        in: query
+        description: It uniquely identifies the created individual application mobility
+          service
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the status information\
+            \ of specific sensors is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorStatusInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions/sensor_status:
+    get:
+      tags:
+      - sensor-status-subscription
+      summary: The GET method is used to request information about the subscriptions
+        related to sensor status for this requestor
+      description: "This method shall support the URI query parameter, request and\
+        \ response data structures, and response codes, as specified in Tables 7.7.3.1-1\
+        \ and 7.7.3.1-2"
+      operationId: SensorStatusSubscriptionGET
+      parameters:
+      - name: sensorIdentifier
+        in: query
+        description: Unique identifiers of the sensors
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of links\
+            \ to requestor's sensor status subscriptions is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - status-status-subscription
+      summary: The POST method is used to create a new subscription to sensor status
+        notifications
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Table 7.7.3.4-1"
+      operationId: SensorStatusSubscriptionPOST
+      requestBody:
+        description: The entity body in the request contains data type of the specific
+          sensor status subscription that is to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_sensor_status_body'
+        required: true
+      responses:
+        "201":
+          description: "Indicates successful resource creation, where the resource\
+            \ URI shall be returned in the HTTP Location header field."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorStatusSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions/sensor_status/{subscriptionId}:
+    get:
+      tags:
+      - sensor-status-subscription
+      summary: The GET method is used to retrieve information about this subscription
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Tables 7.8.3.1-1 and 7.8.3.1-2"
+      operationId: SensorStatusIndividualSubscriptionGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: Unique identifiers of the subscription
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the specific sensor status subscription is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorStatusSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - sensor-status-subscription
+      summary: The PUT method is used to update the existing subscription
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.8.3.2-1\
+        \ and 7.8.3.2-2"
+      operationId: SensorStatusSubscriptionPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: It uniquely identifies the created individual application mobility
+          service
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: New SensorStatusSubscription is included as entity body of the
+          request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/sensor_status_subscriptionId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated sensor status subscription is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorStatusSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - sensor-status-subscription
+      summary: The DELETE method is used to cancel the existing subscription
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Tables 7.8.3.5-1 and 7.8.3.5-2"
+      operationId: SensorStatusSubscriptionDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: It uniquely identifies a subscription
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: "Upon success, a response 204 No Content without any response\
+            \ body is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /queries/status_data:
+    get:
+      tags:
+      - sensor-data-lookup
+      summary: The GET method is used to query the last sensor data from specific
+        sensors
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.9.3.1-1\
+        \ and 7.9.3.1-2"
+      operationId: SensorDataLookupGET
+      parameters:
+      - name: sensorIdentifier
+        in: query
+        description: It uniquely identifies the created individual application mobility
+          service
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the last sensor data\
+            \ measured by the sensors is returned"
+          content:
+            application/json:
+              schema:
+                minItems: 1
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorData'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /subscriptions/sensor_data:
+    get:
+      tags:
+      - sensor-data-subscription
+      summary: The GET method is used to request information about the subscriptions
+        related to sensor data for this requestor
+      description: "This method shall support the URI query parameter, request and\
+        \ response data structures, and response codes, as specified in Tables 7.10.3.1-1\
+        \ and 7.10.3.1-2"
+      operationId: SensorDataSubscriptionGET
+      parameters:
+      - name: sensorIdentifier
+        in: query
+        description: Unique identifiers of the sensors
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the list of links\
+            \ to requestor's sensor status subscriptions is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - sensor-data-subscription
+      summary: The POST method is used to create a new subscription to sensor status
+        notifications
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Table 7.7.3.4-1"
+      operationId: SensorDataSubscriptionPOST
+      requestBody:
+        description: The entity body in the request contains data type of the specific
+          sensor status subscription that is to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscriptions_sensor_data_body'
+        required: true
+      responses:
+        "201":
+          description: "Indicates successful resource creation, where the resource\
+            \ URI shall be returned in the HTTP Location header field."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorDataSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /queries/status_data/{subscriptionId}:
+    get:
+      tags:
+      - sensor-data-subscription
+      summary: The GET method is used to retrieve information about this subscription
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Tables 7.11.3.1-1 and 7.11.3.1-2"
+      operationId: SensorDataIndividualSubscriptionGET
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: Unique identifiers of a subscription
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the specific sensor data subscription is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorDataSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - sensor-data-subscription
+      summary: The PUT method is used to update the existing subscription
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.11.3.2-1\
+        \ and 7.11.3.2-2"
+      operationId: SensorDataSubscriptionPUT
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: Unique identifiers of a subscription
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: New SensorDataSubscription is included as entity body of the
+          request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/status_data_subscriptionId_body'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated sensor data subscription is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorDataSubscription'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+      - sensor-data-subscription
+      summary: The DELETE method is used to cancel the existing subscription
+      description: "This method shall support the request and response data structures,\
+        \ and response codes, as specified in Tables 7.11.3.5-1 and 7.11.3.5-2"
+      operationId: SensorDataSubscriptionDELETE
+      parameters:
+      - name: subscriptionId
+        in: path
+        description: It uniquely identifies a subscription
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: "Upon success, a response 204 No Content without any response\
+            \ body is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionLinkList'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /sensor_management:
+    get:
+      tags:
+      - sensor-management
+      summary: The GET method is used to receive the sensor characteristics that can
+        be modified on specific sensors
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.12.3.1-1\
+        \ and 7.12.3.1-2"
+      operationId: SensorMgmtGET
+      parameters:
+      - name: sensorIdentifier
+        in: query
+        description: It uniquely identifies the created individual application mobility
+          service
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "Upon success, a response body containing the characteristics\
+            \ that can be set on the specific sensors are returned"
+          content:
+            application/json:
+              schema:
+                minItems: 1
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorCharacteristic'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+      - management
+      summary: The PUT method is used to update the value of the characteristics that
+        can be set on a sensor or on a group of sensors
+      description: "This method shall support the URI query parameters, request and\
+        \ response data structures, and response codes, as specified in Tables 7.12.3.2-1\
+        \ and 7.12.3.2-2"
+      operationId: SensorMgmtPUT
+      requestBody:
+        description: "The list of sensor characteristics to be updated, with the new\
+          \ values to set, is included as entity body of the request"
+        content:
+          application/json:
+            schema:
+              minItems: 1
+              type: array
+              items:
+                $ref: '#/components/schemas/SensorCharacteristic'
+        required: true
+      responses:
+        "200":
+          description: "Upon success, a response body containing data type describing\
+            \ the updated sensor characteristics is returned"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorCharacteristic'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request: used to indicate that incorrect parameters were\
+            \ passed to the request"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "403":
+          description: "Forbidden: operation is not allowed given the current status\
+            \ of the resource"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        "404":
+          description: "Not Found: used when a client provided a URI that cannot be\
+            \ mapped to a valid resource URI"
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    SensorStatusInfo:
+      required:
+      - sensorIdentifier
+      - sensorStatusType
+      type: object
+      properties:
+        sensorIdentifier:
+          type: string
+          description: Unique identifier of the sensor
+        sensorStatusType:
+          type: string
+          description: The status of the sensor
+        errorInformation:
+          type: string
+          description: String explaining the error of the sensor
+      example:
+        errorInformation: errorInformation
+        sensorIdentifier: sensorIdentifier
+        sensorStatusType: sensorStatusType
+    SensorData:
+      required:
+      - data
+      - dataFormat
+      - dataUnitOfMeasure
+      - sensorIdentifier
+      type: object
+      properties:
+        sensorIdentifier:
+          type: string
+          description: Unique identifier of the sensor
+        data:
+          type: string
+          description: The status of the sensor
+        dataFormat:
+          type: string
+          description: String explaining the error of the sensor
+        dataUnitOfMeasure:
+          type: string
+          description: String explaining the error of the sensor
+        dataTimestamp:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        dataTimestamp:
+          seconds: 1
+          nanoSeconds: 5
+        data: data
+        dataUnitOfMeasure: dataUnitOfMeasure
+        dataFormat: dataFormat
+        sensorIdentifier: sensorIdentifier
+    SensorInfo:
+      required:
+      - sensorPropertyList
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+          description: Type of the sensor
+        sensorPropertyList:
+          type: array
+          description: "It indicates the list of properties that the sensor can sense\
+            \ (see saref:Property in ETSI TS 103 264 [4], clause 4.3.8)."
+          items:
+            minItems: 1
+            type: string
+        sensorCharacteristicList:
+          minItems: 0
+          type: array
+          description: The sensor' characteristics to be matched
+          items:
+            $ref: '#/components/schemas/SensorCharacteristic'
+        geographicalArea:
+          minItems: 0
+          type: array
+          description: The parameters describing the area
+          items:
+            $ref: '#/components/schemas/AreaInfo'
+    SensorDiscoveryInfo:
+      required:
+      - sensorIdentifier
+      - sensorPropertyList
+      - sensorType
+      type: object
+      properties:
+        sensorIdentifier:
+          type: string
+          description: Unique identifier of the sensor
+        sensorType:
+          type: string
+          description: Type of the Sensor
+        sensorPropertyList:
+          minItems: 1
+          type: array
+          description: It indicates the list of properties that the sensor can sense
+          items:
+            type: string
+        sensorCharacteristicList:
+          minItems: 0
+          type: array
+          description: The sensor' characteristics
+          items:
+            $ref: '#/components/schemas/SensorCharacteristic'
+        sensorPosition:
+          $ref: '#/components/schemas/Point'
+      example:
+        sensorPosition:
+          latitude: 0.80082819046101150206595775671303272247314453125
+          longitude: 6.02745618307040320615897144307382404804229736328125
+        sensorPropertyList:
+        - sensorPropertyList
+        - sensorPropertyList
+        sensorType: sensorType
+        sensorCharacteristicList:
+        - characteristicName: characteristicName
+          characteristicUnitOfMeasure: characteristicUnitOfMeasure
+          characteristicValue: characteristicValue
+        - characteristicName: characteristicName
+          characteristicUnitOfMeasure: characteristicUnitOfMeasure
+          characteristicValue: characteristicValue
+        sensorIdentifier: sensorIdentifier
+    SensorDiscoveryEventSubscription:
+      title: SensorDiscoveryEventSubscription
+      required:
+      - subscriptionType
+      type: object
+      properties:
+        subscriptionType:
+          $ref: '#/components/schemas/SubscriptionType'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP
+          format: uri
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the MEC application to request a test notification\
+            \ via HTTP on the callbackReference URI,"
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+        _links:
+          $ref: '#/components/schemas/SubscriptionLinks'
+        sensorInfoList:
+          type: array
+          description: Object containing the characteristics of the sensor(s) to be
+            selected for the subscription
+          items:
+            type: string
+        geographicalArea:
+          type: array
+          description: The parameters describing the area to subscribe
+          items:
+            $ref: '#/components/schemas/AreaInfo'
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        sensorInfoList:
+        - sensorInfoList
+        - sensorInfoList
+        subscriptionType: SensorDiscoveryEventSubscription
+        _links:
+          self:
+            href: href
+        callbackReference: http://example.com/aeiou
+        expiryDeadline:
+          seconds: 1
+          nanoSeconds: 5
+        websockNotifConfig:
+          requestWebsocketUri: true
+          websocketUri: http://example.com/aeiou
+        requestTestNotification: true
+        geographicalArea:
+        - shape: 0
+          radius: 6
+          points:
+          - latitude: 0.80082819046101150206595775671303272247314453125
+            longitude: 6.02745618307040320615897144307382404804229736328125
+          - latitude: 0.80082819046101150206595775671303272247314453125
+            longitude: 6.02745618307040320615897144307382404804229736328125
+        - shape: 0
+          radius: 6
+          points:
+          - latitude: 0.80082819046101150206595775671303272247314453125
+            longitude: 6.02745618307040320615897144307382404804229736328125
+          - latitude: 0.80082819046101150206595775671303272247314453125
+            longitude: 6.02745618307040320615897144307382404804229736328125
+    SensorStatusSubscription:
+      title: SensorStatusSubscription
+      required:
+      - subscriptionType
+      type: object
+      properties:
+        subscriptionType:
+          $ref: '#/components/schemas/SubscriptionType'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP
+          format: uri
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the MEC application to request a test notification\
+            \ via HTTP on the callbackReference URI,"
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+        _links:
+          $ref: '#/components/schemas/SubscriptionLinks'
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        subscriptionType: SensorDiscoveryEventSubscription
+        _links:
+          self:
+            href: href
+        callbackReference: http://example.com/aeiou
+        expiryDeadline:
+          seconds: 1
+          nanoSeconds: 5
+        websockNotifConfig:
+          requestWebsocketUri: true
+          websocketUri: http://example.com/aeiou
+        requestTestNotification: true
+    SensorDataSubscription:
+      title: SensorDataSubscription
+      required:
+      - subscriptionType
+      type: object
+      properties:
+        subscriptionType:
+          $ref: '#/components/schemas/SubscriptionType'
+        callbackReference:
+          type: string
+          description: URI exposed by the client on which to receive notifications
+            via HTTP
+          format: uri
+        requestTestNotification:
+          type: boolean
+          description: "Set to TRUE by the MEC application to request a test notification\
+            \ via HTTP on the callbackReference URI,"
+        websockNotifConfig:
+          $ref: '#/components/schemas/WebsockNotifConfig'
+        _links:
+          $ref: '#/components/schemas/SubscriptionLinks'
+        expiryDeadline:
+          $ref: '#/components/schemas/TimeStamp'
+      example:
+        subscriptionType: SensorDiscoveryEventSubscription
+        _links:
+          self:
+            href: href
+        callbackReference: http://example.com/aeiou
+        expiryDeadline:
+          seconds: 1
+          nanoSeconds: 5
+        websockNotifConfig:
+          requestWebsocketUri: true
+          websocketUri: http://example.com/aeiou
+        requestTestNotification: true
+    SubscriptionType:
+      title: SubscriptionType
+      type: string
+      enum:
+      - SensorDiscoveryEventSubscription
+      - SensorStatusSubscription
+      - SensorDataSubscription
+    WebsockNotifConfig:
+      type: object
+      properties:
+        websocketUri:
+          type: string
+          description: Set by AMS to indicate to the service consumer the Websocket
+            URI to be used for delivering notifications.
+          format: uri
+        requestWebsocketUri:
+          type: boolean
+          description: Set to true by the service consumer to indicate that Websocket
+            delivery is requested.
+      example:
+        requestWebsocketUri: true
+        websocketUri: http://example.com/aeiou
+    SensorCharacteristic:
+      required:
+      - characteristicName
+      - characteristicValue
+      type: object
+      properties:
+        characteristicName:
+          type: string
+          description: The name of the characteristic
+        characteristicValue:
+          type: string
+          description: The value of the characteristic.
+        characteristicUnitOfMeasure:
+          type: string
+          description: "The unit of measure of the characteristic (see saref:UnitOfMeasure\
+            \ in ETSI TS 103 264 [4], clause 4.3.8)."
+      description: "This type represents a sensor' characteristic which details the\
+        \ type of sensor and its working functionalities, such as the model of the\
+        \ sensor, the sampling frequency, the operating range, the accuracy"
+      example:
+        characteristicName: characteristicName
+        characteristicUnitOfMeasure: characteristicUnitOfMeasure
+        characteristicValue: characteristicValue
+    Point:
+      required:
+      - latitude
+      - longitude
+      type: object
+      properties:
+        latitude:
+          type: number
+          description: "Location latitude, expressed in the range -90° to +90°"
+        longitude:
+          type: number
+          description: "Location longitude, expressed in the range -180° to +180°."
+      description: This type represents the geographical location of a point
+      example:
+        latitude: 0.80082819046101150206595775671303272247314453125
+        longitude: 6.02745618307040320615897144307382404804229736328125
+    SubscriptionLinks:
+      title: SubscriptionLinks
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+      example:
+        self:
+          href: href
+    SubscriptionLinkList.links:
+      title: SubscriptionLinkList.links
+      required:
+      - self
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkType'
+        subscriptions:
+          type: array
+          description: The MEC application's subscriptions
+          items:
+            $ref: '#/components/schemas/SubscriptionLinkList.subscription'
+      description: List of hyperlinks related to the resource.
+      example:
+        subscriptions:
+        - subscriptionType: subscriptionType
+          href: href
+        - subscriptionType: subscriptionType
+          href: href
+        self:
+          href: href
+    SubscriptionLinkList.subscription:
+      title: SubscriptionLinkList.subscription
+      required:
+      - href
+      - subscriptionType
+      type: object
+      properties:
+        href:
+          type: string
+          description: The URI referring to the subscription
+        subscriptionType:
+          type: string
+          description: Type of the subscription
+      example:
+        subscriptionType: subscriptionType
+        href: href
+    SubscriptionLinkList:
+      title: SubscriptionLinkList
+      required:
+      - _links
+      type: object
+      properties:
+        _links:
+          $ref: '#/components/schemas/SubscriptionLinkList.links'
+      example:
+        _links:
+          subscriptions:
+          - subscriptionType: subscriptionType
+            href: href
+          - subscriptionType: subscriptionType
+            href: href
+          self:
+            href: href
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          description: A URI reference according to IETF RFC 3986 that identifies
+            the problem type
+          format: uri
+        title:
+          type: string
+          description: "A short, human-readable summary of the problem type"
+        status:
+          type: integer
+          description: The HTTP status code for this occurrence of the problem
+          format: uint32
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+          format: uri
+    LinkType:
+      title: LinkType
+      required:
+      - href
+      type: object
+      properties:
+        href:
+          type: string
+          description: The URI referring to the subscription.
+      description: '''This data type represents a type of link'''
+      example:
+        href: href
+    TimeStamp:
+      title: TimeStamp
+      required:
+      - nanoSeconds
+      - seconds
+      type: object
+      properties:
+        seconds:
+          type: integer
+          description: "'The seconds part of the Time. Time is defined as Unix-time\
+            \ since January 1, 1970, 00:00:00 UTC.'"
+        nanoSeconds:
+          type: integer
+          description: "'The nanoseconds part of the Time. Time is defined as Unix-time\
+            \ since January 1, 1970, 00:00:00 UTC.'"
+      description: "'This data type represents the time stamp as Unix-time since January\
+        \ 1, 1970, 00:00:00 UTC'"
+      example:
+        seconds: 1
+        nanoSeconds: 5
+    ShapeType:
+      title: ShapeType
+      type: integer
+      enum:
+      - null
+      - null
+    AreaInfo:
+      title: AreaInfo
+      required:
+      - points
+      - shape
+      type: object
+      properties:
+        shape:
+          $ref: '#/components/schemas/ShapeType'
+        points:
+          type: array
+          description: Shall include one point if the shape is CIRCLE. Shall include
+            3-15 points if the shape is POLYGON
+          items:
+            $ref: '#/components/schemas/Point'
+        radius:
+          type: integer
+          description: Shall be present if the shape is CIRCLE
+      example:
+        shape: 0
+        radius: 6
+        points:
+        - latitude: 0.80082819046101150206595775671303272247314453125
+          longitude: 6.02745618307040320615897144307382404804229736328125
+        - latitude: 0.80082819046101150206595775671303272247314453125
+          longitude: 6.02745618307040320615897144307382404804229736328125
+    subscriptions_sensor_discovery_body:
+      type: object
+      properties:
+        SensorDiscoveryEventSubscription:
+          $ref: '#/components/schemas/SensorDiscoveryEventSubscription'
+    sensor_discovery_subscriptionId_body:
+      type: object
+      properties:
+        SensorDiscoveryEventSubscription:
+          $ref: '#/components/schemas/SensorDiscoveryEventSubscription'
+    subscriptions_sensor_status_body:
+      type: object
+      properties:
+        SensorStatusSubscription:
+          $ref: '#/components/schemas/SensorStatusSubscription'
+    sensor_status_subscriptionId_body:
+      type: object
+      properties:
+        SensorStatusSubscription:
+          $ref: '#/components/schemas/SensorStatusSubscription'
+    subscriptions_sensor_data_body:
+      type: object
+      properties:
+        SensorDataSubscription:
+          $ref: '#/components/schemas/SensorDataSubscription'
+    status_data_subscriptionId_body:
+      type: object
+      properties:
+        SensorDataSubscription:
+          $ref: '#/components/schemas/SensorDataSubscription'

@@ -1,0 +1,14 @@
+{{- if and .Values.query.enabled .Values.query.sdConfig (not .Values.query.existingSDConfigmap) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-query-sd-configmap" (include "thanos.fullname" .) }}
+  labels:
+    {{- include "thanos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: query
+  annotations:
+    {{- include "thanos.annotations" (dict "Values" .Values "component" "query") | nindent 4 }}
+data:
+  servicediscovery.yml: |
+    {{- tpl .Values.query.sdConfig . | nindent 4 }}
+{{- end }}

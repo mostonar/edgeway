@@ -1,0 +1,108 @@
+# Default values for meep-app-enablement.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+deployment:
+  replicas: 1
+  port: 80
+  protocol: TCP
+  dependencies:
+    system:
+      {{- if not .IsMepService }}
+      - kube-dns
+      {{- end }}
+    namespace:
+
+image:
+  repository: meep-docker-registry:30001/meep-app-enablement
+  tag: latest
+  pullPolicy: Always
+  env:
+    MEEP_INSTANCE_ID: {{.InstanceId}}
+    MEEP_SANDBOX_NAME: {{.SandboxName}}
+    MEEP_SVC_PATH: /mec_app_support/v2
+    MEEP_HOST_URL: {{.HostUrl}}
+    {{- if .IsMepService }}
+    MEEP_LOCATION_NAME: {{.LocationName}}
+    {{- end }}
+    {{- range .Env}}
+    {{.}}
+    {{- end}}
+
+service:
+  {{- if .IsMepService }}
+  name: {{.LocationName}}-meep-app-enablement
+  {{- else }}
+  name: meep-app-enablement
+  {{- end }}
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  hosts:
+    - name: ''
+      paths:
+        {{- if .IsMepService }}
+        - /{{.SandboxName}}/{{.LocationName}}/mec_app_support
+        - /{{.SandboxName}}/{{.LocationName}}/mec_service_mgmt
+        - /{{.SandboxName}}/{{.LocationName}}/service-apis
+        - /{{.SandboxName}}/{{.LocationName}}/published-apis
+        - /{{.SandboxName}}/{{.LocationName}}/capif-events
+        - /{{.SandboxName}}/{{.LocationName}}/eecs-serviceprovisioning
+        - /{{.SandboxName}}/{{.LocationName}}/eees-eecregistration
+        - /{{.SandboxName}}/{{.LocationName}}/eees-easdiscovery
+        
+        {{- else }}
+        - /{{.SandboxName}}/mec_app_support
+        - /{{.SandboxName}}/mec_service_mgmt
+        - /{{.SandboxName}}/service-apis
+        - /{{.SandboxName}}/published-apis
+        - /{{.SandboxName}}/capif-events
+        - /{{.SandboxName}}/eecs-serviceprovisioning
+        - /{{.SandboxName}}/eees-eecregistration
+        - /{{.SandboxName}}/eees-easdiscovery
+        {{- end }}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/force-ssl-redirect: {{ .HttpsOnly }}
+    {{- if .IsMepService }}
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/mec_app_support(/|$)(.*)$ /mec_app_support/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/mec_service_mgmt(/|$)(.*)$ /mec_service_mgmt/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/service-apis(/|$)(.*)$ /service-apis/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/published-apis(/|$)(.*)$ /published-apis/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/capif-events(/|$)(.*)$ /capif-events/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/eecs-serviceprovisioning(/|$)(.*)$ /eecs-serviceprovisioning/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/eees-eecregistration(/|$)(.*)$ /eees-eecregistration/$2 break;
+      rewrite ^/{{ .SandboxName }}/{{.LocationName}}/eees-easdiscovery(/|$)(.*)$ /eees-easdiscovery/$2 break;
+    {{- else }}
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/{{ .SandboxName }}/mec_app_support(/|$)(.*)$ /mec_app_support/$2 break;
+      rewrite ^/{{ .SandboxName }}/mec_service_mgmt(/|$)(.*)$ /mec_service_mgmt/$2 break;
+      rewrite ^/{{ .SandboxName }}/service-apis(/|$)(.*)$ /service-apis/$2 break;
+      rewrite ^/{{ .SandboxName }}/published-apis(/|$)(.*)$ /published-apis/$2 break;
+      rewrite ^/{{ .SandboxName }}/capif-events(/|$)(.*)$ /capif-events/$2 break;
+      rewrite ^/{{ .SandboxName }}/eecs-serviceprovisioning(/|$)(.*)$ /eecs-serviceprovisioning/$2 break;
+      rewrite ^/{{ .SandboxName }}/eees-eecregistration(/|$)(.*)$ /eees-eecregistration/$2 break;
+      rewrite ^/{{ .SandboxName }}/eees-easdiscovery(/|$)(.*)$ /eees-easdiscovery/$2 break;
+    {{- end }}
+    {{- if .AuthEnabled }}
+    nginx.ingress.kubernetes.io/auth-url: {{ if .HttpsOnly }}https{{ else }}http{{ end }}://$http_host/auth/v1/authenticate?svc=meep-app-enablement&sbox={{.SandboxName}}&mep={{.LocationName}}
+    {{- end }}
+  labels: {}
+  tls:
+
+prometheus:
+  monitor:
+    enabled: true
+    port: 9000
+    interval: 10s
+    additionalLabels: {}
+    relabelings: []
+    scrapeTimeout: 15s
+    
+codecov:
+  enabled: false
+
+meepOrigin: core

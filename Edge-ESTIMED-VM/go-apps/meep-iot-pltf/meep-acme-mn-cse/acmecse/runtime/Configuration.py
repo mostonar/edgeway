@@ -1,0 +1,1273 @@
+#
+#	Configuration.py
+#
+#	(c) 2020 by Andreas Kraft
+#	License: BSD 3-Clause License. See the LICENSE file for further details.
+#
+#	Managing CSE configurations
+#
+"""	This module implements the configuration of the CSE. It reads the configuration file, performs checks, 
+	and provides access to the configuration values. 
+"""
+
+
+from __future__ import annotations
+from typing import Any, Dict, Tuple, Optional, cast, Set
+
+import configparser, argparse, os, os.path, pathlib
+from copy import deepcopy
+from inspect import getmembers
+from dotenv import load_dotenv
+
+from rich.console import Console as RichConsole
+
+
+from ..etc.Constants import Constants as C
+from ..etc.Types import CSEType, ContentSerializationType, LogLevel, TreeMode, CSERegistrar
+from ..helpers.NetworkTools import getIPAddress
+from ..helpers.Zookeeper import Zookeeper
+from ..helpers.ACMEConfiguration import ACMEConfiguration
+from ..runtime.EventManager import EventManager, EventData, eventManager
+
+# TODO: proper use of the baseDirectory configuration for other values
+
+#
+#	Deprecated secttions
+#
+
+# Add deprecated sections here. Format: set of (oldSection, newSection)
+_deprecatedSections:Set[Tuple[str, str]] = None
+"""	Deprecated sections. Mapping from old section name to new section name."""
+
+class Configuration(object):
+	"""	The static class Configuration holds all the configuration values of the CSE. It is initialized only once by calling the static
+		method init(). Access to configuration valus is done by calling Configuration.get(<key>) or by
+		accessing an attribute with the same name as the configuration key (with all "." replaced by "_").
+
+		Example:
+			::
+
+				print(Configuration.get('http.port'))
+				print(Configuration.http_port)
+		
+			
+	"""
+
+	configParser:ACMEConfiguration = None
+	"""	The ACMEConfiguration instance holding the configuration values. """
+
+	coap_enable:bool = None
+	"""	Enable or disable the CoAP server. """
+
+	coap_listenIF:str = None
+	"""	The network interface to listen on for CoAP. """
+
+	coap_port:int = None
+	"""	The port to listen on for CoAP. """
+
+	coap_address:str = None
+	"""	The address to listen on for CoAP. """
+
+	coap_timeout:float = None
+	"""	The timeout for CoAP requests. """
+
+	coap_clientConnectionCacheSize:int = None
+	"""	The size of the client connection cache. """
+
+
+	coap_security_caCertificateFile:str = None
+	"""	The CA certificate file for CoAP. """
+
+	coap_security_caPrivateKeyFile:str = None
+	"""	The CA private key file for CoAP. """
+
+	coap_security_dtlsVersion:str = None
+	"""	The DTLS version for CoAP. """
+
+	coap_security_useDTLS:bool = None
+	"""	Enable or disable DTLS for CoAP. """
+
+	coap_security_verifyCertificate:bool = None
+	"""	Enable or disable certificate verification for CoAP. """
+
+
+	console_type:str = None
+	"""	The type of the console. Allowed values: "rich", "simple". """
+
+	console_confirmQuit:bool = None
+	"""	Confirm quitting the console. """
+
+	console_headless:bool = None
+	"""	Run the CSE in headless mode. """
+
+	console_hideResources:list[str] = None
+	"""	Resources to hide in the console. """
+
+	console_refreshInterval:float = None
+	"""	The refresh interval for the console. """
+
+	console_theme:str = None
+	"""	The theme for the console. """
+
+	console_treeIncludeVirtualResource:bool = None
+	"""	Include virtual resources in the console tree. """
+
+	console_treeMode:str|TreeMode = None
+	"""	The tree mode for the console. """
+
+
+	cse_asyncSubscriptionNotifications:bool = None
+	"""	Enable or disable asynchronous subscription notifications. """
+
+	cse_checkExpirationsInterval:int = None
+	"""	The interval to check for resource expirations. """
+
+	cse_cseID:str = None
+	"""	The CSE-ID of the CSE. """
+
+	cse_defaultSerialization:str|ContentSerializationType = None
+	"""	The default serialization for the CSE. """
+
+	cse_enableRemoteCSE:bool = None
+	"""	Enable or disable remote CSEs. """
+
+	cse_enableResourceExpiration:bool = None
+	"""	Enable or disable resource expiration. """
+
+	cse_enableSubscriptionVerificationRequests:bool = None
+	"""	Enable or disable subscription verification requests. """
+
+	cse_flexBlockingPreference:str = None
+	"""	The flex blocking preference for the CSE. """
+
+	cse_maxExpirationDelta:int = None
+	"""	The maximum expiration delta for resources. """
+
+	cse_originator:str = None
+	"""	The originator for the CSE. """
+
+	cse_poa:list[str] = None
+	"""	The Points of Access for the CSE. """
+
+	cse_releaseVersion:str = None
+	"""	The release version of the CSE. """
+
+	cse_requestExpirationDelta:float = None
+	"""	The request expiration delta for the CSE. """
+
+	cse_resourcesPath:str = None
+	"""	The path to the resources. """
+
+	cse_resourceID:str = None
+	"""	The resource ID of the CSE. """
+
+	cse_resourceName:str = None
+	"""	The resource name of the CSE. """
+
+	cse_sendToFromInResponses:bool = None
+	"""	Send the To and From in responses. """
+
+	cse_sortDiscoveredResources:bool = None
+	"""	Sort discovered resources. """
+
+	cse_supportedReleaseVersions:list[str] = None
+	"""	The supported release versions of the CSE. """
+
+	cse_serviceProviderID:str = None
+	"""	The service provider ID of the CSE. """
+
+	cse_type:str|CSEType = None
+	"""	The type of the CSE. """
+
+	cse_idLength:int = None
+	"""	The length of the generated resource IDs. """
+
+	cse_announcements_allowAnnouncementsToHostingCSE:bool = None
+	"""	Allow announcements to the hosting CSE. """
+
+	cse_announcements_delayAfterRegistration:float = None
+	"""	The delay after registration for announcements. """
+
+
+	cse_operation_jobs_balanceLatency:int = None
+	"""	The latency for balancing jobs. """
+
+	cse_operation_jobs_balanceReduceFactor:float = None
+	"""	The reduce factor for balancing jobs. """
+
+	cse_operation_jobs_balanceTarget:float = None
+	"""	The target for balancing jobs. """
+
+
+	cse_operation_requests_enable:bool = None
+	"""	Enable or disable operation requests. """
+
+	cse_operation_requests_size:int = None
+	"""	The size of the operation requests. """
+
+
+	cse_operation_plugins_disabledPlugins:list[str] = None
+	"""	A list of disabled plugins. """
+
+	cse_operation_plugins_replace:bool = None
+	"""	Replace existing plugins with the same name. """
+
+	_cse_operation_plugins_enabledComponents:dict[str, bool] = None
+	"""	An internal dictionary of enabled plugins. The keys are the component names, the values are booleans indicating whether the corresponding plugin is enabled. """
+
+
+	cse_registrars:dict[str, CSERegistrar] = {}
+	"""	A dictionary of CSE or service provider CSEs registrars. The keys are the CSE IDs, the values are dictionaries with the registrar information. """
+
+
+	cse_registration_allowedAEOriginators:list[str] = None
+	"""	Allowed AE originators for registration. """
+
+	cse_registration_allowedCSROriginators:list[str] = None
+	"""	Allowed CSR originators for registration. """
+
+	cse_registration_checkLiveliness:bool = None
+	"""	Check liveliness for registration. """
+
+	cse_registration_checkInterval:int = None
+	"""	Time interval to check liveliness of registration(s). """
+
+	cse_registration_unregisterWhenStopping:bool = None
+	"""	Unregister the CSR resource when stopping the CSE. """
+
+	cse_security_secret:str = None
+	"""	The main secret key for the CSE. """
+
+	cse_security_enableACPChecks:bool = None
+	"""	Enable or disable ACP checks. """
+
+	cse_security_fullAccessAdmin:bool = None
+	"""	Full access for admin. """
+
+
+	cse_service_action_enable:bool = False
+	"""	Enable or disable the action processing service. This includes the ActionManager plugin and the related features in the CSE. """
+	
+	cse_service_announcement_enable:bool = False
+	"""	Enable or disable the announcement service. This includes the AnnouncementManager plugin and the related features in the CSE. """
+
+	cse_service_group_enable:bool = False
+	"""	Enable or disable the group service. This includes the GroupManager plugin and the related features in the CSE. """
+
+	cse_service_location_enable:bool = False
+	"""	Enable or disable the location service. This includes the LocationManager plugin and the related features in the CSE. """
+
+	cse_service_remoteCSE_enable:bool = False
+	"""	Enable or disable the remote CSE service. This includes the RemoteCSEManager plugin and the related features in the CSE. """
+	
+	cse_service_semantic_enable:bool = False
+	"""	Enable or disable the semantic service. This includes the SemanticManager plugin and the related features in the CSE. """
+
+	cse_service_time_enable:bool = False
+	"""	Enable or disable the time service. This includes the TimeManager plugin and the related features in the CSE. """
+
+	cse_service_timeSeries_enable:bool = False
+	"""	Enable or disable the time series service. This includes the TimeSeriesManager plugin and the related features in the CSE. """
+
+
+	database_type:str = None
+	"""	The type of the database. """
+
+	database_resetOnStartup:bool = None
+	"""	Reset the database on startup. """
+
+	database_backupPath:str = None
+	"""	The path for the database backup. """
+
+
+	database_tinydb_path:str = None
+	"""	The path to the TinyDB database. """
+
+	database_tinydb_cacheSize:int = None
+	"""	The cache size for the TinyDB database. """
+
+	database_tinydb_writeDelay:int = None
+	"""	The write delay for the TinyDB database. """
+
+
+	database_postgresql_host:str = None
+	"""	The host of the PostgreSQL database. """
+
+	database_postgresql_port:int = None
+	"""	The port of the PostgreSQL database. """
+
+	database_postgresql_role:str = None
+	"""	The role of the PostgreSQL database. """
+
+	database_postgresql_password:str = None
+	"""	The password of the PostgreSQL database. """
+
+	database_postgresql_database:str = None
+	"""	The database of the PostgreSQL database. """
+
+	database_postgresql_schema:str = None
+	"""	The schema of the PostgreSQL database. """
+
+
+	http_address:str = None
+	"""	The address to listen on for HTTP the http server. """
+
+	http_allowPatchForDelete:bool = None
+	"""	Allow PATCH for DELETE operations. """
+
+	http_enable:bool = None
+	"""	Enable or disable the HTTP server. """
+
+	http_enableStructureEndpoint:bool = None
+	"""	Enable the structure endpoint. """
+
+	http_enableUpperTesterEndpoint:bool = None
+	"""	Enable the upper tester endpoint. """
+
+	http_enableManagementEndpoint:bool = None
+	"""	Enable the management endpoint. """
+
+	http_listenIF:str = None
+	"""	The network interface to listen on for HTTP. """
+
+	http_port:int = None
+	"""	The port to listen on for HTTP. """
+
+	http_root:str = None
+	"""	The root of the HTTP path. """
+
+	http_externalRoot:str = None
+	"""	The non-local root path of the HTTP path. This is used when the CSE is accessed from non-local addresses, e.g. in a Kubernetes cluster. """
+
+	http_timeout:float = None
+	"""	The timeout for HTTP requests. """
+
+
+	http_cors_enable:bool = None
+	"""	Enable or disable CORS. """
+
+	http_cors_resources:list[str] = None
+	"""	The resources for CORS. """
+
+
+	http_security_caCertificateFile:str = None
+	"""	The CA certificate file for HTTP. """
+
+	http_security_caPrivateKeyFile:str = None
+	"""	The CA private key file for HTTP. """
+
+	http_security_tlsVersion:str = None
+	"""	The TLS version for HTTP. """
+
+	http_security_useTLS:bool = None
+	"""	Enable or disable TLS for HTTP. """
+
+	http_security_verifyCertificate:bool = None
+	"""	Enable or disable certificate verification for HTTP. """
+
+	http_security_enableBasicAuth:bool = None
+	"""	Enable or disable basic authentication for HTTP. """
+
+	http_security_enableTokenAuth:bool = None
+	"""	Enable or disable token authentication for HTTP. """
+
+	http_security_basicAuthFile:str = None
+	"""	The file for basic authentication for HTTP. """
+
+	http_security_tokenAuthFile:str = None
+	"""	The file for token authentication for HTTP. """
+
+
+	http_wsgi_enable:bool = None
+	"""	Enable or disable the WSGI server. """
+
+	http_wsgi_connectionLimit:int = None
+	"""	The connection limit for the WSGI server. """
+
+	http_wsgi_threadPoolSize:int = None
+	"""	The thread pool size for the WSGI server. """
+
+
+	logging_count:int = None
+	"""	The number of log entries. """
+
+	logging_enableBindingsLogging:bool = None
+	"""	Enable or disable bindings logging. """
+
+	logging_enableFileLogging:bool = None
+	"""	Enable or disable file logging. """
+
+	logging_enableScreenLogging:bool = None
+	"""	Enable or disable screen logging. """
+
+	logging_filter:list = None
+	"""	The filter for logging. """
+
+	logging_level:str|LogLevel = None
+	"""	The log level. """
+
+	logging_maxLogMessageLength:int = None
+	"""	The maximum log message length. """
+
+	logging_path:str = None
+	"""	The path for logging. """
+
+	logging_queueSize:int = None
+	"""	The queue size for logging. """
+
+	logging_size:int = None
+	"""	The size of the log. """
+
+	logging_stackTraceOnError:bool = None
+	"""	Enable or disable stack trace on error. """
+
+	logging_enableUTCTimezone:bool = None
+	"""	Enable or disable UTC timezone. """
+
+
+	mqtt_address:str = None
+	"""	The address to listen on for the MQTT server. """
+
+	mqtt_enable:bool = None
+	"""	Enable or disable the MQTT server. """
+
+	mqtt_keepalive:int = None
+	"""	The keepalive for MQTT. """
+
+	mqtt_listenIF:str = None
+	"""	The network interface to listen on for MQTT. """
+
+	mqtt_port:int = None
+	"""	The port to listen on for MQTT. """
+
+	mqtt_timeout:float = None
+	"""	The timeout for MQTT requests. """
+
+	mqtt_topicPrefix:str = None
+	"""	The topic prefix for MQTT. """
+
+	mqtt_security_allowedCredentialIDs:list[str] = None
+	"""	The allowed credential IDs for MQTT. """
+
+	mqtt_security_caCertificateFile:str = None
+	"""	The CA certificate file for MQTT. """
+
+	mqtt_security_password:str = None
+	"""	The password for MQTT. """
+
+	mqtt_security_username:str = None
+	"""	The username for MQTT. """
+
+	mqtt_security_useTLS:bool = None
+	"""	Enable or disable TLS for MQTT. """
+
+	mqtt_security_verifyCertificate:bool = None
+	"""	Enable or disable certificate verification for MQTT. """
+
+	mqtt_websocket_enable:bool = None
+	"""	Enable or disable the MQTT over WebSocket. """
+
+	mqtt_websocket_port:int = None
+	"""	The WebSocket port for MQTT. """
+
+	mqtt_websocket_path:str = None
+	"""	The WebSocket path for MQTT. """
+
+	resource_acp_selfPermission:int = None
+	"""	The self permission for ACP. """
+
+
+	resource_actr_ecpContinuous:int = None
+	"""	The continuous for ACTR. """
+
+	resource_actr_ecpPeriodic:int = None
+	"""	The periodic for ACTR. """
+
+
+	resource_cnt_enableLimits:bool = None
+	"""	Enable or disable limits for CNT. """
+
+	resource_cnt_mni:int = None
+	"""	The MNI for CNT. """
+
+	resource_cnt_mbs:int = None
+	"""	The MBS for CNT. """
+
+	resource_cnt_mia:int = None
+	"""	The MIA for CNT. """
+
+
+	resource_fcnt_enableLimits:bool = None
+	"""	Enable or disable limits for FCNT. """
+
+	resource_fcnt_mni:int = None
+	"""	The MNI for FCNT. """
+
+	resource_fcnt_mbs:int = None
+	"""	The MBS for FCNT. """
+
+	resource_fcnt_mia:int = None
+	"""	The MIA for FCNT. """
+
+
+	resource_grp_resultExpirationTime:int = None
+	"""	The result expiration time for GRP. """
+
+	resource_lcp_mni:int = None
+	"""	The MNI for LCP. """
+
+	resource_lcp_mbs:int = None
+	"""	The MBS for LCP. """
+
+
+	resource_req_et:int = None
+	"""	The expiration time for REQ. """
+
+
+	resource_sub_batchNotifyDuration:int = None
+	"""	The batch notify duration for SUB. """
+
+
+	resource_ts_enableLimits:bool = None
+	"""	Enable or disable limits for TS. """
+
+	resource_ts_mbs:int = None
+	"""	The MBS for TS. """
+
+	resource_ts_mdn:int = None
+	"""	The MDN for TS. """
+
+	resource_ts_mni:int = None
+	"""	The MNI for TS. """
+
+	resource_ts_mia:int = None
+	"""	The MIA for TS. """
+
+
+	resource_tsb_bcni:str = None
+	"""	The BCNI for TSB. """
+
+	resource_tsb_bcnt:float = None
+	"""	The BCNT for TSB. """
+
+
+	scripting_fileMonitoringInterval:float = None
+	"""	The file monitoring interval for scripting. """
+
+	scripting_maxRuntime:float = None
+	"""	The maximum runtime for scripting. """
+
+	scripting_scriptDirectories:list[str] = None
+	"""	The script directories for scripting. """
+
+	scripting_verbose:bool = None
+	"""	Enable or disable verbose mode for scripting. """
+
+
+	cse_statistics_enable:bool = None
+	"""	Enable or disable statistics. """
+
+	cse_statistics_writeInterval:int = None
+	"""	The write interval for statistics. """
+
+
+	textui_enable:bool = None
+	"""	Enable or disable the text UI. """
+
+	textui_refreshInterval:float = None
+	"""	The refresh interval for the text UI. """
+
+	textui_startWithTUI:bool = None
+	"""	Start with the text UI. """
+
+	textui_theme:str = None
+	"""	The theme for the text UI. """
+
+	textui_maxRequestSize:int = None
+	"""	The maximum request size for the text UI. """
+
+	textui_notificationTimeout:float = None
+	"""	The notification timeout for the text UI. """
+
+	textui_enableTextEditorSyntaxHighlighting:bool = None
+	"""	Enable or disable text editor syntax highlighting for the text UI. """
+
+
+	webui_enable:bool = None
+	"""	Enable or disable the web UI. """
+	
+	webui_root:str = None
+	"""	The root path for the web UI. """
+
+
+	websocket_enable:bool = None
+	"""	Enable or disable the WebSocket server. """
+
+
+	websocket_address:str = None
+	"""	The address to listen on for the WebSocket server. """
+
+	websocket_listenIF:str = None
+	"""	The network interface to listen on for WebSocket. """
+
+	websocket_loglevel:int|str = None
+	"""	The log level for WebSocket. """
+
+	websocket_port:int = None
+	"""	The port to listen on for WebSocket. """
+
+	websocket_timeout:float = None
+	"""	The timeout for WebSocket requests. """
+
+
+	websocket_security_caCertificateFile:str = None
+	"""	The CA certificate file for WebSocket. """
+
+	websocket_security_caPrivateKeyFile:str = None
+	"""	The CA private key file for WebSocket. """
+
+	websocket_security_tlsVersion:str = None
+	"""	The TLS version for WebSocket. """
+
+	websocket_security_useTLS:bool = None
+	"""	Enable or disable TLS for WebSocket. """
+
+	websocket_security_verifyCertificate:bool = None
+	"""	Enable or disable certificate verification for WebSocket. """
+
+	websocket_security_enableBasicAuth:bool = None
+	"""	Enable or disable basic authentication for WebSocket. """
+
+	websocket_security_enableTokenAuth:bool = None
+	"""	Enable or disable token authentication for WebSocket. """
+	
+	websocket_security_basicAuthFile:str = None
+	"""	The file for basic authentication for WebSocket. """
+
+	websocket_security_tokenAuthFile:str = None
+	"""	The file for token authentication for WebSocket. """
+
+
+	mec_enable:bool
+	"""	Enable or disable the MEC client. """
+
+	mec_host:str
+	"""	The MEC host. """
+
+	mec_port:int
+	"""	The MEC port. """
+
+	mec_protocol:str
+	"""	The MEC protocol. """
+
+	mec_platform:str
+	"""	The MEC platform ID. """
+
+	mec_sandbox_id:str
+	"""	The MEC sandbox ID. """
+	
+	cse_external_ip:str
+	""" The external IP address of the CSE. """
+
+	cse_external_port:str
+	""" The external port of the CSE. """
+
+	fullAddress:str
+	""" The full address of the CSE. """
+
+	mec_app_instance_id:str
+	""" The MEC application instance ID. """
+
+	moduleDirectory:pathlib.Path = None
+	""" The base directory of the ACME module. """
+	baseDirectory:pathlib.Path = None
+	""" The base directory of the ACME module. """
+	initDirectory:pathlib.Path = None
+	""" The init directory of the ACME module. """
+	configfile:str = None
+	""" The configuration file. """
+
+
+
+	_configurationDocs: Dict[str, str] = {}
+	""" The configuration values documentation as a dictionary. """
+
+	_defaultConfigFilePath:pathlib.Path = None
+	""" The default init file. """
+
+	_defaultConfigFile:str = None
+	""" The default configuration file. """
+
+	_args_configfile:str = None
+	""" The configuration file passed as argument. This overrides the respective value in the configuration file. """
+	_args_loglevel:str = None
+	""" The log level passed as argument. This overrides the respective value in the configuration file. """
+	_args_DBReset:bool = None
+	""" The reset DB flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_DBStorageMode:str = None
+	""" The DB storage mode passed as argument. This overrides the respective value in the configuration file. """
+	_args_DBDataDirectory:str = None
+	""" The DB data directory passed as argument. This overrides the respective value in the configuration file. """
+	_args_headless:bool = None
+	""" The headless flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_httpAddress:str = None
+	""" The http address passed as argument. This overrides the respective value in the configuration file. """
+	_args_httpPort:int = None
+	""" The http port passed as argument. This overrides the respective value in the configuration file. """
+	_args_initDirectory:str = None
+	""" The import directory passed as argument. This overrides the respective value in the configuration file. """
+	_args_lightScheme:str = None
+	""" The light scheme flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_listenIF:str = None
+	""" The network interface passed as argument. This overrides the respective value in the configuration file. """
+	_args_coapEnabled:bool = None
+	""" The coap enabled flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_mqttEnabled:bool = None
+	""" The mqtt enabled flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_wsEnabled:bool = None
+	""" The WebSocket enabled flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_remoteCSEEnabled:bool = None
+	""" The remote CSE enabled flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_runAsHttps:bool = None
+	""" The https flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_runAsHttpWsgi:bool = None
+	""" The http WSGI flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_baseDirectory:str = None
+	""" The runtime data directory passed as argument. This overrides the default (the CWD). """
+	_args_statisticsEnabled:bool = None
+	""" The statistics enabled flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_textUI:bool = None
+	""" The text UI flag passed as argument. This overrides the respective value in the configuration file. """
+	_args_zkHost:str = None
+	""" The Zookeeper host passed as argument. **There is no equivalent in the configuration file.** """
+	_args_zkPort:int = None
+	""" The Zookeeper port passed as argument. **There is no equivalent in the configuration file.** """
+	_args_zkRoot:str = None
+	""" The Zookeeper root node passed as argument. **There is no equivalent in the configuration file.** """
+
+	_args_mec_enable:bool = None
+	_args_mec_host:str = None
+	_args_mec_port:int = None
+	_args_mec_protocol:str = None
+	_args_mec_platform:str = None
+	_args_mec_sandbox_id:str = None
+	_args_cse_external_ip:str = None
+	_args_cse_external_port:str = None
+	_args_fullAddress:str = None
+	_args_mec_app_instance_id:str = None
+
+	# Internal print function that takes the headless setting into account
+	@staticmethod
+	def _print(msg:str, markup:Optional[bool]=True) -> None:
+		"""	Print a message to the console. If the CSE is running in headless mode, then the message is not printed.
+		
+			Args:
+				msg: The message to print.
+				markup: If True, then the message is printed with markup. If False, then the message is printed without markup.
+		"""
+		if not Configuration._args_headless:
+			RichConsole().print(msg, markup=markup)	# Print error message to console
+
+
+	@staticmethod
+	def _warning(msg:str) -> None:
+		"""	Print a warning message to the console.
+
+			Args:
+				msg: The warning message to print.
+		"""
+		Configuration._print(f'[orange3][b u]Configuration Warning[/b u]\n{msg}[/orange3]\n')
+
+
+	@staticmethod
+	def _error(msg:str) -> None:
+		"""	Print an error message to the console.
+
+			Args:
+				msg: The error message to print.
+		"""
+		Configuration._print(f'[red][b u]Configuration Error[/b u]\n{msg}[/red]\n')
+
+
+
+	@staticmethod
+	def initDirectories() -> bool:
+		"""	Initialize the directories for the configuration. This method must be called before accessing any configuration value.
+
+			Returns:
+				True on success, False otherwise.
+		"""
+
+		# The path to the ACME module directory
+		Configuration.moduleDirectory = pathlib.Path(os.path.abspath(os.path.dirname(__file__))).parent
+		
+		# Test that the config filename is just a filename without a path. If it is then throw an error
+		if Configuration._args_configfile and os.path.dirname(Configuration._args_configfile):
+			Configuration._error(f'Configuration file must be a filename without a path: {Configuration._args_configfile}')
+			return False
+
+		# Find out the path to the init directory
+		Configuration.initDirectory = Configuration.moduleDirectory / 'init'
+		if Configuration._args_initDirectory:	# Use the init directory if given as argument
+			Configuration.initDirectory = pathlib.Path(Configuration._args_initDirectory)
+
+		# Get the path to the runtime data directory
+		Configuration.baseDirectory = pathlib.Path(os.getcwd())
+		if Configuration._args_baseDirectory:	# Use the runtime data directory if given as argument
+			Configuration.baseDirectory = pathlib.Path(Configuration._args_baseDirectory)
+
+		# Set the default ini file and check if it exists and is readable
+		Configuration._defaultConfigFilePath = Configuration.initDirectory / C.defaultConfigFile
+		Configuration._defaultConfigFile = str(Configuration._defaultConfigFilePath)
+		if not os.access(Configuration._defaultConfigFile, os.R_OK):
+			Configuration._error(f'Default configuration file missing or not readable: {Configuration._defaultConfigFile}')
+			return False
+
+		return True
+
+
+	@staticmethod
+	def init(args:Optional[argparse.Namespace] = None) -> bool:
+		"""	Initialize and read the configuration. This method must be called before accessing any configuration value.
+
+			Args:
+				args: Optional arguments. If not given, then the command line arguments are used.
+
+			Returns:
+				True on success, False otherwise.
+		"""
+
+		def runOnboarding(withZookeeper: bool=False) -> bool:
+			"""	Run the onboarding process to create a user configuration file if it does not exist.
+
+				Args:
+					withZookeeper: If True, then the onboarding process will use Zookeeper for configuration management. If False, then the onboarding process will create a local configuration file.
+				Returns:
+					True if the onboarding was successful, False otherwise.
+
+				Raises:
+					Exception: If an error occurs during the onboarding process.
+			"""
+			try:
+				if Configuration._args_headless:
+					RichConsole().print(f'[red]Configuration file: {Configuration._args_configfile} is missing and cannot be created in headless mode.\n')
+					return False
+				
+				# load onboarding module and create user config file.
+				# After that, remove the module from the modules list, because it is not needed anymore
+				from ..runtime import Onboarding
+				result, _configFile, _baseDirectory = Onboarding.buildUserConfigFile(Configuration._args_configfile if not withZookeeper else None,
+																					 (Configuration._args_zkHost, Configuration._args_zkPort, Configuration._args_zkRoot))	
+				import sys
+				del sys.modules[Onboarding.__name__]	# Remove the module again to save some memory
+				del Onboarding
+
+				if not result:
+					return False
+				if _configFile:
+					Configuration._args_configfile = str(pathlib.Path(_configFile))
+				if _baseDirectory:
+					Configuration.baseDirectory = pathlib.Path(_baseDirectory)
+			except Exception as e:
+				RichConsole().print(e)
+				raise e
+			return True
+
+		# resolve the args and set them as attributes
+		Configuration._args_configfile			= args.configfile if args and 'configfile' in args and args.configfile else C.defaultUserConfigFile
+		Configuration._args_baseDirectory		= args.rtDirectory if args and 'rtDirectory' in args else None	# baseDirectory
+		Configuration._args_loglevel			= args.loglevel if args and 'loglevel' in args else None
+		Configuration._args_DBReset				= args.dbreset if args and 'dbreset' in args else False
+		Configuration._args_DBStorageMode		= args.dbstoragemode if args and 'dbstoragemode' in args else None
+		Configuration._args_DBDataDirectory		= args.dbdirectory if args and 'dbdirectory' in args else None
+		Configuration._args_headless			= args.headless if args and 'headless' in args else False
+		Configuration._args_httpAddress			= args.httpaddress if args and 'httpaddress' in args else None
+		Configuration._args_httpPort			= args.httpport if args and 'httpport' in args else None
+		Configuration._args_initDirectory		= args.initdirectory if args and 'initdirectory' in args else None
+		Configuration._args_lightScheme			= args.lightScheme if args and 'lightScheme' in args else None
+		Configuration._args_listenIF			= args.listenif if args and 'listenif' in args else None
+		Configuration._args_mqttEnabled			= args.mqttenabled if args and 'mqttenabled' in args else None
+		Configuration._args_remoteCSEEnabled	= args.remotecseenabled if args and 'remotecseenabled' in args else None
+		Configuration._args_runAsHttps			= args.https if args and 'https' in args else None
+		Configuration._args_runAsHttpWsgi		= args.httpWsgi if args and 'httpWsgi' in args else None
+		Configuration._args_statisticsEnabled	= args.statisticsenabled if args and 'statisticsenabled' in args else None
+		Configuration._args_textUI				= args.textui if args and 'textui' in args else None
+		Configuration._args_coapEnabled			= args.coapenabled if args and 'coapenabled' in args else None
+		Configuration._args_wsEnabled			= args.wsenabled if args and 'wsenabled' in args else None
+		Configuration._args_zkHost				= args.zkHost if args and 'zkHost' in args else None
+		Configuration._args_zkPort				= args.zkPort if args and 'zkPort' in args else None
+		Configuration._args_zkRoot				= args.zkRoot if args and 'zkRoot' in args else None
+
+
+		if not Configuration.initDirectories():
+			return False
+
+		# The list of configuration files to read (significantly, the default config file is always the first one)
+		# The list of configuration strings contain optional extra strings in ini format. They are interpolated
+		# after the configuration files are read.
+		configurationFiles = [Configuration._defaultConfigFile]
+		configurationStrings:list[str] = []
+
+		# Check if there are no arguments given for the Zookeeper host and root node. Then use the
+		# normal file-based configuration
+		if not (Configuration._args_zkHost and Configuration._args_zkRoot):
+
+			# Check and re-set the configuration file's path if the runtime data directory is given AND
+			# the configuration file is not given as argument
+			if Configuration._args_baseDirectory and not args.configfile:
+				Configuration._args_configfile = f'{Configuration._args_baseDirectory}/{C.defaultUserConfigFile}'
+
+			# Adapt configuration file path to the runtime data directory
+			Configuration._args_configfile = f'{Configuration.baseDirectory}{os.sep}{os.path.basename(Configuration._args_configfile)}'
+
+			# Create user config file if doesn't exist
+			if not os.path.exists(Configuration._args_configfile):
+				if not runOnboarding():
+					return False
+			Configuration.configfile = Configuration._args_configfile
+			configurationFiles.append(Configuration.configfile)	
+
+		# Read the configuration from a Zookeeper server
+		else:
+			try:
+				zk = Zookeeper(host=Configuration._args_zkHost, 
+				   			   port=Configuration._args_zkPort, 
+							   rootNode=Configuration._args_zkRoot, 
+							   logger=lambda x: Configuration._print(x),
+							   caseSensitive=False,	# switch off case sensitivity for ini files
+							   ).connect(createRoot=False)
+				if not zk.exists():
+					if not runOnboarding(withZookeeper=True):
+						return False
+					# try again to connect to read the configuration
+					if not zk.exists():
+						raise Exception(f'Root node "{Configuration._args_zkRoot}" does not exist.')
+				configurationStrings.append(zk.retrieveIniConfig())
+			except Exception as e:
+				import traceback
+				traceback.print_exc()
+				Configuration._error(f'Error connecting to Zookeeper server: {e}')
+				return False
+			finally:
+				zk.disconnect()
+
+		# Read and parse the configuration file
+		Configuration.configParser = ACMEConfiguration()
+	
+		# Construct the default values that are used for interpolation
+		_defaults = {	'basic.config': {	
+							'baseDirectory' 		: Configuration.baseDirectory,					# points to the currenr working directory
+							'moduleDirectory' 		: Configuration.moduleDirectory,				# points to the acme module's directory
+							'initDirectory' 		: Configuration.initDirectory,					# points to the acme/init directory		
+							'hostIPAddress'			: getIPAddress(),								# provide the IP address of the host
+							'networkInterface'		: '0.0.0.0',									# The network interface to listen on for HTTP, CoAP, MQTT and WebSocket.
+							
+							'serviceProviderID'		: '//acme.example.com',							# The service provider ID of the CSE.
+							'registrarCseHost'		: getIPAddress(),								# The IP address of the registrar CSE
+							'registrarCsePort'		: 8080,											# The TCP port of the registrar CSE
+							'registrarCseID'		: '',											# The CSE-ID of the registrar CSE
+							'registrarCseName'		: '',											# The resource name of the registrar CSE's CSEBase
+
+							'logLevel'				: 'debug',										# The main secret key for the CSE. 
+							'consoleTheme'			: 'dark',										# The theme for the console.
+							'consoleType'			: 'rich',										# The type of the console. Allowed values: "rich", "simple".
+							'secret'				: os.getenv('ACME_SECURITY_SECRET', 'acme'),	# The main secret key for the CSE. 
+						}
+					}
+		# Load environment variables from .env file from the base directory, if it exists
+		load_dotenv(dotenv_path=f'{Configuration.baseDirectory}{os.path.sep}.env')
+
+		# Add environment variables to the defaults
+		_defaults.update({ 'DEFAULT': {k: v.replace('$', '$$') for k,v in os.environ.items()} })
+
+		# Check wether none of the environment variables has the same name as any of the default values in "basic.config"
+		for k in _defaults['basic.config'].keys():
+			if k in os.environ:
+				Configuration._warning(fr'The environment variable "{k}" conflicts with an option with the same name in the section \[[i]basic.config[/i]].\nPlease consider renaming the environment variable otherwise it cannot be used for interpolation in that section.')
+
+		# Add (empty) default for supported environment variables to the defaults dictionary for the interpolation during reading the configuration file
+		_envVariables = { e: os.getenv(e, '') if e not in _defaults else _defaults[e]
+			for e in (
+					'ACME_MQTT_SECURITY_PASSWORD', 
+					'ACME_MQTT_SECURITY_USERNAME',
+					'ACME_DATABASE_POSTGRESQL_PASSWORD',
+					'ACME_CSE_REGISTRAR_SECURITY_HTTPUSERNAME', 
+					'ACME_CSE_REGISTRAR_SECURITY_HTTPPASSWORD', 
+					'ACME_CSE_REGISTRAR_SECURITY_HTTPBEARERTOKEN',
+					'ACME_CSE_REGISTRAR_SECURITY_WSUSERNAME', 
+					'ACME_CSE_REGISTRAR_SECURITY_WSPASSWORD', 
+					'ACME_CSE_REGISTRAR_SECURITY_WSBEARERTOKEN',
+					'ACME_CSE_REGISTRAR_SECURITY_SELFHTTPUSERNAME', 
+					'ACME_CSE_REGISTRAR_SECURITY_SELFHTTPPASSWORD',
+					'ACME_CSE_REGISTRAR_SECURITY_SELFWSUSERNAME', 
+					'ACME_CSE_REGISTRAR_SECURITY_SELFWSPASSWORD',
+				)
+		}
+		_defaults['DEFAULT'].update(_envVariables)
+
+		# Set the defaults
+		Configuration.configParser.read_dict(_defaults)
+		
+		try:
+			# Read the configuration files
+			# if len(config.read( [Configuration._defaultConfigFile, Configuration.configfile])) == 0 and Configuration._args_configfile != C.defaultUserConfigFile:		# Allow
+			if len(Configuration.configParser.read(configurationFiles)) == 0 and Configuration._args_configfile != C.defaultUserConfigFile:		# Allow
+				Configuration._error(f'Configuration file missing or not readable: {Configuration._args_configfile}')
+				return False
+			
+			# Read the extra configuration strings (e.g. from Zookeeper)
+			for cs in configurationStrings:
+				Configuration.configParser.read_string(cs)
+
+		except configparser.Error as e:
+			Configuration._error(f'Error in configuration file\n{str(e)}')
+			return False
+		
+		#	Look for deprecated and renamed sections and print an error message
+		if _deprecatedSections:
+			for o, n in _deprecatedSections:
+				if Configuration.configParser.has_section(o):
+					Configuration._error(fr'Found old section name in configuration file. Please rename "\[{o}]" to "\[{n}]".')
+					return False
+
+		#	Retrieve configuration values
+		try:
+
+			# Call the configuration handler for each module
+			# The "readConfiguration" methods are responsible for reading the configuration values from the configuration file
+			# and to set the respective attributes in the Configuration class.
+			# Validations are done later below.
+			for m in _moduleConfigs:
+				m.readConfiguration(Configuration.configParser, Configuration)	# type:ignore [arg-type]
+		
+		except configparser.InterpolationMissingOptionError as e:
+			Configuration._error(fr'Error in configuration file: {Configuration.configfile}\n{str(e)}\n\nPlease provide this configuration option in the section \[[i]basic.config[/i]], or set an environment variable with that name.\n')
+			return False
+
+		except Exception as e:	# about when findings errors in configuration
+			Configuration._error(f'Error in configuration file: {Configuration.configfile}\n{str(e)}')
+			return False
+
+		# Validate the configuration for each module
+		for m in _moduleConfigs:
+			try:
+				m.validateConfiguration(Configuration, True)	# type:ignore [arg-type]
+			except ConfigurationError as e:
+				Configuration._error(f'{str(e)}')
+				return False
+
+		return True
+
+
+	@staticmethod
+	def print() -> str:
+		"""	Prints the current configuration to the console.
+
+			Returns:
+				A string with the current configuration.
+		"""	
+		result = 'Configuration:\n'		# Magic string used e.g. in tests, don't remove
+		for (k, v) in Configuration.all().items():
+			result += f'  {k} = {v}\n'
+		return result
+
+
+	@staticmethod
+	def all() -> Dict[str, Any]:
+		"""	Returns the complete configuration as a dictionary.
+
+			Returns:
+				A dictionary with the complete configuration.
+		"""
+		def isprop(v:Any) -> bool:
+			return not callable(v)
+		
+		attributeNames = [ k for k,v in getmembers(Configuration, isprop) if not k.startswith('_') ]
+		result = {}
+		for k in attributeNames:
+			attr = getattr(Configuration, k)
+			match attr:
+				case pathlib.Path():
+					# Convert pathlib.Path to string
+					attr = str(attr)
+				case dict():
+					# Don't change the original dict, so make a copy
+					attr = deepcopy(attr)
+					# Convert dict elements to instances dict, if necessary
+					for k2,v2 in attr.items():
+						if isinstance(v2, CSERegistrar):
+							# Convert the CSERegistrar to a dict
+							attr[k2] = v2.toDict()
+				case ACMEConfiguration():
+					# Ignore
+					continue
+				case None:
+					# Don't handle None values
+					continue
+
+			# Replace underscores with dots in the key names
+			result[k.replace('_', '.')] = attr
+		return deepcopy(result) # make sure that the result is a deep copy of the configuration
+
+
+	@staticmethod
+	def get(key: str) -> Any:
+		"""	Retrieve a configuration value or None if no configuration could be found for a key.
+			The key is case-insensitive and dots are replaced by underscores.
+
+			Example:
+				The following example retrieves the value of the configuration key 'http.port':
+
+				::
+
+					print(Configuration.get('http.port'))
+
+			Args:
+				key:	The configuration key to retrieve.
+
+			Returns:
+				The configuration value or None if no configuration could be found for a key.
+		"""
+		if Configuration.has(key):
+			return cast(Any, getattr(Configuration, key.replace('.', '_')))
+		return None
+	
+
+	@staticmethod
+	def addDoc(key: str, markdown:str) -> None:
+		"""	Adds a documentation for a configuration key.
+
+			Args:
+				key:		The configuration key to add the documentation for.
+				markdown:	The documentation in markdown format.
+		"""
+		if key:
+			Configuration._configurationDocs[key] = markdown
+
+	
+	@staticmethod
+	def getDoc(key:str) -> Optional[str]:
+		"""	Retrieves the documentation for a configuration key.
+		
+			Args:
+				key:	The configuration key to retrieve the documentation for.
+				
+			Returns:
+				The documentation in markdown format or None if no documentation could be found for the key.
+		"""
+		return Configuration._configurationDocs.get(key)
+
+
+
+	# TODO change to exception
+	@staticmethod
+	def update(key:str, value:Any) -> Optional[str]:
+		""" Update a configuration value and inform other components via an event.
+
+			Args:
+				key:	The configuration key to update.
+				value:	The new value for the configuration key.
+
+			Returns:
+				None if no error occurs, or a string with an error message, what has gone wrong while validating
+		"""
+		if not Configuration.has(key):
+			return f'Unknown key: {key}'
+		if value is not None:	# ignore invalid values
+			original = Configuration.get(key)
+			setattr(Configuration, key.replace('.', '_'), value)
+
+			# TODO This worked before when there was only one validation function.
+			# Now that we have multiple validation functions, we need to call them all, or
+			# we need to store the proper validation function in the configuration for each key.
+			# if not (r := Configuration.validate())[0]:
+			# 	Configuration._configuration[key] = original
+			# 	return r[1].replace(r'\[', '[')	# unescape "\[" in error messages
+
+			eventManager.configUpdate(EventData(payload=(key, value)))		# type:ignore [attr-defined]
+
+		else:
+			return f'Invalid value for key: {key}'
+		return None
+
+
+	@staticmethod
+	def has(key:str) -> bool:
+		"""	Check whether a configuration setting exsists.
+
+			Args:
+				key:	The configuration key to check.
+
+			Returns:
+				True if the configuration key exists, False otherwise.
+		"""
+		return hasattr(Configuration, key.replace('.', '_'))
+		
+
+class ConfigurationError(Exception):
+	"""	Exception class for configuration errors. """
+	pass
+
+
+#############################################################################
+#
+#	Instantiating Configuration modules
+#
+#	These modules are responsible for reading and validating their own configuration
+#
+#	This happens at the end of the module, because the Configuration class must be
+#	initialized before the modules can be initialized.
+
+# Import all configuration modules
+
+from ..runtime.configurations.ACPResourceConfiguration import ACPResourceConfiguration
+from ..runtime.configurations.ACTRResourceConfiguration import ACTRResourceConfiguration
+from ..runtime.configurations.CNTResourceConfiguration import CNTResourceConfiguration
+from ..runtime.configurations.ConsoleConfiguration import ConsoleConfiguration
+from ..runtime.configurations.CSEConfiguration import CSEConfiguration
+from ..runtime.configurations.FCNTResourceConfiguration import FCNTResourceConfiguration
+from ..runtime.configurations.LCPResourceConfiguration import LCPResourceConfiguration
+from ..runtime.configurations.LoggingConfiguration import LoggingConfiguration
+from ..runtime.configurations.ModuleConfiguration import ModuleConfiguration
+from ..runtime.configurations.RegistrationServiceConfiguration import RegistrationServiceConfiguration
+from ..runtime.configurations.REQResourceConfiguration import REQResourceConfiguration
+from ..runtime.configurations.ScriptingConfiguration import ScriptingConfiguration
+from ..runtime.configurations.SecurityServiceConfiguration import SecurityServiceConfiguration
+from ..runtime.configurations.StorageConfiguration import StorageConfiguration
+from ..runtime.configurations.SUBResourceConfiguration import SUBResourceConfiguration
+from ..runtime.configurations.TSBResourceConfiguration import TSBResourceConfiguration
+from ..runtime.configurations.TSResourceConfiguration import TSResourceConfiguration
+
+
+# Instantiate all configuration modules here, in a specfic order.
+
+_moduleConfigs:list[ModuleConfiguration]
+""" The list of configuration modules. """
+
+_moduleConfigs = [
+
+	# Runtime configurations
+	CSEConfiguration(),
+	ConsoleConfiguration(),
+	LoggingConfiguration(), # must get its config after the Console !
+	ScriptingConfiguration(),
+
+	# Service configurations
+	RegistrationServiceConfiguration(),
+	SecurityServiceConfiguration(),
+
+	# Storage configurations
+	StorageConfiguration(),
+
+	# Resource configurations
+	ACPResourceConfiguration(),
+	ACTRResourceConfiguration(),
+	CNTResourceConfiguration(),
+	FCNTResourceConfiguration(),
+	LCPResourceConfiguration(),
+	REQResourceConfiguration(),
+	SUBResourceConfiguration(),
+	TSResourceConfiguration(),
+	TSBResourceConfiguration(),
+
+]

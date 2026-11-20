@@ -1,0 +1,44 @@
+---
+- hosts: k8s_masters
+  become: true
+  vars_prompt:
+    - name: ansible_become_pass
+      prompt: "Enter sudo password for master"
+      private: true
+    - name: mec_host_address
+      prompt: "Enter the IP or domain for MEC Sandbox (e.g. 192.168.1.100 or mec.example.com)"
+      private: false
+    - name: github_client_id
+      prompt: "Enter GitHub OAuth Client ID"
+      private: false
+    - name: github_client_secret
+      prompt: "Enter GitHub OAuth Client Secret"
+      private: true
+  roles:
+    - common
+    - kernel
+    - containerd
+    - docker
+    - kubernetes/master
+    - cni_calico
+    - helm
+    - role: dev_env/golang
+      when: install_dev_env
+    - role: dev_env/node
+      when: install_dev_env
+    - role: mec_sandbox/mec_config
+      when: install_mec_sandbox
+    - role: mec_sandbox/mec_deploy
+      when: install_mec_sandbox
+# - hosts: k8s_workers
+#   become: true
+#   vars_prompt:
+#     - name: ansible_become_pass
+#       prompt: "Enter sudo password for workers"
+#       private: true
+#   roles:
+#     - common
+#     - kernel
+#     - containerd
+#     - kubernetes/common
+#     - kubernetes/worker

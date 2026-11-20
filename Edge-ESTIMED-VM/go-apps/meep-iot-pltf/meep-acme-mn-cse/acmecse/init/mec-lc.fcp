@@ -1,0 +1,518 @@
+
+// Created by SDTTool
+// oneM2M Release: 5.6.0
+// Domain:         org.etsi.mec
+[
+
+    // ModuleClass: user (user)
+    {
+        "type"      : "mec:user",
+        "lname"     : "user",
+        "cnd"       : "org.etsi.mec.moduleclass.user",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: address
+            { "sname" : "addrs", "lname" : "address", "type" : "anyURI", "car" : "1" }, 
+            // DataPoint: accessPointId
+            { "sname" : "acPId", "lname" : "accessPointId", "type" : "string", "car" : "01" }, 
+            // DataPoint: zoneId
+            { "sname" : "zonId", "lname" : "zoneId", "type" : "string", "car" : "01" }, 
+            // DataPoint: timeStamp
+            { "sname" : "timSp", "lname" : "timeStamp", "type" : "dateTime", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ],
+		"children"  : [
+            "mec:userInst"
+        ]
+    },
+
+    // ModuleClass Announced: userAnnc (userAnnc)
+    {
+        "type"      : "mec:userAnnc",
+        "lname"     : "userAnnc",
+        "cnd"       : "org.etsi.mec.moduleclass.userAnnc",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: address
+            { "sname" : "addrs", "lname" : "address", "type" : "anyURI", "car" : "1" }, 
+            // DataPoint: accessPointId
+            { "sname" : "acPId", "lname" : "accessPointId", "type" : "string", "car" : "01" }, 
+            // DataPoint: zoneId
+            { "sname" : "zonId", "lname" : "zoneId", "type" : "string", "car" : "01" }, 
+            // DataPoint: timeStamp
+            { "sname" : "timSp", "lname" : "timeStamp", "type" : "dateTime", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ]
+    }, 
+
+    // ModuleClass Instance: userInst (userInst)
+    {
+        "type"      : "mec:userInst",
+        "lname"     : "userInst",
+        "cnd"       : "org.etsi.mec.moduleclass.userInst",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: address
+            { "sname" : "addrs", "lname" : "address", "type" : "anyURI", "car" : "1" }, 
+            // DataPoint: accessPointId
+            { "sname" : "acPId", "lname" : "accessPointId", "type" : "string", "car" : "01" }, 
+            // DataPoint: zoneId
+            { "sname" : "zonId", "lname" : "zoneId", "type" : "string", "car" : "01" }, 
+            // DataPoint: timeStamp
+            { "sname" : "timSp", "lname" : "timeStamp", "type" : "dateTime", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ]
+    }, 
+
+
+    // ModuleClass: locationInfo (locIo)
+    {
+        "type"      : "mec:locIo",
+        "lname"     : "locationInfo",
+        "cnd"       : "org.etsi.mec.moduleclass.locationInfo",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: latitude
+            { "sname" : "latie", "lname" : "latitude", "type" : "list", "car" : "1" }, 
+            // DataPoint: longitude
+            { "sname" : "longe", "lname" : "longitude", "type" : "list", "car" : "1" }, 
+            // DataPoint: altitude
+            { "sname" : "altie", "lname" : "altitude", "type" : "float", "car" : "01" }, 
+            // DataPoint: accuracy
+            { "sname" : "accuy", "lname" : "accuracy", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: accuracyAltitude
+            { "sname" : "accAe", "lname" : "accuracyAltitude", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: accuracySemiMinor
+            { "sname" : "acSMr", "lname" : "accuracySemiMinor", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: orientationMajorAxis
+            { "sname" : "orMAs", "lname" : "orientationMajorAxis", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: confidence
+            { "sname" : "confe", "lname" : "confidence", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: shape
+            { "sname" : "shape", "lname" : "shape", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: timeStamp
+            { "sname" : "timSp", "lname" : "timeStamp", "type" : "dateTime", "car" : "01" }
+        ],
+		"children"  : [
+            "mec:locIoInst"
+        ]
+    },
+
+    // ModuleClass Announced: locationInfoAnnc (locIoAnnc)
+    {
+        "type"      : "mec:locIoAnnc",
+        "lname"     : "locationInfoAnnc",
+        "cnd"       : "org.etsi.mec.moduleclass.locationInfoAnnc",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: latitude
+            { "sname" : "latie", "lname" : "latitude", "type" : "list", "car" : "1" }, 
+            // DataPoint: longitude
+            { "sname" : "longe", "lname" : "longitude", "type" : "list", "car" : "1" }, 
+            // DataPoint: altitude
+            { "sname" : "altie", "lname" : "altitude", "type" : "float", "car" : "01" }, 
+            // DataPoint: accuracy
+            { "sname" : "accuy", "lname" : "accuracy", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: accuracyAltitude
+            { "sname" : "accAe", "lname" : "accuracyAltitude", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: accuracySemiMinor
+            { "sname" : "acSMr", "lname" : "accuracySemiMinor", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: orientationMajorAxis
+            { "sname" : "orMAs", "lname" : "orientationMajorAxis", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: confidence
+            { "sname" : "confe", "lname" : "confidence", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: shape
+            { "sname" : "shape", "lname" : "shape", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: timeStamp
+            { "sname" : "timSp", "lname" : "timeStamp", "type" : "dateTime", "car" : "01" }
+        ]
+    }, 
+
+    // ModuleClass Instance: locationInfoInst (locIoInst)
+    {
+        "type"      : "mec:locIoInst",
+        "lname"     : "locationInfoInst",
+        "cnd"       : "org.etsi.mec.moduleclass.locationInfoInst",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: latitude
+            { "sname" : "latie", "lname" : "latitude", "type" : "list", "car" : "1" }, 
+            // DataPoint: longitude
+            { "sname" : "longe", "lname" : "longitude", "type" : "list", "car" : "1" }, 
+            // DataPoint: altitude
+            { "sname" : "altie", "lname" : "altitude", "type" : "float", "car" : "01" }, 
+            // DataPoint: accuracy
+            { "sname" : "accuy", "lname" : "accuracy", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: accuracyAltitude
+            { "sname" : "accAe", "lname" : "accuracyAltitude", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: accuracySemiMinor
+            { "sname" : "acSMr", "lname" : "accuracySemiMinor", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: orientationMajorAxis
+            { "sname" : "orMAs", "lname" : "orientationMajorAxis", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: confidence
+            { "sname" : "confe", "lname" : "confidence", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: shape
+            { "sname" : "shape", "lname" : "shape", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: timeStamp
+            { "sname" : "timSp", "lname" : "timeStamp", "type" : "dateTime", "car" : "01" }
+        ]
+    }, 
+
+
+    // ModuleClass: velocity (veloy)
+    {
+        "type"      : "mec:veloy",
+        "lname"     : "velocity",
+        "cnd"       : "org.etsi.mec.moduleclass.velocity",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: bearing
+            { "sname" : "bearg", "lname" : "bearing", "type" : "unsignedInt", "car" : "1" }, 
+            // DataPoint: horizontalSpeed
+            { "sname" : "horSd", "lname" : "horizontalSpeed", "type" : "unsignedInt", "car" : "1" }, 
+            // DataPoint: verticalSpeed
+            { "sname" : "verSd", "lname" : "verticalSpeed", "type" : "integer", "car" : "01" }, 
+            // DataPoint: uncertainty
+            { "sname" : "uncey", "lname" : "uncertainty", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: velocityType
+            { "sname" : "velTe", "lname" : "velocityType", "type" : "nonNegInteger", "car" : "1" }
+        ],
+		"children"  : [
+            "mec:veloyInst"
+        ]
+    },
+
+    // ModuleClass Announced: velocityAnnc (veloyAnnc)
+    {
+        "type"      : "mec:veloyAnnc",
+        "lname"     : "velocityAnnc",
+        "cnd"       : "org.etsi.mec.moduleclass.velocityAnnc",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: bearing
+            { "sname" : "bearg", "lname" : "bearing", "type" : "unsignedInt", "car" : "1" }, 
+            // DataPoint: horizontalSpeed
+            { "sname" : "horSd", "lname" : "horizontalSpeed", "type" : "unsignedInt", "car" : "1" }, 
+            // DataPoint: verticalSpeed
+            { "sname" : "verSd", "lname" : "verticalSpeed", "type" : "integer", "car" : "01" }, 
+            // DataPoint: uncertainty
+            { "sname" : "uncey", "lname" : "uncertainty", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: velocityType
+            { "sname" : "velTe", "lname" : "velocityType", "type" : "nonNegInteger", "car" : "1" }
+        ]
+    }, 
+
+    // ModuleClass Instance: velocityInst (veloyInst)
+    {
+        "type"      : "mec:veloyInst",
+        "lname"     : "velocityInst",
+        "cnd"       : "org.etsi.mec.moduleclass.velocityInst",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: bearing
+            { "sname" : "bearg", "lname" : "bearing", "type" : "unsignedInt", "car" : "1" }, 
+            // DataPoint: horizontalSpeed
+            { "sname" : "horSd", "lname" : "horizontalSpeed", "type" : "unsignedInt", "car" : "1" }, 
+            // DataPoint: verticalSpeed
+            { "sname" : "verSd", "lname" : "verticalSpeed", "type" : "integer", "car" : "01" }, 
+            // DataPoint: uncertainty
+            { "sname" : "uncey", "lname" : "uncertainty", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: velocityType
+            { "sname" : "velTe", "lname" : "velocityType", "type" : "nonNegInteger", "car" : "1" }
+        ]
+    }, 
+
+
+    // ModuleClass: civicAddress (civAs)
+    {
+        "type"      : "mec:civAs",
+        "lname"     : "civicAddress",
+        "cnd"       : "org.etsi.mec.moduleclass.civicAddress",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: country
+            { "sname" : "couny", "lname" : "country", "type" : "string", "car" : "1" }, 
+            // DataPoint: a1
+            { "sname" : "a1", "lname" : "a1", "type" : "string", "car" : "01" }, 
+            // DataPoint: a2
+            { "sname" : "a2", "lname" : "a2", "type" : "string", "car" : "01" }, 
+            // DataPoint: a3
+            { "sname" : "a3", "lname" : "a3", "type" : "string", "car" : "01" }, 
+            // DataPoint: a4
+            { "sname" : "a4", "lname" : "a4", "type" : "string", "car" : "01" }, 
+            // DataPoint: a5
+            { "sname" : "a5", "lname" : "a5", "type" : "string", "car" : "01" }, 
+            // DataPoint: a6
+            { "sname" : "a6", "lname" : "a6", "type" : "string", "car" : "01" }, 
+            // DataPoint: houseNumber
+            { "sname" : "houNr", "lname" : "houseNumber", "type" : "string", "car" : "01" }, 
+            // DataPoint: street
+            { "sname" : "stret", "lname" : "street", "type" : "string", "car" : "01" }, 
+            // DataPoint: postalCode
+            { "sname" : "posCe", "lname" : "postalCode", "type" : "string", "car" : "01" }, 
+            // DataPoint: building
+            { "sname" : "builg", "lname" : "building", "type" : "string", "car" : "01" }, 
+            // DataPoint: floor
+            { "sname" : "floor", "lname" : "floor", "type" : "string", "car" : "01" }, 
+            // DataPoint: room
+            { "sname" : "room", "lname" : "room", "type" : "string", "car" : "01" }
+        ],
+		"children"  : [
+            "mec:civAsInst"
+        ]
+    },
+
+    // ModuleClass Announced: civicAddressAnnc (civAsAnnc)
+    {
+        "type"      : "mec:civAsAnnc",
+        "lname"     : "civicAddressAnnc",
+        "cnd"       : "org.etsi.mec.moduleclass.civicAddressAnnc",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: country
+            { "sname" : "couny", "lname" : "country", "type" : "string", "car" : "1" }, 
+            // DataPoint: a1
+            { "sname" : "a1", "lname" : "a1", "type" : "string", "car" : "01" }, 
+            // DataPoint: a2
+            { "sname" : "a2", "lname" : "a2", "type" : "string", "car" : "01" }, 
+            // DataPoint: a3
+            { "sname" : "a3", "lname" : "a3", "type" : "string", "car" : "01" }, 
+            // DataPoint: a4
+            { "sname" : "a4", "lname" : "a4", "type" : "string", "car" : "01" }, 
+            // DataPoint: a5
+            { "sname" : "a5", "lname" : "a5", "type" : "string", "car" : "01" }, 
+            // DataPoint: a6
+            { "sname" : "a6", "lname" : "a6", "type" : "string", "car" : "01" }, 
+            // DataPoint: houseNumber
+            { "sname" : "houNr", "lname" : "houseNumber", "type" : "string", "car" : "01" }, 
+            // DataPoint: street
+            { "sname" : "stret", "lname" : "street", "type" : "string", "car" : "01" }, 
+            // DataPoint: postalCode
+            { "sname" : "posCe", "lname" : "postalCode", "type" : "string", "car" : "01" }, 
+            // DataPoint: building
+            { "sname" : "builg", "lname" : "building", "type" : "string", "car" : "01" }, 
+            // DataPoint: floor
+            { "sname" : "floor", "lname" : "floor", "type" : "string", "car" : "01" }, 
+            // DataPoint: room
+            { "sname" : "room", "lname" : "room", "type" : "string", "car" : "01" }
+        ]
+    }, 
+
+    // ModuleClass Instance: civicAddressInst (civAsInst)
+    {
+        "type"      : "mec:civAsInst",
+        "lname"     : "civicAddressInst",
+        "cnd"       : "org.etsi.mec.moduleclass.civicAddressInst",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: country
+            { "sname" : "couny", "lname" : "country", "type" : "string", "car" : "1" }, 
+            // DataPoint: a1
+            { "sname" : "a1", "lname" : "a1", "type" : "string", "car" : "01" }, 
+            // DataPoint: a2
+            { "sname" : "a2", "lname" : "a2", "type" : "string", "car" : "01" }, 
+            // DataPoint: a3
+            { "sname" : "a3", "lname" : "a3", "type" : "string", "car" : "01" }, 
+            // DataPoint: a4
+            { "sname" : "a4", "lname" : "a4", "type" : "string", "car" : "01" }, 
+            // DataPoint: a5
+            { "sname" : "a5", "lname" : "a5", "type" : "string", "car" : "01" }, 
+            // DataPoint: a6
+            { "sname" : "a6", "lname" : "a6", "type" : "string", "car" : "01" }, 
+            // DataPoint: houseNumber
+            { "sname" : "houNr", "lname" : "houseNumber", "type" : "string", "car" : "01" }, 
+            // DataPoint: street
+            { "sname" : "stret", "lname" : "street", "type" : "string", "car" : "01" }, 
+            // DataPoint: postalCode
+            { "sname" : "posCe", "lname" : "postalCode", "type" : "string", "car" : "01" }, 
+            // DataPoint: building
+            { "sname" : "builg", "lname" : "building", "type" : "string", "car" : "01" }, 
+            // DataPoint: floor
+            { "sname" : "floor", "lname" : "floor", "type" : "string", "car" : "01" }, 
+            // DataPoint: room
+            { "sname" : "room", "lname" : "room", "type" : "string", "car" : "01" }
+        ]
+    }, 
+
+
+    // ModuleClass: zone (zone)
+    {
+        "type"      : "mec:zone",
+        "lname"     : "zone",
+        "cnd"       : "org.etsi.mec.moduleclass.zone",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: zoneId
+            { "sname" : "zonId", "lname" : "zoneId", "type" : "string", "car" : "1" }, 
+            // DataPoint: numberOfAccessPoints
+            { "sname" : "nOAPs", "lname" : "numberOfAccessPoints", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: numberOfUnserviceableAccessPoints
+            { "sname" : "nOUAP", "lname" : "numberOfUnserviceableAccessPoints", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: numberOfUsers
+            { "sname" : "nuOUs", "lname" : "numberOfUsers", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ],
+		"children"  : [
+            "mec:zoneInst"
+        ]
+    },
+
+    // ModuleClass Announced: zoneAnnc (zoneAnnc)
+    {
+        "type"      : "mec:zoneAnnc",
+        "lname"     : "zoneAnnc",
+        "cnd"       : "org.etsi.mec.moduleclass.zoneAnnc",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: zoneId
+            { "sname" : "zonId", "lname" : "zoneId", "type" : "string", "car" : "1" }, 
+            // DataPoint: numberOfAccessPoints
+            { "sname" : "nOAPs", "lname" : "numberOfAccessPoints", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: numberOfUnserviceableAccessPoints
+            { "sname" : "nOUAP", "lname" : "numberOfUnserviceableAccessPoints", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: numberOfUsers
+            { "sname" : "nuOUs", "lname" : "numberOfUsers", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ]
+    }, 
+
+    // ModuleClass Instance: zoneInst (zoneInst)
+    {
+        "type"      : "mec:zoneInst",
+        "lname"     : "zoneInst",
+        "cnd"       : "org.etsi.mec.moduleclass.zoneInst",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: zoneId
+            { "sname" : "zonId", "lname" : "zoneId", "type" : "string", "car" : "1" }, 
+            // DataPoint: numberOfAccessPoints
+            { "sname" : "nOAPs", "lname" : "numberOfAccessPoints", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: numberOfUnserviceableAccessPoints
+            { "sname" : "nOUAP", "lname" : "numberOfUnserviceableAccessPoints", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: numberOfUsers
+            { "sname" : "nuOUs", "lname" : "numberOfUsers", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ]
+    }, 
+
+
+    // ModuleClass: accessPoint (accPt)
+    {
+        "type"      : "mec:accPt",
+        "lname"     : "accessPoint",
+        "cnd"       : "org.etsi.mec.moduleclass.accessPoint",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: accessPointId
+            { "sname" : "acPId", "lname" : "accessPointId", "type" : "string", "car" : "1" }, 
+            // DataPoint: connectionType
+            { "sname" : "conTe", "lname" : "connectionType", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: operationStatus
+            { "sname" : "opeSs", "lname" : "operationStatus", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: numberOfUsers
+            { "sname" : "nuOUs", "lname" : "numberOfUsers", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: interestRealm
+            { "sname" : "intRm", "lname" : "interestRealm", "type" : "string", "car" : "01" }, 
+            // DataPoint: timeZone
+            { "sname" : "timZe", "lname" : "timeZone", "type" : "dateTime", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ],
+		"children"  : [
+            "mec:accPtInst"
+        ]
+    },
+
+    // ModuleClass Announced: accessPointAnnc (accPtAnnc)
+    {
+        "type"      : "mec:accPtAnnc",
+        "lname"     : "accessPointAnnc",
+        "cnd"       : "org.etsi.mec.moduleclass.accessPointAnnc",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: accessPointId
+            { "sname" : "acPId", "lname" : "accessPointId", "type" : "string", "car" : "1" }, 
+            // DataPoint: connectionType
+            { "sname" : "conTe", "lname" : "connectionType", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: operationStatus
+            { "sname" : "opeSs", "lname" : "operationStatus", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: numberOfUsers
+            { "sname" : "nuOUs", "lname" : "numberOfUsers", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: interestRealm
+            { "sname" : "intRm", "lname" : "interestRealm", "type" : "string", "car" : "01" }, 
+            // DataPoint: timeZone
+            { "sname" : "timZe", "lname" : "timeZone", "type" : "dateTime", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ]
+    }, 
+
+    // ModuleClass Instance: accessPointInst (accPtInst)
+    {
+        "type"      : "mec:accPtInst",
+        "lname"     : "accessPointInst",
+        "cnd"       : "org.etsi.mec.moduleclass.accessPointInst",
+        "sdttype"   : "moduleclass",
+        "attributes": [
+            // DataPoint: dataGenerationTime
+            { "sname" : "dgt", "lname" : "dataGenerationTime", "type" : "timestamp", "car" : "01" }, 
+            // DataPoint: accessPointId
+            { "sname" : "acPId", "lname" : "accessPointId", "type" : "string", "car" : "1" }, 
+            // DataPoint: connectionType
+            { "sname" : "conTe", "lname" : "connectionType", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: operationStatus
+            { "sname" : "opeSs", "lname" : "operationStatus", "type" : "nonNegInteger", "car" : "1" }, 
+            // DataPoint: numberOfUsers
+            { "sname" : "nuOUs", "lname" : "numberOfUsers", "type" : "unsignedInt", "car" : "01" }, 
+            // DataPoint: interestRealm
+            { "sname" : "intRm", "lname" : "interestRealm", "type" : "string", "car" : "01" }, 
+            // DataPoint: timeZone
+            { "sname" : "timZe", "lname" : "timeZone", "type" : "dateTime", "car" : "01" }, 
+            // DataPoint: resourceURL
+            { "sname" : "reURL", "lname" : "resourceURL", "type" : "anyURI", "car" : "01" }
+        ]
+    }
+
+
+
+]

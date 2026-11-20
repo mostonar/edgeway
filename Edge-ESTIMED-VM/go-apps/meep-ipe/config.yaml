@@ -1,0 +1,36 @@
+# This file defines the configuration of Demo7 edge application. All fields are required to run demo-7 on MEC Sandbox 
+# Name of the application
+appName: 'mec-ipe'
+# IPE URL
+ipeUrl: '<SYSTEM_IP/URL>'
+# IPE PORT
+ipePort: "SYSTEM_PORT"
+# Set MEC plateform address 
+sandboxUrl: 'https://<sandbox_url>'
+# Set MEC plateform address 
+sandboxName: '<user_namespace_in_sandbox>'
+# Set user-application ID that is generated on MEC Sandbox frontend. Example field format: 7930ba6d-4581-444c-b966-3312517f3a51
+appid: ''
+# Set if sandbox url uses https. Expected fields: true | false 
+https: true
+# Set the mec platform name mec-ipe will run on. Example field: mep1
+mecplatform: 'mep1'
+# Instantiated by MEC Platform
+mec_pltf_instanciated: false
+# Callback base URL
+basePath: ''
+
+# ONEM2m Related
+# CSE URL
+CSE-URL: "<CSE URL>"
+# CSE PORT(
+CSE-PORT: '<CSE PORT>'
+# CSE ID (Update ID as per cse configs)
+CSE-ID: 'laboai-id-in'
+#CSE NAME (Update Name as per cse configs)
+CSE-NAME: 'laboai-cse-in'
+# CSE HTTP Basic auth credentials (leave empty if the CSE has no auth)
+CSE-USER: '<CSE USER>'
+CSE-PASSWORD: '<CSE PASSWORD>'
+#AE ID (full ID, used as-is: <base>-<mecplatform>-<sandboxName>)
+AE-ID: 'CMecIPEOutside'

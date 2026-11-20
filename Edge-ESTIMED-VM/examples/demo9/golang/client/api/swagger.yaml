@@ -1,0 +1,1521 @@
+openapi: 3.0.0
+info:
+  title: MEC Sandbox API
+  description: The MEC Sandbox API described using OpenAPI
+  contact:
+    email: cti_support@etsi.org
+  license:
+    name: BSD-3-Clause
+    url: https://forge.etsi.org/legal-matters
+  version: 1.0.0
+servers:
+- url: http://localhost/sandbox-api/v1
+paths:
+  /login:
+    post:
+      tags:
+      - Authorization
+      summary: Initiate OAuth login procedure and creates a MEC Sandbox instance
+      description: Initiate OAuth login procedure and creates a MEC Sandbox instance
+      operationId: login
+      parameters:
+      - name: provider
+        in: query
+        description: Oauth provider
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - GITHUB
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Oauth'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+  /namespace:
+    get:
+      tags:
+      - Authorization
+      summary: Get the namespace against the User Code
+      description: Get the namespace against the User Code
+      operationId: GetNamespace
+      parameters:
+      - name: user_code
+        in: query
+        description: User Code obtained from the login endpoint
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: This status code indicates that the request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Namespace'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+  /logout:
+    post:
+      tags:
+      - Authorization
+      summary: Terminates User Session and delete the Sandbox instance
+      description: Terminates User Session and delete the Sandbox instance
+      operationId: logout
+      parameters:
+      - name: sandbox_name
+        in: query
+        description: Sandbox identifier
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content: {}
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+  /sandboxNetworkScenarios:
+    get:
+      tags:
+      - Sandbox Network Scenarios
+      summary: Get the list of the available network scenarios
+      description: This method retrieves the list of the available network scenarios.
+      operationId: SandboxNetworkScenariosGET
+      parameters:
+      - name: sandbox_name
+        in: query
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available network scenarios."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxNetworkScenario'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No network scenario found."
+  /sandboxNetworkScenarios/{sandbox_name}:
+    get:
+      tags:
+      - Sandbox Network Scenarios
+      summary: Get description of a Network Scenario to be used.
+      description: This method retrive description of a the network scenario
+      operationId: SandboxIndividualNetworkScenariosGET
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      - name: network_scenario_id
+        in: query
+        description: Network scenario to retrieve
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          enum:
+          - 4g-5g-macro-v2x
+          - 4g-5g-macro-v2x-fed
+          - 4g-5g-wifi-macro
+          - 4g-macro
+          - 4g-wifi-macro
+          - dual-mep-4g-5g-wifi-macro
+          - dual-mep-short-path
+          x-exportParamName: Provider
+          x-optionalDataType: String
+      responses:
+        "200":
+          description: "Upon success, an empty response message."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scenario'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+    post:
+      tags:
+      - Sandbox Network Scenarios
+      summary: Selects the Network Scenario to be activated.
+      description: This method selects the network scenario to be activated. This
+        request initiates the creation of necessary MEC services for specific network
+        scenario
+      operationId: SandboxNetworkScenarioPOST
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      - name: network_scenario_id
+        in: query
+        description: Network scenario to be used
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          enum:
+          - 4g-5g-macro-v2x
+          - 4g-5g-macro-v2x-fed
+          - 4g-5g-wifi-macro
+          - 4g-macro
+          - 4g-wifi-macro
+          - dual-mep-4g-5g-wifi-macro
+          - dual-mep-short-path
+          x-exportParamName: Provider
+          x-optionalDataType: String
+      responses:
+        "201":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+  /sandboxNetworkScenarios/{sandbox_name}/{network_scenario_id}:
+    delete:
+      tags:
+      - Sandbox Network Scenarios
+      summary: Deactivate the Network Scenario.
+      description: This method deactivates the network scenario
+      operationId: SandboxNetworkScenarioDELETE
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      - name: network_scenario_id
+        in: path
+        description: Network scenario to be used
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          enum:
+          - 4g-5g-macro-v2x
+          - 4g-5g-macro-v2x-fed
+          - 4g-5g-wifi-macro
+          - 4g-macro
+          - 4g-wifi-macro
+          - dual-mep-4g-5g-wifi-macro
+          - dual-mep-short-path
+          x-exportParamName: Provider
+          x-optionalDataType: String
+      responses:
+        "204":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found :  used when a client provided a URI that cannot\
+            \ be mapped to a valid resource URI."
+  /apiConsoleLogs/{sandbox_name}:
+    get:
+      tags:
+      - API Console
+      summary: Get the list of http logs in the activated scenario.
+      description: Get the list of http logs in the activated scenario.
+      operationId: ApiConsoleLogsGET
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array of the list of the HTTP logs."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  description: Object representing the HTTP logs.
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No Activated Scenario found against the provided sandbox."
+  /sandboxUeController/{sandbox_name}:
+    get:
+      tags:
+      - Sandbox UE Controller
+      summary: Get the list of the available UEs (e.g. "Stationary UE")
+      description: This method retrieves the list of the available available UEs.
+      operationId: SandboxUeControllerGET
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available UEs."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UE'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No UE found."
+    patch:
+      tags:
+      - Sandbox UE Controller
+      summary: set the new value of the UE
+      description: This method sets the new value of the UE.
+      operationId: SandboxUeControllerPATCH
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      - name: user_equipment_id
+        in: query
+        description: User equipmenet identifier
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          enum:
+          - Stationary_UE
+          - Low_Velocity_UE
+          - High_Velocity_UE
+      - name: user_equipment_value
+        in: query
+        description: It uniquely identifies a UE to set the new value
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+      responses:
+        "200":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No UE found."
+  /sandboxMecServices/{sandbox_name}:
+    get:
+      tags:
+      - Sandbox MEC Services
+      summary: Get the list of the available MEC services
+      description: This method retrieves the list of the available MEC services.
+      operationId: SandboxMecServicesGET
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available MEC services."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxMecServices'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No MEC services found."
+  /sandboxAppInstances/{sandbox_name}:
+    get:
+      tags:
+      - Sandbox App Instances
+      summary: Get the list of the available application instance identifiers
+      description: This method retrieves the list of the available application instance
+        identifiers
+      operationId: SandboxAppInstancesGET
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available application instance identifier."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No application instance identifier found."
+    post:
+      tags:
+      - Sandbox App Instances
+      summary: Create a new application instance identifier
+      description: This method creates a new application instance
+      operationId: SandboxAppInstancesPOST
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      requestBody:
+        description: Pet to add to the store
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInfo'
+        required: true
+      responses:
+        "201":
+          description: "Upon success, a response message content containing an array\
+            \ of the list of the available application instance identifier."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationInfo'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No application instance identifier found."
+  /sandboxAppInstances/{sandbox_name}/{app_instance_id}:
+    delete:
+      tags:
+      - Sandbox App Instances
+      summary: Delete an existing application instance
+      description: This method removes an existing application instance
+      operationId: SandboxAppInstancesDELETE
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      - name: app_instance_id
+        in: path
+        description: It uniquely identifies a MEC application instance identifier
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No content.
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : No application instance identifier found."
+  /sandboxLogsSubscriptions/{sandbox_name}:
+    post:
+      tags:
+      - Sandbox Logs Subscriptions
+      summary: Subscription to receive logs from the sandbox
+      description: This method is used to receive logs from the sandbox.
+      operationId: SandboxLogsSubscriptionsPOST
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      responses:
+        "201":
+          description: "Upon success, a response message content containing the subscription\
+            \ reference."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SandboxLogsSubscriptions'
+                x-content-type: application/json
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+  /sandboxLogsSubscriptions/{sandbox_name}/{subscription_reference}:
+    delete:
+      tags:
+      - Sandbox Logs Subscriptions
+      summary: Subscription to receive logs from the sandbox
+      description: This method is used to receive logs from the sandbox.
+      operationId: SandboxLogsSubscriptionsDELETE
+      parameters:
+      - name: sandbox_name
+        in: path
+        description: Sandbox identifier
+        required: true
+        style: simple
+        explode: true
+        schema:
+          type: string
+      - name: subscription_reference
+        in: path
+        description: It uniquely identifies subscription reference to receive logs
+          from the sandbox
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: "Upon success, an empty response message."
+        "400":
+          description: "Bad Request : used to indicate that incorrect parameters were\
+            \ passed to the request."
+        "401":
+          description: "Unauthorized : used when the client did not submit credentials."
+        "404":
+          description: "Not Found : Subscription reference not found."
+components:
+  schemas:
+    SandboxNetworkScenario:
+      title: SandboxNetworkScenario
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The network scenario name.
+          example: "[\"4g-5g-macro\"]"
+      example:
+        id: "[\"4g-5g-macro\"]"
+    Scenario:
+      type: object
+      properties:
+        version:
+          type: string
+          description: Scenario version
+        id:
+          type: string
+          description: Unique scenario ID
+        name:
+          type: string
+          description: Unique scenario name
+        description:
+          type: string
+          description: User description of the scenario.
+        config:
+          $ref: '#/components/schemas/ScenarioConfig'
+        deployment:
+          $ref: '#/components/schemas/Deployment'
+      description: Scenario object
+      example: {}
+    ScenarioConfig:
+      type: object
+      properties:
+        visualization:
+          type: string
+          description: Visualization configuration
+        other:
+          type: string
+          description: Other scenario configuration
+      description: Scenario configuration
+      example:
+        visualization: visualization
+        other: other
+    Deployment:
+      type: object
+      properties:
+        netChar:
+          $ref: '#/components/schemas/NetworkCharacteristics'
+        connectivity:
+          $ref: '#/components/schemas/ConnectivityConfig'
+        d2d:
+          $ref: '#/components/schemas/D2dConfig'
+        interDomainLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latency"
+        interDomainLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latencyVariation"
+        interDomainThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar throughputUl\
+            \ and throughputDl"
+        interDomainPacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar packetLoss"
+          format: double
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        userMeta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        domains:
+          type: array
+          items:
+            $ref: '#/components/schemas/Domain'
+      description: Network deployment object
+      example: {}
+    NetworkCharacteristics:
+      type: object
+      properties:
+        latency:
+          type: integer
+          description: Latency in ms
+        latencyVariation:
+          type: integer
+          description: Latency variation in ms
+        latencyDistribution:
+          type: string
+          description: "Latency distribution. Can only be set in the Scenario Deployment\
+            \ network characteristics, ignored otherwise. Latency distribution is\
+            \ set for the whole network and applied to every end-to-end traffic flows.\
+            \ Default value is 'Normal' distribution."
+          enum:
+          - Normal
+          - Pareto
+          - Paretonormal
+          - Uniform
+        throughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by throughputUl\
+            \ and throughputDl"
+        throughputDl:
+          type: integer
+          description: Downlink throughput limit in Mbps
+        throughputUl:
+          type: integer
+          description: Uplink throughput limit in Mbps
+        packetLoss:
+          type: number
+          description: Packet loss percentage
+          format: double
+      description: Network characteristics object
+      example: {}
+    ConnectivityConfig:
+      type: object
+      properties:
+        model:
+          type: string
+          description: "Connectivity Model: <li>OPEN: Any node in the scenario can\
+            \ communicate with any node <li>PDU: Terminal nodes (UE) require a PDU\
+            \ session to the target DN"
+          enum:
+          - OPEN
+          - PDU
+      example: {}
+    D2dConfig:
+      type: object
+      properties:
+        d2dMaxDistance:
+          type: number
+          description: Maximum distance for D2D. Default distance is 100m
+        disableD2dViaNetwork:
+          type: boolean
+          description: Enable-Disable D2D via network. Default value is false
+      description: D2D config
+    Domain:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique domain ID
+        name:
+          type: string
+          description: Domain name
+        type:
+          type: string
+          description: Domain type
+          enum:
+          - OPERATOR
+          - OPERATOR-CELLULAR
+          - PUBLIC
+        netChar:
+          $ref: '#/components/schemas/NetworkCharacteristics'
+        interZoneLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latency"
+        interZoneLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latencyVariation"
+        interZoneThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar throughputUl\
+            \ and throughputDl"
+        interZonePacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar packetLoss"
+          format: double
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        userMeta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        cellularDomainConfig:
+          $ref: '#/components/schemas/CellularDomainConfig'
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Zone'
+      description: Operator domain object
+      example: {}
+    CellularDomainConfig:
+      type: object
+      properties:
+        mnc:
+          type: string
+          description: Mobile Network Code part of PLMN identity as defined in ETSI
+            TS 136 413
+        mcc:
+          type: string
+          description: Mobile Country Code part of PLMN identity as defined in ETSI
+            TS 136 413
+        defaultCellId:
+          type: string
+          description: The E-UTRAN Cell Identity as defined in ETSI TS 136 413 if
+            no cellId is defined for the cell or if not applicable
+      description: Cellular domain configuration information
+      example: {}
+    Zone:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique zone ID
+        name:
+          type: string
+          description: Zone name
+        type:
+          type: string
+          description: Zone type
+          enum:
+          - ZONE
+          - COMMON
+        netChar:
+          $ref: '#/components/schemas/NetworkCharacteristics'
+        interFogLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+        interFogLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+        interFogThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+        interFogPacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+          format: double
+        interEdgeLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+        interEdgeLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+        interEdgeThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+        interEdgePacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.3.0, no longer supported"
+          format: double
+        edgeFogLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, replaced by netChar latency"
+        edgeFogLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, replaced by netChar latencyVariation"
+        edgeFogThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.3.0, replaced by netChar throughput"
+        edgeFogPacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.3.0, replaced by netChar packetLoss"
+          format: double
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        userMeta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        networkLocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkLocation'
+      description: Logical zone (MEC network) object
+      example: {}
+    NetworkLocation:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique network location ID
+        name:
+          type: string
+          description: Network location name
+        type:
+          type: string
+          description: Network location type
+          enum:
+          - POA
+          - POA-4G
+          - POA-5G
+          - POA-WIFI
+          - DEFAULT
+        netChar:
+          $ref: '#/components/schemas/NetworkCharacteristics'
+        terminalLinkLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latency"
+        terminalLinkLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latencyVariation"
+        terminalLinkThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar throughputUl\
+            \ and throughputDl"
+        terminalLinkPacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar packetLoss"
+          format: double
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        userMeta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        cellularPoaConfig:
+          $ref: '#/components/schemas/CellularPoaConfig'
+        poa4GConfig:
+          $ref: '#/components/schemas/Poa4GConfig'
+        poa5GConfig:
+          $ref: '#/components/schemas/Poa5GConfig'
+        poaWifiConfig:
+          $ref: '#/components/schemas/PoaWifiConfig'
+        geoData:
+          $ref: '#/components/schemas/GeoData'
+        physicalLocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhysicalLocation'
+      description: Logical network location object
+      example: {}
+    CellularPoaConfig:
+      type: object
+      properties:
+        cellId:
+          type: string
+          description: The E-UTRAN Cell Identity as defined in ETSI TS 136 413 including
+            the ID of the eNB serving the cell
+      description: "**DEPRECATED** As of release 1.5.1, renamed to poa4GConfig"
+    Poa4GConfig:
+      type: object
+      properties:
+        cellId:
+          type: string
+          description: The E-UTRAN Cell Identity as defined in ETSI TS 136 413 including
+            the ID of the eNB serving the cell
+      description: Cellular 4G POA configuration information
+    Poa5GConfig:
+      type: object
+      properties:
+        cellId:
+          type: string
+          description: The E-UTRAN Cell Identity as defined in ETSI TS 136 413 including
+            the ID of the NR serving the cell
+      description: Cellular 5G POA configuration information
+    PoaWifiConfig:
+      type: object
+      properties:
+        macId:
+          type: string
+          description: WIFI POA MAC Address
+      description: WIFI POA configuration information
+    GeoData:
+      type: object
+      properties:
+        location:
+          $ref: '#/components/schemas/Point'
+        radius:
+          type: number
+          description: Optional - Radius (in meters) around the location
+        path:
+          $ref: '#/components/schemas/LineString'
+        eopMode:
+          type: string
+          description: "End-of-Path mode: <li>LOOP: When path endpoint is reached,\
+            \ start over from the beginning <li>REVERSE: When path endpoint is reached,\
+            \ return on the reverse path"
+          enum:
+          - LOOP
+          - REVERSE
+        velocity:
+          type: number
+          description: Speed of movement along path in m/s
+        d2dInRange:
+          type: array
+          items:
+            type: string
+            description: D2D UEs visible to UE
+        poaInRange:
+          type: array
+          items:
+            type: string
+            description: POAs visible to UE
+      description: Geographic data
+    Point:
+      required:
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+          description: Must be Point
+          enum:
+          - Point
+        coordinates:
+          type: array
+          description: "For a Point, coordinates MUST be an array of two decimal numbers;\
+            \ longitude and latitude precisely in that order"
+          items:
+            type: number
+      description: A single position in coordinate space (GeoJSON); a position is
+        an array of two numbers
+      externalDocs:
+        url: https://tools.ietf.org/html/rfc7946
+    LineString:
+      required:
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+          description: Must be LineString
+          enum:
+          - LineString
+        coordinates:
+          type: array
+          description: "For a LineString, coordinates is an array of two or more positions;\
+            \ a position is an array of two decimal numbers (longitude and latitude\
+            \ precisely in that order)"
+          items:
+            type: array
+            items:
+              type: number
+      description: An array of two or more positions in coordinate space (GeoJSON);
+        a position is an array of two numbers
+      externalDocs:
+        url: https://tools.ietf.org/html/rfc7946
+    PhysicalLocation:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique physical location ID
+        name:
+          type: string
+          description: Physical location name
+        type:
+          type: string
+          description: Physical location type
+          enum:
+          - UE
+          - FOG
+          - EDGE
+          - CN
+          - DC
+        isExternal:
+          type: boolean
+          description: |-
+            true: Physical location is external to MEEP
+            false: Physical location is internal to MEEP
+        geoData:
+          $ref: '#/components/schemas/GeoData'
+        networkLocationsInRange:
+          type: array
+          items:
+            type: string
+            description: Names of network locations within range of physical location
+        connected:
+          type: boolean
+          description: |-
+            true: Physical location has network connectivity
+            false: Physical location has no network connectivity
+        wireless:
+          type: boolean
+          description: |-
+            true: Physical location uses a wireless connection
+            false: Physical location uses a wired connection
+        wirelessType:
+          type: string
+          description: |-
+            Prioritized, comma-separated list of supported wireless connection types.
+            Default priority if not specififed is 'wifi,5g,4g,other'.
+            Wireless connection types:
+            - 4g
+            - 5g
+            - wifi
+            - other
+        dataNetwork:
+          $ref: '#/components/schemas/DNConfig'
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        userMeta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        processes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Process'
+        netChar:
+          $ref: '#/components/schemas/NetworkCharacteristics'
+        linkLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latency"
+        linkLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latencyVariation"
+        linkThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar throughputUl\
+            \ and throughputDl"
+        linkPacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar packetLoss"
+          format: double
+        macId:
+          type: string
+          description: Physical location MAC Address
+      description: Physical location object
+      example: {}
+    DNConfig:
+      type: object
+      properties:
+        dnn:
+          type: string
+          description: Data Network Name
+        ladn:
+          type: boolean
+          description: |-
+            true: Data network serves local area only
+            false: Data network is not limited to local area
+        ecsp:
+          type: string
+          description: Edge Compute Service Provider
+      description: Data Network Configuration
+      example: {}
+    Process:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique process ID
+        name:
+          type: string
+          description: Process name
+        type:
+          type: string
+          description: Process type
+          enum:
+          - UE-APP
+          - EDGE-APP
+          - MEC-SVC
+          - CLOUD-APP
+        isExternal:
+          type: boolean
+          description: |-
+            true: process is external to MEEP
+            false: process is internal to MEEP
+        image:
+          type: string
+          description: Docker image to deploy inside MEEP
+        environment:
+          type: string
+          description: "Environment variables using the format NAME=\"value\",NAME=\"\
+            value\",NAME=\"value\""
+        commandArguments:
+          type: string
+          description: Arguments to command executable
+        commandExe:
+          type: string
+          description: Executable to invoke at container start up
+        serviceConfig:
+          $ref: '#/components/schemas/ServiceConfig'
+        gpuConfig:
+          $ref: '#/components/schemas/GpuConfig'
+        memoryConfig:
+          $ref: '#/components/schemas/MemoryConfig'
+        cpuConfig:
+          $ref: '#/components/schemas/CpuConfig'
+        externalConfig:
+          $ref: '#/components/schemas/ExternalConfig'
+        status:
+          type: string
+          description: Process status
+        userChartLocation:
+          type: string
+          description: Chart location for the deployment of the chart provided by
+            the user
+        userChartAlternateValues:
+          type: string
+          description: Chart values.yaml file location for the deployment of the chart
+            provided by the user
+        userChartGroup:
+          type: string
+          description: Chart supplemental information related to the group (service)
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        userMeta:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Key/Value Pair Map (string, string)"
+        netChar:
+          $ref: '#/components/schemas/NetworkCharacteristics'
+        appLatency:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latency"
+        appLatencyVariation:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar latencyVariation"
+        appThroughput:
+          type: integer
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar throughputUl\
+            \ and throughputDl"
+        appPacketLoss:
+          type: number
+          description: "**DEPRECATED** As of release 1.5.0, replaced by netChar packetLoss"
+          format: double
+        placementId:
+          type: string
+          description: Identifier used for process placement in AdvantEDGE cluster
+      description: Application or service object
+      example: {}
+    ServiceConfig:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Unique service name
+        meSvcName:
+          type: string
+          description: "Multi-Edge service name, if any"
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServicePort'
+      description: Service object
+      example: {}
+    ServicePort:
+      type: object
+      properties:
+        protocol:
+          type: string
+          description: Protocol that the application is using (TCP or UDP)
+        port:
+          type: integer
+          description: Port number that the service is listening on
+        externalPort:
+          type: integer
+          description: |
+            External port number on which to expose the application (30000 - 32767)  <li>Only one application allowed per external port <li>Scenario builder must configure to prevent conflicts
+      description: Service port object
+      example: {}
+    GpuConfig:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Requested GPU type
+        count:
+          type: integer
+          description: Number of GPUs requested
+      description: GPU configuration object
+    MemoryConfig:
+      type: object
+      properties:
+        min:
+          type: integer
+          description: Minimum requested memory
+        max:
+          type: integer
+          description: Maximum requested memory
+      description: Memory configuration object
+    CpuConfig:
+      type: object
+      properties:
+        min:
+          type: number
+          description: Minimum requested CPU
+          format: float
+        max:
+          type: number
+          description: Maximum requested CPU
+          format: float
+      description: CPU configuration object
+    ExternalConfig:
+      type: object
+      properties:
+        ingressServiceMap:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngressService'
+        egressServiceMap:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgressService'
+      description: |-
+        External Process configuration.
+        NOTE: Only valid if 'isExternal' is set.
+      example: {}
+    IngressService:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Service name (unique or multi-edge)
+        port:
+          type: integer
+          description: Internal service port number
+        externalPort:
+          type: integer
+          description: Externally-exposed unique service port in range (30000 - 32767)
+        protocol:
+          type: string
+          description: Service protocol (TCP or UDP)
+      description: Internal service exposed externally via specific port
+    EgressService:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Service name
+        meSvcName:
+          type: string
+          description: "Multi-Edge service name, if any"
+        ip:
+          type: string
+          description: External node IP address
+        port:
+          type: integer
+          description: Service port number
+        protocol:
+          type: string
+          description: Service protocol (TCP or UDP)
+      description: External service exposed internally via specific port
+    UE:
+      title: UE
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The UE name.
+          example: "[\"Stationary UE\"]"
+        count:
+          type: integer
+          description: The number of UE instance.
+      example:
+        id: "[\"Stationary UE\"]"
+    SandboxMecServices:
+      title: SandboxMecServices
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The MEC service name.
+          example: "[\"Location (030)\"]"
+        service_id:
+          type: string
+          description: "When a MEC service is selected, this field contains a token\
+            \ which shall be used in MEC service API URI."
+      example:
+        service_id: service_id
+        id: "[\"Location (030)\"]"
+    SandboxAppInstances:
+      title: SandboxAppInstances
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The application instance identifier.
+          example: "[\"c5f834ae-db0c-4eec-bdfe-3dfc55f91b4a\"]"
+      example:
+        id: "[\"c5f834ae-db0c-4eec-bdfe-3dfc55f91b4a\"]"
+    SandboxLogsSubscriptions:
+      title: SandboxLogsSubscriptions
+      required:
+      - callbackReference
+      type: object
+      properties:
+        callbackReference:
+          type: string
+          description: The callback to notify log messages.
+          example: "[\"http://my.callback.com/sandbox/logs/some-id\"]"
+        subscriptionReference:
+          type: string
+          description: The reference of the subscription.
+          example: "[\"37dd7ef4-c382-11ee-9301-5fe5aa3a97cf\"]"
+      example:
+        subscriptionReference: "[\"37dd7ef4-c382-11ee-9301-5fe5aa3a97cf\"]"
+        callbackReference: "[\"http://my.callback.com/sandbox/logs/some-id\"]"
+    Oauth:
+      type: object
+      properties:
+        user_code:
+          type: string
+          description: User code from the authentication provider
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+        verification_uri:
+          type: string
+          description: Verification URI to go to and enter the user code in order
+            to authenticate
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: Sandbox object
+      example: {}
+    Namespace:
+      type: object
+      properties:
+        sandbox_name:
+          type: string
+          description: Name of the Sandbox
+          x-etsi-mec-cardinality: "1"
+          x-etsi-mec-origin-type: String
+      description: Namespace object
+      example: {}
+    ProblemDetails:
+      required:
+      - detail
+      - status
+      type: object
+      properties:
+        type:
+          type: string
+          description: |
+            A URI reference according to IETF RFC 3986 that identifies the problem type. It is encouraged that the URI provides human-readable documentation for the problem (e.g. using HTML) when dereferenced. When this member is not present, its value is assumed to be "about:blank".
+          format: URI
+        title:
+          type: string
+          description: |
+            A short, human-readable summary of the problem type. It should not change from occurrence to occurrence of the problem, except for purposes of localization. If type is given and other than "about:blank", this attribute shall also be provided. A short, human-readable summary of the problem type.  It SHOULD NOT change from occurrence to occurrence of the problem, except for purposes of localization (e.g., using proactive content negotiation; see [RFC7231], Section 3.4).
+        status:
+          type: integer
+          description: |
+            The HTTP status code for this occurrence of the problem. The HTTP status code ([RFC7231], Section 6) generated by the origin server for this occurrence of the problem.
+        detail:
+          type: string
+          description: |
+            A human-readable explanation specific to this occurrence of the problem.
+        instance:
+          type: string
+          description: |
+            A URI reference that identifies the specific occurrence of the problem. It may yield further information if dereferenced.
+          format: URI
+      description: |
+        The definition of the general "ProblemDetails" data structure from IETF RFC 7807 is reproduced inthis structure. Compared to the general framework defined in IETF RFC 7807, the "status" and "detail" attributes are mandated to be included by the present document, to ensure that the response contains additional textual information about an error. IETF RFC 7807 foresees extensibility of the "ProblemDetails" type. It is possible that particular APIs in the present document, or particular implementations, define extensions to define additional attributes that provide more information about the error. The description column only provides some explanation of the meaning to Facilitate understanding of the design. For a full description, see IETF RFC 7807.
+      example:
+        instance: instance
+        detail: detail
+        type: type
+        title: title
+        status: 0
+    ApplicationInfo:
+      required:
+      - name
+      - nodeName
+      type: object
+      properties:
+        id:
+          type: string
+          description: Application Instance UUID
+        name:
+          type: string
+          description: Application name
+        nodeName:
+          type: string
+          description: Name of node where application instance is running
+        type:
+          type: string
+          description: Application Type
+          enum:
+          - USER
+          - SYSTEM
+        persist:
+          type: boolean
+          description: Reserved for internal platform usage
+      description: MEC Application instance information
+      example:
+        id: 00afec52-f0b6-464e-a660-33568c0975b9
+        name: MyAppName
+        nodeName: node1
+        type: USER

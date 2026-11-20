@@ -1,0 +1,88 @@
+---
+
+# Step 1: Download Go tarball if not already installed at correct version
+- name: Check if Go binary exists
+  stat:
+    path: /usr/local/go/bin/go
+  register: go_binary
+
+- name: Check Go version
+  command: /usr/local/go/bin/go version
+  register: go_version_output
+  changed_when: false
+  when: go_binary.stat.exists
+
+- name: Copy local Go tarball to /tmp if it exists
+  copy:
+    src: "{{ mec_sandbox_dir }}/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    remote_src: true
+    mode: "0644"
+  register: local_go_tarball
+  ignore_errors: true
+  when: not go_binary.stat.exists or go_version_output.stdout is not search("go{{ go_version }}")
+
+- name: Download Go tarball if local copy not found
+  get_url:
+    url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    mode: "0644"
+  when: (not go_binary.stat.exists or go_version_output.stdout is not search("go{{ go_version }}")) and (local_go_tarball is failed or local_go_tarball is skipped)
+
+# Step 2: Remove old /usr/local/go and extract new one
+- name: Remove old Go directory
+  file:
+    path: /usr/local/go
+    state: absent
+  become: true
+  when: not go_binary.stat.exists or go_version_output.stdout is not search("go{{ go_version }}")
+
+- name: Extract Go tarball to /usr/local
+  shell: "tar -C /usr/local -xzf /tmp/go{{ go_version }}.linux-amd64.tar.gz"
+  args:
+    executable: /bin/bash
+  become: true
+  when: not go_binary.stat.exists or go_version_output.stdout is not search("go{{ go_version }}")
+
+# Step 3: Create ~/gocode/bin directory
+- name: Create GOPATH bin directory
+  file:
+    path: "{{ target_home }}/gocode/bin"
+    state: directory
+    owner: "{{ target_user }}"
+    mode: "0755"
+
+# Step 4: Add Go environment to .bashrc (idempotent via blockinfile)
+- name: Setup Go environment in .bashrc
+  blockinfile:
+    path: "{{ target_home }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED - Go environment setup"
+    block: |
+      # Go environment setup
+      export GOPATH=$HOME/gocode
+      export PATH=$PATH:$GOPATH/bin:/usr/local/go/bin
+  become: true
+  become_user: "{{ target_user }}"
+
+# Step 5: Install GolangCI-Lint
+- name: Install GolangCI-Lint
+  shell: |
+    /usr/local/go/bin/go env -w GOPATH={{ target_home }}/gocode
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b {{ target_home }}/gocode/bin v1.46.0
+  args:
+    executable: /bin/bash
+    creates: "{{ target_home }}/gocode/bin/golangci-lint"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ ansible_env.PATH }}"
+    GOPATH: "{{ target_home }}/gocode"
+  become: true
+  become_user: "{{ target_user }}"
+
+- name: Verify Go installation
+  command: /usr/local/go/bin/go version
+  register: go_final_version
+  changed_when: false
+
+- name: Show Go version
+  debug:
+    msg: "Go environment ready: {{ go_final_version.stdout }}, GOPATH={{ target_home }}/gocode"
