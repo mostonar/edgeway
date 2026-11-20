@@ -1,4 +1,4 @@
-# Fleet config for the IPE. Copy to fleet.yaml and set cse_url (and ws.url if binding: ws).
+# Fleet config for the IPE. Copy to fleet.yaml and set cse_url and ws.url (or set binding: http).
 #   cp fleet.example.yaml fleet.yaml
 # One ROS domain = one robot. Each IPE looks up its ROS_DOMAIN_ID in `robots` and uses
 #   AE name = <ae_prefix>_<name>, CSE = cse_url of that robot's site.
@@ -8,6 +8,13 @@
 #   binding     : http (default) | ws (needs: pip install websocket-client)
 #   ws.url      : CSE WebSocket URL when binding: ws (ACME default port 8180, wss:// for TLS).
 #                 Target CSE name is taken from the end of cse_url; set ws.cse_rn if different.
+#                 Requests share one connection and are sent one at a time; the pollingChannel always uses HTTP.
+#   ws.ping_s   : ping interval when idle (default 1 s); ws.dead_s: no frame for this long = disconnected (default 5 s)
+#   iot.url     : MEP's MEC 033 registered_iot_platforms URL. While the CSE is unreachable the IPE asks it for the
+#                 current CSE and moves there if it changed (omit to disable). iot.check_s: interval (default 5 s).
+#                 iot.keep_host (default true): use the iot.url host instead of the internal host the MEP reports.
+# Outage records go to <AE>/log (robot itself and CAdmin only):
+#   {"robot", "site", "disconnect_duration_ms", "buffered_count", "data_loss"}, one per outage after the backlog is sent.
 # Access (ACP on telemetry/command; the robot itself and CAdmin always get 63):
 #   cmn_ae      : telemetry 51 (CREATE, RETRIEVE, NOTIFY, DISCOVERY)
 #   tel_readers : telemetry 51, same as cmn_ae (e.g. training / detection AEs)
@@ -22,34 +29,40 @@ topic_prefix: "AMR/"          # Isaac sensor topics (AMR/imu_front, AMR/joints)
 sites:
   siteA:
     ae_prefix: "siteA"
-    binding: http
+    binding: ws                   # http to use plain HTTP
     #cse_url: "http://127.0.0.1:8081/<CSE_NAME>"   # local ACME
     cse_url: "https://<MEC_HOST>/<SANDBOX>/mep-a/meep-acme-mn-cse/acme-cse-mn-mep-a-<SANDBOX>"
     tls_verify: false
-    #ws:
-    #  url: "ws://<MEC_HOST>:8180/"
+    ws:
+      url: "wss://<MEC_HOST>/<SANDBOX>/mep-a/meep-acme-mn-cse/ws"
+    #iot:
+    #  url: "https://<MEC_HOST>/<SANDBOX>/mep-a/iots/v1/registered_iot_platforms"
     cmn_ae: "CMN-AE-1"
     tel_readers: ["CTRAINING-AE-1", "CANALYSIS-AE-1"]
     judge_ae: "CJUDGE-AE-1"
   siteB:
     ae_prefix: "siteB"
-    binding: http
+    binding: ws                   # http to use plain HTTP
     #cse_url: "http://127.0.0.1:8081/<CSE_NAME>"   # local ACME
     cse_url: "https://<MEC_HOST>/<SANDBOX>/mep-b/meep-acme-mn-cse/acme-cse-mn-mep-b-<SANDBOX>"
     tls_verify: false
-    #ws:
-    #  url: "ws://<MEC_HOST>:8180/"
+    ws:
+      url: "wss://<MEC_HOST>/<SANDBOX>/mep-b/meep-acme-mn-cse/ws"
+    #iot:
+    #  url: "https://<MEC_HOST>/<SANDBOX>/mep-b/iots/v1/registered_iot_platforms"
     cmn_ae: "CMN-AE-2"
     tel_readers: ["CTRAINING-AE-2", "CANALYSIS-AE-2"]
     judge_ae: "CJUDGE-AE-2"
   siteC:
     ae_prefix: "siteC"
-    binding: http
+    binding: ws                   # http to use plain HTTP
     #cse_url: "http://127.0.0.1:8081/<CSE_NAME>"   # local ACME
     cse_url: "https://<MEC_HOST>/<SANDBOX>/mep-c/meep-acme-mn-cse/acme-cse-mn-mep-c-<SANDBOX>"
     tls_verify: false
-    #ws:
-    #  url: "ws://<MEC_HOST>:8180/"
+    ws:
+      url: "wss://<MEC_HOST>/<SANDBOX>/mep-c/meep-acme-mn-cse/ws"
+    #iot:
+    #  url: "https://<MEC_HOST>/<SANDBOX>/mep-c/iots/v1/registered_iot_platforms"
     cmn_ae: "CMN-AE-3"
     tel_readers: ["CTRAINING-AE-3", "CANALYSIS-AE-3"]
     judge_ae: "CJUDGE-AE-3"

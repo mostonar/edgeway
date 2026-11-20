@@ -2,7 +2,10 @@
 #   - Samples IMU / joint / TF topics into 1 s windows -> <AE>/telemetry CIN; demo state -> <AE>/status CIN.
 #   - Commands written to <AE>/command (subscription + pollingChannel, fallback: polling command/la)
 #     are forwarded as JSON to <topic_prefix>cmd for the task executor / demo script (-> Nav2).
-#   - Uplink is buffered: on CSE outage data is kept and sent in order after reconnecting.
+#   - Uplink is buffered: on CSE outage data is kept and sent in order after reconnecting; then one outage
+#     record {robot, site, disconnect_duration_ms, buffered_count, data_loss} is posted to <AE>/log.
+#   - Optional CSE move (fleet.yaml sites.<site>.iot): while disconnected, the MEP's MEC 033 API is asked for the
+#     current CSE; if it changed, the IPE re-registers there and sends the backlog.
 # Run (normally): simple_ipe/run_ipe.sh [domains...]
 # Direct:  ROS_DOMAIN_ID=<n> python -u ipe_proc.py --ros-args --params-file ipe_common.yaml -p fleet_file:=fleet.yaml
 # Config:  ipe_common.yaml (joint names, IMU mounts, retention), fleet.yaml (domain -> site/robot/CSE/ACP;
@@ -34,6 +37,7 @@ ACP_CMD_RN = 'acp_command'
 ACOP_WRITER = 1 + 2 + 32                               # CREATE + RETRIEVE + DISCOVERY = 35
 ADMIN = 'CAdmin'
 ACOP_JUDGE_TEL = 2 + 32                                # RETRIEVE + DISCOVERY = 34
+ACP_LOG_RN = 'acp_log'                                 # log container: only the robot itself and CAdmin
 PCH_RN = 'pch'
 SUB_RN = 'sub_ipe_cmd'
 # Isaac wraps revolute joint positions to [-2pi, 2pi]; these are unwrapped into cumulative angles and
@@ -84,46 +88,82 @@ class WsCse:
     RSC = {2000: 200, 2001: 201, 2002: 200, 2004: 200, 4000: 400, 4004: 404, 4005: 405, 4008: 408, 4015: 415,
            4101: 403, 4103: 403, 4106: 403, 4107: 403, 4117: 403, 4105: 409, 5000: 500, 5204: 504}
     INT_FC = {'fu', 'lim', 'lvl', 'ofst', 'sts', 'stb', 'sza', 'szb'}
+    PING_S, DEAD_S = 1.0, 5.0   # ping when idle for PING_S; no frame at all for DEAD_S -> treat as disconnected
+    MIN_GAP_S = 0.0             # min gap between sent messages (0: requests are already serialized)
+    # ACME's WebSocket server hands each message to a worker through a lambda that captures the variable, not the
+    # value, so a message arriving before the previous one is dispatched replaces it. Requests are therefore sent
+    # one at a time (req_lock), and the long pcu poll goes over HTTP (IPE.req(..., http=True)).
 
-    def __init__(self, url, origin, cse_rn, verify, log, name):
+    def __init__(self, url, origin, cse_rn, verify, log, name, ping_s=None, dead_s=None, min_gap_s=None):
         try:
             import websocket                        # pip install websocket-client
         except ImportError:
             raise SystemExit('binding: ws requires websocket-client: pip install websocket-client')
         self.wsmod, self.url, self.origin, self.cse_rn, self.log, self.name = websocket, url, origin, cse_rn.strip('/'), log, name
         self.sslopt = {} if verify else {'cert_reqs': ssl.CERT_NONE, 'check_hostname': False}
+        self.ping_s, self.dead_s = float(ping_s or self.PING_S), float(dead_s or self.DEAD_S)
+        self.min_gap = float(self.MIN_GAP_S if min_gap_s is None else min_gap_s)
+        self.last_tx = 0.0
         self.conn, self.up = None, threading.Event()
         self.send_lock, self.plock, self.pending = threading.Lock(), threading.Lock(), {}
+        self.req_lock = threading.Lock()           # one request awaiting a response at a time
         threading.Thread(target=self.loop, daemon=True).start()
 
     def loop(self):
         first = True
         while True:
+            ws = None
             try:
                 ws = self.wsmod.create_connection(self.url, subprotocols=['oneM2M.json'], sslopt=self.sslopt, timeout=10,
                                                   header=[f'X-M2M-Origin: {self.origin}'])   # ACME: without it, everything but AE registration gets 403
-                ws.settimeout(None)
+                ws.settimeout(self.ping_s)
                 self.conn = ws
                 self.up.set()
                 self.log.info(f'WebSocket connected ({self.name}): {self.url}')
                 first = True
+                last_rx = time.monotonic()
                 while True:
-                    msg = ws.recv()
-                    if not msg:
+                    try:
+                        op, data = ws.recv_data(control_frame=True)
+                    except self.wsmod.WebSocketTimeoutException:
+                        # a dropped Wi-Fi link raises no TCP error, so silence for dead_s means disconnected
+                        if time.monotonic() - last_rx > self.dead_s:
+                            raise ConnectionError(f'nothing received for {self.dead_s:g} s (network down)')
+                        with self.send_lock:
+                            ws.ping()
+                        continue
+                    last_rx = time.monotonic()
+                    if op == self.wsmod.ABNF.OPCODE_CLOSE:
                         raise ConnectionError('closed by CSE')
-                    self.on_msg(msg)
+                    if op in (self.wsmod.ABNF.OPCODE_TEXT, self.wsmod.ABNF.OPCODE_BINARY):
+                        self.on_msg(data.decode('utf-8', 'replace') if isinstance(data, bytes) else data)
             except Exception as e:
                 if first:
                     self.log.warn(f'WebSocket ({self.name}) disconnected/connect failed: {e} -> retrying every 3 s')
                 first = False
             self.up.clear()
             self.conn = None
+            if ws:
+                try:
+                    ws.shutdown()                         # close the dead socket without a close handshake
+                except Exception:
+                    pass
             with self.plock:
                 for ev in self.pending.values():
                     ev[1] = None
                     ev[0].set()
                 self.pending.clear()
             time.sleep(3.0)
+
+    def retarget(self, url, cse_rn):
+        """CSE moved: reconnect to the new URL (drops the current connection, if any)."""
+        self.url, self.cse_rn = url, cse_rn.strip('/')
+        ws = self.conn
+        if ws:
+            try:
+                ws.shutdown()
+            except Exception:
+                pass
 
     def on_msg(self, msg):
         try:
@@ -136,12 +176,18 @@ class WsCse:
             if ev:
                 ev[1] = m
                 ev[0].set()
+            else:                                  # response to a request that already timed out (late, not lost)
+                self.log.warn(f'WebSocket ({self.name}) late response rqi={m.get("rqi")} rsc={m.get("rsc")}', throttle_duration_sec=5.0)
         elif 'op' in m:                            # CSE-initiated request: just ack (commands arrive via pollingChannel)
             self.send({'rsc': 2000, 'rqi': m.get('rqi'), 'rvi': '3', 'to': m.get('fr'), 'fr': self.origin})
 
     def send(self, prim):
         with self.send_lock:
+            wait = self.last_tx + self.min_gap - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
             self.conn.send(json.dumps(prim))
+            self.last_tx = time.monotonic()
 
     def req(self, method, path, ty, body, timeout):
         path, _, q = path.partition('?')
@@ -161,8 +207,11 @@ class WsCse:
                 fc[k] = int(v) if k in self.INT_FC and v.lstrip('-').isdigit() else v
         if fc:
             prim['fc'] = fc
+        t_end = time.monotonic() + timeout
         if not self.up.wait(timeout):
             raise requests.ConnectionError(f'WebSocket ({self.name}) not connected')
+        if not self.req_lock.acquire(timeout=max(0.0, t_end - time.monotonic())):
+            raise requests.Timeout(f'WebSocket ({self.name}) previous request still pending after {timeout} s')
         ev = [threading.Event(), None]
         with self.plock:
             self.pending[prim['rqi']] = ev
@@ -177,6 +226,7 @@ class WsCse:
         finally:
             with self.plock:
                 self.pending.pop(prim['rqi'], None)
+            self.req_lock.release()
         m = ev[1]
         if m is None:
             raise requests.ConnectionError(f'WebSocket ({self.name}) disconnected before response')
@@ -222,7 +272,8 @@ class IPE(Node):
         # mni: CSE drops the oldest CINs beyond this
         self.cnts = {'telemetry': {'mni': P('telemetry_mni', 600)},
                      'status': {'mni': P('status_mni', 600)},
-                     'command': {'mni': 20}}
+                     'command': {'mni': 20},
+                     'log': {'mni': P('log_mni', 200)}}       # outage records
 
         self.lock = threading.Lock()
         self.imu = dict.fromkeys(IMUS)
@@ -232,6 +283,7 @@ class IPE(Node):
         self.cmds = queue.Queue(50)
         self.seen_ri = collections.deque(maxlen=200)        # dedup commands arriving via both paths
         self.sub_ok = self.pcu_ok = False                   # both true -> fallback polling pauses
+        self.res_ready = threading.Event()                  # set once the AE and containers exist (pch/subscription wait for it)
         self.pch_wait_s = P('pch_timeout_s', 70.0)          # max wait per pcu long-poll
         buffer_s = P('buffer_s', 1800.0)                    # seconds of data kept during an outage
         self.buf = collections.deque(maxlen=int(buffer_s * (1.0 / self.window_s + 0.5)))   # telemetry 1/window_s + status 0.5 per s
@@ -266,9 +318,18 @@ class IPE(Node):
             if not wcfg.get('url'):
                 raise SystemExit(f'{fleet_file}: sites.{self.site}.ws.url is missing (binding: ws)')
             cse_rn = wcfg.get('cse_rn') or self.url.rsplit('/', 1)[-1]
-            self.ws = WsCse(wcfg['url'], self.origin, cse_rn, self.http.verify, self.get_logger(), 'ws')
+            self.ws = WsCse(wcfg['url'], self.origin, cse_rn, self.http.verify, self.get_logger(), 'ws',
+                            ping_s=wcfg.get('ping_s'), dead_s=wcfg.get('dead_s'), min_gap_s=wcfg.get('min_gap_s'))
         elif self.binding != 'http':
             raise SystemExit(f'{fleet_file}: sites.{self.site}.binding must be http or ws ({self.binding})')
+        # CSE move via MEC 033 (sites.<site>.iot): while disconnected, ask the MEP for the current CSE.
+        #   MEP unreachable -> network (AP) down, wait / same CSE -> keep retrying / other CSE -> move and re-register
+        icfg = site_cfg.get('iot') or {}
+        self.iot_url = icfg.get('url')
+        self.iot_check_s = float(icfg.get('check_s', 5.0))
+        self.iot_keep_host = bool(icfg.get('keep_host', True))
+        self.cse_gen = 0                                    # +1 on every move (pch_loop / poll_commands resync)
+        self.cse_moved = threading.Event()                  # uplink re-creates resources before sending
 
         self.tf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf, self)
@@ -285,6 +346,9 @@ class IPE(Node):
         threading.Thread(target=self.uplink, daemon=True).start()
         threading.Thread(target=self.poll_commands, daemon=True).start()
         threading.Thread(target=self.pch_loop, daemon=True).start()
+        if self.iot_url:
+            threading.Thread(target=self.cse_watch, daemon=True).start()
+            self.get_logger().info(f'CSE move enabled: when disconnected, asking the MEP every {self.iot_check_s:g} s ({self.iot_url})')
         self.get_logger().info(f'ROS_DOMAIN_ID={self.domain} -> AE={self.ae}  CSE={self.url} ({self.binding})  topics={self.topic_prefix}imu_*, '
                                f'{self.topic_prefix}joints, {self.topic_prefix}cmd(pub), {self.topic_prefix}demo_state(sub)')
         if self.dump_f:
@@ -294,8 +358,9 @@ class IPE(Node):
             self.get_logger().warn(f'Joint name parameters missing -> values will be null: {", ".join("joint_" + r for r in missing)}')
 
     # ---------- oneM2M ----------
-    def req(self, method, path='', ty=None, body=None, timeout=3):
-        if self.ws:
+    def req(self, method, path='', ty=None, body=None, timeout=3, http=False):
+        """One CSE request -> (HTTP status, body). http=True forces HTTP even with binding: ws."""
+        if self.ws and not http:
             return self.ws.req(method, path, ty, body, timeout)
         h = {'X-M2M-Origin': self.origin, 'X-M2M-RI': uuid.uuid4().hex[:12],
              'X-M2M-RVI': '3', 'Accept': 'application/json'}
@@ -325,6 +390,7 @@ class IPE(Node):
                                                                ([self.judge_ae], ACOP_JUDGE_TEL)])]}
                 if self.cmd_writers:
                     acpi['command'] = [self.ensure_acp(ACP_CMD_RN, [(self.cmd_writers, ACOP_WRITER)])]
+                acpi['log'] = [self.ensure_acp(ACP_LOG_RN, [])]
                 for rn, attrs in self.cnts.items():
                     want = acpi.get(rn)
                     lbl = self.cnt_labels(rn)
@@ -344,6 +410,7 @@ class IPE(Node):
                     if c not in (201, 409):
                         raise RuntimeError(f'{rn} create {c}')
                 self.get_logger().info('oneM2M resources ready')
+                self.res_ready.set()
                 return
             except Exception as e:
                 self.get_logger().warn(f'CSE setup failed, retrying in 5 s (buffered {len(self.buf)}): {e}')
@@ -416,6 +483,9 @@ class IPE(Node):
                     self.buf_cv.wait()
                 item = self.buf[0]
             cnt, data = item
+            if self.cse_moved.is_set():               # moved to another CSE -> create resources there first
+                self.cse_moved.clear()
+                self.ensure_resources()
             try:
                 con = json.dumps(data, allow_nan=False, separators=(',', ':'))
                 c, js = self.req('POST', f'{self.ae}/{cnt}', 4,
@@ -452,13 +522,16 @@ class IPE(Node):
                     self.dump(cnt, data, (js or {}).get('m2m:cin') if c == 201 else None)
                     self.outage_sent(c == 201)
                 left = len(self.buf)
+            if cnt == 'log':
+                self.get_logger().info(f'log CIN {"posted" if c == 201 else f"failed {c}"}: {con}')
             if backlog_warned and left == 0:
                 self.get_logger().info('CSE reconnected -> backlog sent')
                 backlog_warned = False
 
-    def send(self, cnt, data):
-        self.seq[cnt] += 1
-        data.update(v=2, robot=self.ae, seq=self.seq[cnt])
+    def send(self, cnt, data, stamp=True):
+        if stamp:                                     # log records are posted as-is (no v/seq)
+            self.seq[cnt] += 1
+            data.update(v=2, robot=self.ae, seq=self.seq[cnt])
         with self.buf_cv:
             if len(self.buf) == self.buf.maxlen:
                 self.buf_dropped += 1
@@ -524,6 +597,67 @@ class IPE(Node):
         self.get_logger().info(f'Outage record: {down_s:.1f} s, held {o["held"]} -> delivered {o["delivered"]} / lost {loss} '
                                f'(overflow {o["dropped_overflow"]}, error {o["dropped_error"]}{", unsent at exit " + str(o["_left"]) if partial else ""})')
         self.outage_log.append(ev)
+        if not partial:                               # backlog sent -> post the record to <AE>/log (not at exit: no link)
+            self.send('log', {'robot': self.ae, 'site': self.mep_site,
+                              'disconnect_duration_ms': ev['disconnect_duration_ms'],
+                              'buffered_count': o['held'], 'data_loss': loss}, stamp=False)
+
+    # ---------- CSE move (MEC 033) ----------
+    def mep_cse(self):
+        """MEP registered_iot_platforms -> (CSE-ID, cse_url, ws_url); raises if the MEP is unreachable.
+        Uses customServicesTransportInfo entries whose id is a CSE-ID: name = CSE name, endpoint.uris[0] = CSE base."""
+        r = self.http.get(self.iot_url, headers={'Accept': 'application/json'}, timeout=3)
+        r.raise_for_status()
+        q = urllib.parse.urlsplit(self.iot_url)
+        found = []
+        for p in r.json() or []:
+            if p.get('enabled') is False:
+                continue
+            for ti in p.get('customServicesTransportInfo') or []:
+                tid, name = str(ti.get('id') or ''), ti.get('name')
+                uris = (ti.get('endpoint') or {}).get('uris') or []
+                if not tid.startswith('/') or not name or not uris:
+                    continue
+                u = urllib.parse.urlsplit(uris[0].rstrip('/'))
+                if self.iot_keep_host:                # the MEP reports an internal host -> use the iot.url host
+                    u = u._replace(scheme=q.scheme, netloc=q.netloc)
+                ws = urllib.parse.urlunsplit(u._replace(scheme='wss' if u.scheme == 'https' else 'ws')) + '/ws'
+                found.append((tid, f'{urllib.parse.urlunsplit(u)}/{name}', ws))
+        if not found:
+            raise RuntimeError('no CSE in the response (customServicesTransportInfo, id=/<CSE-ID>)')
+        return next((f for f in found if f[1] == self.url), found[0])
+
+    def cse_watch(self):
+        """While an outage is open (not yet recovered), ask the MEP every check_s."""
+        while True:
+            time.sleep(self.iot_check_s)
+            o = self.outage
+            if o is None or o['recovered'] is not None:
+                continue
+            try:
+                tid, url, ws_url = self.mep_cse()
+            except Exception as e:
+                self.get_logger().warn(f'MEP not responding -> network (AP) down, waiting: {e}', throttle_duration_sec=30.0)
+                continue
+            if url == self.url:
+                self.get_logger().info(f'MEP: CSE unchanged ({tid}) -> retrying the same CSE', throttle_duration_sec=30.0)
+                continue
+            self.switch_cse(tid, url, ws_url)
+
+    def switch_cse(self, tid, url, ws_url):
+        """Resources are re-created by uplink (cse_moved), pch/subscription by pch_loop and polling by poll_commands (cse_gen)."""
+        old, self.url = self.url, url
+        m = re.search(r'/(mep-[a-z0-9]+)/', url + '/')
+        if m:
+            self.mep_site = m.group(1)
+        self.sub_ok = self.pcu_ok = False
+        self.res_ready.clear()
+        self.cse_gen += 1
+        if self.ws:
+            self.ws.retarget(ws_url, url.rsplit('/', 1)[-1])
+        self.cse_moved.set()
+        self.get_logger().warn(f'MEP: CSE moved {old} -> {url} ({tid}) -> re-registering there and sending '
+                               f'{len(self.buf)} buffered')
 
     def outage_events(self):
         return list(self.outage_log)
@@ -661,8 +795,10 @@ class IPE(Node):
 
     def poll_commands(self):
         """Fallback: poll command/la every 1 s while subscription/pollingChannel is down. Pre-existing commands are ignored."""
-        last, synced = None, False
+        last, synced, gen = None, False, self.cse_gen
         while True:
+            if gen != self.cse_gen:                   # moved to another CSE -> resync with its command/la
+                last, synced, gen = None, False, self.cse_gen
             if synced and self.notify_ok():
                 time.sleep(1.0)
                 continue
@@ -704,9 +840,9 @@ class IPE(Node):
             time.sleep(10.0)
 
     def find_pch(self):
-        if self.req('GET', f'{self.ae}/{PCH_RN}')[0] == 200:
+        if self.req('GET', f'{self.ae}/{PCH_RN}', http=True)[0] == 200:
             return f'{self.ae}/{PCH_RN}'
-        c, js = self.req('GET', f'{self.ae}?fu=1&ty=15')          # some CSEs allow only one pollingChannel per AE
+        c, js = self.req('GET', f'{self.ae}?fu=1&ty=15', http=True)          # some CSEs allow only one pollingChannel per AE
         uril = js.get('m2m:uril', []) if c == 200 else []
         if isinstance(uril, dict):
             uril = uril.get('uril', [])
@@ -714,7 +850,7 @@ class IPE(Node):
             name = str(uril[0]).rstrip('/').split('/')[-1]
             self.get_logger().info(f'pollingChannel already exists ({uril[0]}) -> reusing')
             return f'{self.ae}/{name}'
-        c, js = self.req('POST', self.ae, 15, {'m2m:pch': {'rn': PCH_RN}})
+        c, js = self.req('POST', self.ae, 15, {'m2m:pch': {'rn': PCH_RN}}, http=True)
         if c in (201, 409):
             self.get_logger().info(f'pollingChannel {self.ae}/{PCH_RN} created')
             return f'{self.ae}/{PCH_RN}'
@@ -731,7 +867,12 @@ class IPE(Node):
 
     def pch_loop(self):
         ready = False
+        self.res_ready.wait()                         # the AE must exist before the pollingChannel
+        gen = self.cse_gen
         while True:
+            if gen != self.cse_gen:                   # moved to another CSE -> wait for its AE, then pch/subscription again
+                gen, ready, self.pcu_ok = self.cse_gen, False, False
+                self.res_ready.wait()
             try:
                 if not ready:
                     self.pch_path = self.find_pch()
@@ -740,7 +881,7 @@ class IPE(Node):
                     self.pcu_ok = True
                     if not self.sub_ok:
                         threading.Thread(target=self.ensure_sub, daemon=True).start()
-                c, js = self.req('GET', pcu, timeout=self.pch_wait_s)
+                c, js = self.req('GET', pcu, timeout=self.pch_wait_s, http=True)
                 if c == 200 and js:
                     self.pcu_ok = True
                     self.on_pch(js)
@@ -785,7 +926,7 @@ class IPE(Node):
                 continue
             try:
                 self.req('POST', f'{self.pch_path}/pcu',
-                         body={'m2m:rsp': {'rsc': 2000, 'rqi': rqi, 'rvi': '3', 'fr': self.origin}})
+                         body={'m2m:rsp': {'rsc': 2000, 'rqi': rqi, 'rvi': '3', 'fr': self.origin}}, http=True)
             except Exception as e:
                 self.get_logger().warn(f'pcu response failed: {e}', throttle_duration_sec=30.0)
 

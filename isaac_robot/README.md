@@ -36,8 +36,8 @@ This mapping lives in three places: `nav_ws/run_nav2.sh` (`ROBOTS`), `simple_ipe
 
 ## Requirements
 
-- Ubuntu 24.04 (x86_64, as on the lab PC), NVIDIA GPU
-- Isaac Sim 6.1 (`~/isaacsim`; the lab PC runs `6.1.0-rc.26`). The scene references NVIDIA's public assets (warehouse, forklift robot) by URL, so an internet connection is required.
+- Ubuntu 24.04 (x86_64), NVIDIA GPU
+- Isaac Sim 6.1 (`~/isaacsim`; tested with `6.1.0-rc.26`). The scene references NVIDIA's public assets (warehouse, forklift robot) by URL, so an internet connection is required.
 - Miniforge (`~/miniforge3`). Everything is installed with conda, no sudo needed.
 - Isaac Sim WebRTC Streaming Client (on the PC used to view Isaac)
 - oneM2M MN-CSE (e.g. ACME), one per site
@@ -75,7 +75,7 @@ tar xf ros2-humble-20260914-linux-jammy-amd64.tar.bz2      # -> ~/ros2_humble/ro
 conda env create -f env/ros_nav.yml      # ros_nav: Nav2, IPE, demo scripts
 ```
 
-`env/ros_nav.lock.yml` is the full export from the lab PC (reference only). Use it to compare versions if `ros_nav.yml` does not solve.
+`env/ros_nav.lock.yml` is the full export from the test environment (reference only). Use it to compare versions if `ros_nav.yml` does not solve.
 
 ### 3. fleet.yaml
 
@@ -83,7 +83,12 @@ conda env create -f env/ros_nav.yml      # ros_nav: Nav2, IPE, demo scripts
 cp simple_ipe/fleet.example.yaml simple_ipe/fleet.yaml
 ```
 
-Replace `<MEC_HOST>` and `<SANDBOX>` in `sites.<site>.cse_url` with your CSE addresses. `fleet.yaml` is git-ignored.
+Replace `<MEC_HOST>` and `<SANDBOX>` in `sites.<site>.cse_url` and `sites.<site>.ws.url` with your CSE addresses. `fleet.yaml` is git-ignored.
+
+Optional per site (see the comments in `fleet.example.yaml`):
+
+- `binding`: `ws` (the example's setting, oneM2M WebSocket at `ws.url`, needs `websocket-client`) or `http`.
+- `iot.url`: the MEP's MEC 033 `registered_iot_platforms` URL. Enables moving to another CSE (see [CSE outage](#cse-outage)).
 
 ## Running
 
@@ -151,6 +156,26 @@ ROS_DOMAIN_ID=8 python -u demo_task_executor/<c2 script>
 ```
 
 Logs go to `nav_ws/logs/` and `simple_ipe/logs/`. The IPE also keeps a copy of the telemetry it uploads in `~/telemetry_dump/<AE>_<time>.jsonl`. To disable this, add `dump_dir: ""` to `simple_ipe/ipe_common.yaml`.
+
+### CSE outage
+
+When the CSE cannot be reached, the IPE keeps uploads in a buffer (up to `buffer_s`, default 30 min). After reconnecting, it sends them in order. Once the backlog is sent, it posts one record to `<AE>/log`:
+
+```json
+{"robot": "siteC_AMR_1", "site": "mep-c", "disconnect_duration_ms": 3240, "buffered_count": 3, "data_loss": 0}
+```
+
+With `binding: ws`, a dropped network is detected by ping/pong within `ws.dead_s` (5 s).
+
+With `iot.url` set, the IPE asks the MEP for the current CSE every `iot.check_s` (5 s) while disconnected:
+
+| MEP answer | Meaning | Action |
+|---|---|---|
+| none | network (AP) down | keep buffering and waiting |
+| same CSE | CSE restarting | keep retrying the same CSE |
+| other CSE | CSE moved | switch to it, re-create the AE, containers, ACPs, pollingChannel and subscription, then send the backlog |
+
+The CSE is taken from `customServicesTransportInfo` entries whose `id` is a CSE-ID (`/…`): `endpoint.uris[0]` + `/` + `name`, and `/ws` for the WebSocket. Outages are detected from failed uploads, so a robot that is standing still (no telemetry) is not checked until it moves. Subscriptions that other AEs made on the old CSE must be re-created by those AEs.
 
 ## Notes
 
