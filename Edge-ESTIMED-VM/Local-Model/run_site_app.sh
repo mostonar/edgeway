@@ -1,17 +1,17 @@
 #!/bin/bash
-# run_site_app.sh — 사업장 앱 하나 기동 (TRAINING-AE-i + ANALYSIS-AE-i)
+# run_site_app.sh — start one site app (TRAINING-AE-i + ANALYSIS-AE-i)
 #
-#   bash run_site_app.sh A        사업장 A (mn1, 포트 5001)
-#   bash run_site_app.sh B        사업장 B (mn2, 포트 5002)
-#   bash run_site_app.sh C        사업장 C (mn3, 포트 5003)
+#   bash run_site_app.sh A        site A (mn1, port 5001)
+#   bash run_site_app.sh B        site B (mn2, port 5002)
+#   bash run_site_app.sh C        site C (mn3, port 5003)
 #
-# 혼자 실행하면: 그 사업장의 지난 실행 정리 → MN-CSE 리소스 확인/생성
-#   → 로봇 대기 → 사업장 앱.
-# run_local_model.sh 가 부를 때는 정리·리소스·로봇 대기를 그쪽이 한 번에 하고
-# (FL_STANDALONE=0), 여기서는 사업장 앱만 띄운다.
+# When run on its own: clean up that site's previous run → check/create MN-CSE resources
+#   → wait for robots → site app.
+# When called by run_local_model.sh, that script does cleanup, resources and waiting for robots once
+# (FL_STANDALONE=0), and here only the site app is started.
 #
-# 전제: .env.local 에 FL_SANDBOX_HOST / FL_SANDBOX_NAME, FL_IN_BASE_URL /
-#   FL_IN_CSE_NAME, FL_NOTIFY_HOST. 자세한 것은 README.md.
+# Prerequisites: .env.local has FL_SANDBOX_HOST / FL_SANDBOX_NAME, FL_IN_BASE_URL /
+#   FL_IN_CSE_NAME, FL_NOTIFY_HOST. See README.md for details.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

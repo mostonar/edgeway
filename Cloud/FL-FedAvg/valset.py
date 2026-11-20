@@ -1,40 +1,40 @@
 """
-Cloud/FL-FedAvg/valset.py — 고정 검증셋으로 글로벌 모델 성능을 잰다.
+Cloud/FL-FedAvg/valset.py — measures global model performance on a fixed validation set.
 
-[왜 고정셋인가]
-지금까지 성능 수치(val_loss, val_auroc)는 그 라운드에 받은 윈도우로 계산했다.
-라운드마다 데이터가 바뀌니 R3 의 AUROC 와 R9 의 AUROC 를 비교할 수 없었다.
-라벨도 라이브 스트림에는 안 붙어 있어 늘 단일 클래스 -> AUROC 0.5 였다.
+[Why a fixed set]
+Until now performance figures (val_loss, val_auroc) were computed on the windows received that round.
+The data changed every round, so the AUROC of R3 and R9 could not be compared.
+Labels were not attached in the live stream either, so it was always a single class -> AUROC 0.5.
 
-여기서는 라벨이 붙은 고정 윈도우 묶음(Cloud/FL-FedAvg/valset_amr.npz)을 매 라운드 같은
-자로 재서, "라운드가 갈수록 좋아지는가"를 수치로 남긴다.
+Here a fixed labeled bundle of windows (Cloud/FL-FedAvg/valset_amr.npz) is measured every round with the same
+ruler, recording numerically "does it get better as rounds go on".
 
-[라벨을 어디에 쓰나]
-채점에만 쓴다. 모델은 추론 때 라벨을 보지 않고, 정규화 통계와 임계값도
-라벨 없이 검증셋 전체에서 뽑는다. 그래서 전 구간이 비지도다.
+[Where labels are used]
+Only for scoring. The model does not see labels at inference, and the normalization statistics and threshold
+are drawn from the whole validation set without labels. So the whole pipeline is unsupervised.
 
-[정규화]
-글로벌 모델에는 정규화 통계가 없다(사업장마다 따로 갖는다). 그래서 검증셋
-자체의 채널별 평균/표준편차로 표준화한다.
+[Normalization]
+The global model has no normalization statistics (each site keeps its own). So the
+validation set is standardized with its own per-channel mean/std.
 
-학습 때 쓴 자와 다르다. 전에 여기 "AUROC 는 순위 기반이라 영향받지 않는다"
-고 적혀 있었는데 틀렸다. 순위가 매겨지는 대상은 점수이고, 정규화는 점수를
-내기 전에 입력을 바꾸므로 순위 자체가 바뀐다.
+This is a different ruler from training. This used to say "AUROC is rank-based so it is unaffected",
+which was wrong. What gets ranked is the score, and normalization changes the input before
+the score is produced, so the ranking itself changes.
 
-실측(한 노드, 40에폭, 시드 4개): 평가도 학습과 같은 통계로 정규화하면
-AUROC 0.7146 ± 0.0197, 검증셋 자기 통계로 하면 0.6852 ± 0.0166. 약 0.03
-손해이고 시드 4개 모두 같은 방향이었다.
+Measured (one node, 40 epochs, 4 seeds): normalizing evaluation with the same stats as training gives
+AUROC 0.7146 ± 0.0197; using the validation set's own stats gives 0.6852 ± 0.0166. About 0.03
+worse, and all 4 seeds went the same direction.
 
-고치려면 글로벌 모델과 함께 정규화 통계를 실어 보내야 하는데, 사업장마다
-통계가 다르므로 "어느 사업장의 자로 잴 것인가"를 먼저 정해야 한다. 지금은
-그대로 두고 이 차이를 알고 읽는다. 절대 오차값을 사업장 임계값과 직접
-비교하지는 말 것.
+Fixing it requires shipping normalization statistics with the global model, but each site has
+different statistics, so "whose ruler to measure with" must be decided first. For now
+it is left as is and read with this gap in mind. Do not compare absolute error values directly
+against site thresholds.
 
-[파일 형식]
-  signals (N, 38, 60) float32   윈도우
-  cond    (N, 8)      float32   조건 벡터
-  labels  (N,)        int64     0 정상 / 1 이상
-  (선택) robot, scn, cond_name, run_id
+[File format]
+  signals (N, 38, 60) float32   windows
+  cond    (N, 8)      float32   condition vector
+  labels  (N,)        int64     0 normal / 1 anomaly
+  (optional) robot, scn, cond_name, run_id
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ _cache = None
 
 
 def load(path: Optional[str] = None):
-    """검증셋을 한 번만 읽어 캐시한다. 없으면 None."""
+    """Read the validation set once and cache it. None if absent."""
     global _cache
     if _cache is not None:
         return _cache
@@ -75,15 +75,15 @@ def load(path: Optional[str] = None):
         print(f"  ⚠ 검증셋 로드 실패 ({p}): {e}")
         return None
 
-    # 조건 폭이 모자라면 채운다.
+    # Pad the condition width if it is short.
     #
-    # 적재 상태(empty/light/heavy)를 cond 에 넣으면서 폭이 8 -> 11 이 됐다.
-    # 예전에 뜬 검증셋은 8 폭이라 그대로 넣으면 모델이 모양 때문에 죽고,
-    # 평가가 통째로 건너뛰어진다(라운드별 AUROC 가 영영 안 뜬다).
+    # Adding the load state (empty/light/heavy) to cond widened it from 8 -> 11.
+    # Validation sets built earlier are 8 wide, so feeding them in as is crashes the model on shape,
+    # and evaluation is skipped entirely (per-round AUROC never shows up).
     #
-    # 모자란 자리는 'empty' 로 채운다. 이 검증셋은 전부 to_pick 구간이고
-    # lift.eff 가 4561 에 붙어 있어 실제로 빈 차 주행이다. 추정이 아니라
-    # 확인한 값이다.
+    # The missing slots are filled with 'empty'. This validation set is all to_pick segments
+    # with lift.eff stuck at 4561, so it really is empty driving. This is a checked value,
+    # not a guess.
     want = int(getattr(config, "AE_CFG", None).cond_dim)
     if C.shape[1] < want:
         pad = np.zeros((len(C), want - C.shape[1]), dtype=np.float32)
@@ -100,14 +100,14 @@ def load(path: Optional[str] = None):
         print(f"  ⚠ 검증셋이 비었거나 한 클래스뿐이다 ({p})")
         return None
 
-    # 검증셋 자체 통계로 표준화. 라벨은 쓰지 않는다.
+    # Standardize with the validation set's own statistics. Labels are not used.
     mean = X.mean(axis=(0, 2), keepdims=True)
     std = X.std(axis=(0, 2), keepdims=True) + 1e-8
     Xn = (X - mean) / std
 
-    # 이상 종류. 종류마다 난이도가 크게 달라서(실측: 바닥 0.95 /
-    # 휠 돌기 0.69 / 베어링 0.55) 합친 숫자 하나만 보면 어느 쪽이 안
-    # 되는지 안 보인다. 없으면 None 으로 두고 전체 숫자만 낸다.
+    # Anomaly type. Difficulty varies a lot by type (measured: floor 0.95 /
+    # wheel knob 0.69 / bearing 0.55), so a single combined number hides which one is
+    # failing. If absent, leave None and report only the overall number.
     try:
         ft = z["fault_type"].astype(str) if "fault_type" in z.files else None
     except Exception:
@@ -126,13 +126,13 @@ def load(path: Optional[str] = None):
     return _cache
 
 
-# 점수 방식. edge_node 와 같은 환경 변수를 본다. 두 쪽이 다른 자로
-# 재면 라운드별 숫자와 운영 판정이 어긋난다.
+# Scoring mode. Reads the same environment variable as edge_node. If the two sides measure
+# with different rulers, per-round numbers and operational verdicts disagree.
 SCORE_MODE = os.getenv("FL_SCORE_MODE", "diff").strip().lower()
 
 
 def _cell_key(C: np.ndarray) -> np.ndarray:
-    """cond 원핫(nav 5 + speed 3 + 적재 3) -> 조건칸 번호."""
+    """cond one-hot (nav 5 + speed 3 + load 3) -> condition cell index."""
     C = np.asarray(C, dtype=np.float32)
     if C.ndim != 2 or C.shape[1] < 8:
         return np.zeros(len(C), dtype=np.int64)
@@ -143,10 +143,10 @@ def _cell_key(C: np.ndarray) -> np.ndarray:
 
 
 def _cell_zmax(D: np.ndarray, C: np.ndarray, min_cell: int = 8) -> np.ndarray:
-    """채널별 값 (N, C) -> 조건칸별 z 화 -> 채널 최대 (N,).
+    """Per-channel values (N, C) -> z-score per condition cell -> max over channels (N,).
 
-    기준 계산은 amr_schema 와 공유한다. 학습 쪽과 다른 자를 쓰면
-    라운드별 숫자와 운영 판정이 어긋난다.
+    The reference computation is shared with amr_schema. Using a different ruler from the training side
+    makes per-round numbers and operational verdicts disagree.
     """
     keys = _cell_key(C)
     ref, glob, alive = _sch.robust_ref(D, keys, min_cell=min_cell)
@@ -160,7 +160,7 @@ def _auroc(scores: np.ndarray, labels: np.ndarray) -> float:
         from sklearn.metrics import roc_auc_score
         return float(roc_auc_score(labels, scores))
     except Exception:
-        # sklearn 이 없으면 순위로 직접 센다 (Mann-Whitney U).
+        # Without sklearn, count ranks directly (Mann-Whitney U).
         order = np.argsort(scores, kind="stable")
         ranks = np.empty(len(scores), dtype=np.float64)
         ranks[order] = np.arange(1, len(scores) + 1)
@@ -171,19 +171,19 @@ def _auroc(scores: np.ndarray, labels: np.ndarray) -> float:
         return float((ranks[pos].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
 
 
-# "모델 없음" 기준선. 모델이 아무것도 복원하지 못해 출력이 0 일 때의
-# 점수다. 입력 자체에 이미 들어 있는 신호(이상 창의 에너지나 떨림이 더
-# 크다)만으로 나오는 숫자라, 글로벌 모델의 AUROC 가 이것을 넘어야
-# 연합학습이 무언가를 배웠다고 말할 수 있다.
+# "No model" baseline. The score when the model reconstructs nothing and outputs 0.
+# This number comes only from signal already present in the input (anomalous windows have more
+# energy or jitter), so the global model's AUROC must beat it before one can say
+# federated learning learned anything.
 #
-# 2026-11-19 실행의 R1~R10 AUROC(0.638~0.641, bearing 0.53 / floor 0.93 /
-# wknob 0.63)는 recon 방식의 이 기준선(0.641 / 0.535 / 0.933 / 0.631)과
-# 소수 셋째 자리까지 같았다. diff 방식의 기준선은 약 0.832 다.
+# The 2026-11-19 run's R1~R10 AUROC (0.638~0.641, bearing 0.53 / floor 0.93 /
+# wknob 0.63) matched this baseline for the recon mode (0.641 / 0.535 / 0.933 / 0.631)
+# to three decimal places. The baseline for the diff mode is about 0.832.
 _baseline_cache: dict = {}
 
 
 def _scores_no_model(X: torch.Tensor, C: torch.Tensor) -> np.ndarray:
-    """출력 0 인 모델의 점수. evaluate() 의 점수 식과 같은 자를 쓴다."""
+    """Score of a model that outputs 0. Uses the same ruler as the score formula in evaluate()."""
     Xn = X.cpu().numpy()
     if SCORE_MODE == "diff":
         D = np.abs(np.diff(Xn, axis=2)).mean(axis=2)
@@ -204,7 +204,7 @@ def _auroc_block(scores: np.ndarray, y: np.ndarray, ft) -> dict:
 
 
 def baseline(ds=None) -> Optional[dict]:
-    """검증셋의 '모델 없음' 기준선 {auroc, by_fault}. 한 번만 계산한다."""
+    """The validation set's 'no model' baseline {auroc, by_fault}. Computed only once."""
     ds = ds or load()
     if ds is None:
         return None
@@ -217,9 +217,9 @@ def baseline(ds=None) -> Optional[dict]:
 
 def evaluate(model_path: str, n_sigma: float = None) -> Optional[dict]:
     """
-    글로벌 모델 하나를 검증셋으로 잰다.
+    Measure one global model on the validation set.
 
-    반환: {auroc, threshold, detected, false_alarms, miss,
+    Returns: {auroc, threshold, detected, false_alarms, miss,
            mean_normal, mean_anomaly, separation, n_normal, n_anomaly}
     """
     ds = load()
@@ -250,44 +250,44 @@ def evaluate(model_path: str, n_sigma: float = None) -> Optional[dict]:
 
     with torch.no_grad():
         if SCORE_MODE == "diff":
-            # 차분 오차. 채널 x 조건칸 마다 '그 칸의 중앙값/MAD' 로 z 화한
-            # 뒤 채널 최대를 쓴다. 기준은 검증셋 자체에서 뽑는다. 여기에는
-            # 학습 노드가 없어서 학습 데이터 기준을 쓸 수 없고, 이상이
-            # 소수라 중앙값/MAD 는 거의 움직이지 않는다. 라벨은 안 쓴다.
+            # Differenced error. For each channel x condition cell, z-score with 'that cell's median/MAD'
+            # and then take the max over channels. The reference comes from the validation set itself. There are
+            # no training nodes here, so a training-data reference cannot be used, and since anomalies are
+            # a minority the median/MAD barely move. Labels are not used.
             D = model.channel_diff_error(
                 X, C if cfg.cond_dim else None).cpu().numpy()
             scores = _cell_zmax(D, C.cpu().numpy())
         else:
             E = model.channel_error(X, C if cfg.cond_dim else None)
-            # 채널별 규모가 달라 그냥 평균내면 큰 채널이 점수를 지배한다.
-            # 기준은 검증셋 전체의 채널 평균이다. 라벨을 쓰지 않는다.
+            # Channel scales differ, so a plain average lets large channels dominate the score.
+            # The reference is the per-channel mean over the whole validation set. Labels are not used.
             E = E / (E.mean(dim=0) + 1e-12)
             scores = E.mean(dim=1).cpu().numpy()
 
-    # 임계값도 라벨 없이 전체에서 뽑는다. 다만 평균/표준편차가 아니라
-    # 중앙값/MAD 를 쓴다.
+    # The threshold is also drawn from the whole set without labels. But it uses median/MAD
+    # rather than mean/std.
     #
-    # 검증셋에는 정상과 이상이 섞여 있다. 평균과 표준편차는 이상치에 끌려
-    # 올라가므로 임계값이 과하게 높아진다. 실제로 그 때문에 오경보는 0 인데
-    # 탐지가 8% 에 그쳤다. 중앙값과 MAD 는 이상치가 섞여도 거의 움직이지
-    # 않아 정상 분포를 그대로 반영한다.
+    # The validation set mixes normal and anomalous windows. Mean and std get pulled up by outliers,
+    # so the threshold ends up too high. That is exactly why false alarms were 0 while
+    # detection was only 8%. Median and MAD barely move even with outliers mixed in,
+    # so they reflect the normal distribution as is.
     #
-    # 1.4826 은 정규분포에서 MAD 를 표준편차와 같은 자로 맞추는 상수다.
-    # 그래서 n_sigma 의 의미(3σ)가 그대로 유지된다.
+    # 1.4826 is the constant that puts MAD on the same scale as the std under a normal distribution.
+    # So the meaning of n_sigma (3σ) is preserved.
     med = float(np.median(scores))
     mad = float(np.median(np.abs(scores - med))) * 1.4826
     if mad <= 0:
-        mad = float(scores.std())      # 점수가 거의 같으면 MAD 가 0 이 된다
+        mad = float(scores.std())      # If the scores are nearly identical, MAD becomes 0
     thr = med + n_sigma * mad
 
-    # 예전 기준도 같이 남긴다. 둘을 비교해야 임계값 때문인지 모델 때문인지
-    # 가릴 수 있다.
+    # The old criterion is kept too. Comparing the two tells whether it is the threshold or the model
+    # that is responsible.
     thr_mean = float(scores.mean() + n_sigma * scores.std())
 
     norm, anom = scores[y == 0], scores[y == 1]
 
-    # 종류별. 각 종류를 '정상' 하고만 비교한다. 종류끼리 섞으면 어려운
-    # 종류가 쉬운 종류의 숫자를 깎는다.
+    # Per type. Each type is compared only against 'normal'. Mixing types lets the hard
+    # types drag down the numbers of the easy ones.
     by_fault = {}
     ft = ds.get("fault_type")
     if ft is not None:
@@ -327,7 +327,7 @@ def evaluate(model_path: str, n_sigma: float = None) -> Optional[dict]:
 
 
 def summary_line(m: dict) -> str:
-    """로그 한 줄. 종류별 숫자가 있으면 뒤에 붙인다."""
+    """One log line. Per-type numbers are appended if present."""
     tail = ""
     if m.get("by_fault"):
         tail = "  [" + " ".join(

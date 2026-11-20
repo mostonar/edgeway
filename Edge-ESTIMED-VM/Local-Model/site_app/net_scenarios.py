@@ -1,29 +1,29 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py — 데모 시나리오 2·3 (네트워크 이상)
+Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py — demo scenarios 2 and 3 (network anomalies)
 
-두 시나리오 모두 "통신은 유지돼야 한다"가 목표다. 끊기는 모습을 보이는 게
-아니라, 끊길 상황에서도 데이터가 안 사라지고 FL 라운드가 안 멈추는 모습을
-보이는 것이다.
+In both scenarios the goal is "communication must be maintained". The point is not to show it breaking,
+but to show that even when it would break, no data is lost and the FL round does not
+stall.
 
-  시나리오 2  네트워크 이상 → 핸드오버
-    MEC028로 로봇이 붙어 있는 AP가 나빠진 것을 본다.
-    같은 사업장의 다른 AP로 옮긴다. MN-CSE가 그대로이므로 경로만 바뀐다.
-    데이터 흐름은 유지된다.
+  Scenario 2  network anomaly → handover
+    See via MEC028 that the AP a robot is attached to has degraded.
+    Move it to another AP at the same site. The MN-CSE stays the same, so only the path changes.
+    The data flow is maintained.
 
-  시나리오 3  네트워크 이상 → 버퍼링
-    옮겨갈 AP가 없다(또는 링크 자체가 끊겼다).
-    보낼 수 없는 동안은 큐에 쌓아 두고, 링크가 돌아오면 밀어 넣는다.
-    라운드가 한 템포 늦어질 뿐 윈도우는 하나도 안 잃는다.
+  Scenario 3  network anomaly → buffering
+    There is no AP to move to (or the link itself is cut).
+    While nothing can be sent, queue it up, and push it in when the link comes back.
+    The round is just a beat late; not a single window is lost.
 
-역할 분담
-  탐지·판정  이 코드 (MEC028을 읽는다)
-  실행       샌드박스 컨트롤러 이벤트 API (mec_sandbox.py)
-  기록       oneM2M  <MN-CSE>/TRAINING-AE-i/cnt-net-status  (대시보드가 읽는다)
+Division of roles
+  Detection/decision  this code (reads MEC028)
+  Execution           sandbox controller event API (mec_sandbox.py)
+  Record              oneM2M  <MN-CSE>/TRAINING-AE-i/cnt-net-status  (read by the dashboard)
 
-FL이 로봇에게 직접 명령하지 않는다. 판정은 리소스에 써 두고, 움직이는 일은
-샌드박스가 한다.
+FL does not command robots directly. Decisions are written to resources, and the moving
+is done by the sandbox.
 
-사용법
+Usage
   python3 Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py watch   --node mn3
   python3 Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py s2      --node mn3 --robot siteC_AMR_2
   python3 Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py s3      --node mn3 --robot siteC_AMR_2
@@ -43,7 +43,7 @@ import mec_wai as wai
 import onem2m_utils as om2m
 
 
-# 시나리오 3에서 버퍼에 쌓아 두는 위치. 사업장(MEP) 쪽 디스크다.
+# Where scenario 3 buffers. Disk on the site (MEP) side.
 BUFFER_DIR = os.getenv("FL_NET_BUFFER_DIR", "/tmp/fl_net_buffer")
 
 
@@ -61,10 +61,10 @@ def net_status_path(node: str) -> str:
 
 def report(node: str, payload: dict) -> bool:
     """
-    판정·조치 기록을 oneM2M에 남긴다.
+    Record decisions and actions in oneM2M.
 
-    대시보드와 샌드박스가 이걸 읽는다. 라벨을 붙여 두면 나중에
-    fu=1&lbl=로 골라 올 수 있다.
+    The dashboard and sandbox read it. With labels attached they can later
+    be picked out with fu=1&lbl=.
     """
     payload = dict(payload)
     payload.setdefault("ts", time.time())
@@ -83,11 +83,11 @@ def report(node: str, payload: dict) -> bool:
 
 
 # ════════════════════════════════════════════════════════
-# 관찰
+# Observe
 # ════════════════════════════════════════════════════════
 
 def cmd_watch(node: str, seconds: float, interval: float) -> None:
-    """MEC028을 주기적으로 읽어 링크 상태를 보여주고 기록한다."""
+    """Read MEC028 periodically to show and record link state."""
     bind(node)
     mep = config.MEP_OF_NODE.get(node)
     print(f"=== {node} / {mep} 링크 감시 ({seconds:.0f}s, {interval:.0f}s 간격) ===")
@@ -113,17 +113,17 @@ def cmd_watch(node: str, seconds: float, interval: float) -> None:
 
 
 # ════════════════════════════════════════════════════════
-# 시나리오 2 — 핸드오버
+# Scenario 2 — handover
 # ════════════════════════════════════════════════════════
 
 def cmd_scenario2(node: str, robot_ae: str,
                   wait_detect: float = 30.0,
                   inject: bool = True) -> bool:
     """
-    AP를 망가뜨리고, MEC028로 탐지하고, 다른 AP로 옮기고, 회복을 확인한다.
+    Break the AP, detect via MEC028, move to another AP, and confirm recovery.
 
-    --no-inject를 주면 주입은 건너뛰고 탐지·조치만 한다. 샌드박스 UI에서
-    직접 장애를 넣었을 때 쓴다.
+    With --no-inject, injection is skipped and only detection/action run. Use it when
+    the fault was injected directly from the sandbox UI.
     """
     bind(node)
     mep = config.MEP_OF_NODE.get(node)
@@ -221,19 +221,19 @@ def cmd_scenario2(node: str, robot_ae: str,
 
 
 # ════════════════════════════════════════════════════════
-# 시나리오 3 — 버퍼링
+# Scenario 3 — buffering
 # ════════════════════════════════════════════════════════
 
 class StoreAndForward:
     """
-    보낼 수 없는 동안 CIN 페이로드를 디스크에 쌓아 두는 큐.
+    Queue that stores CIN payloads on disk while nothing can be sent.
 
-    MN-AE가 중앙 IN-CSE로 로컬 업데이트를 올릴 때, 그리고 데모에서 로봇
-    텔레메트리를 대신 보관할 때 쓴다. 파일 하나가 CIN 하나다. 이름이
-    순번이라 들어온 순서대로 나간다.
+    Used when the MN-AE uploads local updates to the central IN-CSE, and in the demo to hold
+    robot telemetry on the robots' behalf. One file is one CIN. Names are
+    sequence numbers, so they go out in arrival order.
 
-    메모리에 들고 있지 않는 이유는, 버퍼링 중에 프로세스가 죽어도
-    데이터가 남아야 "하나도 안 잃는다"가 성립하기 때문이다.
+    It is not held in memory because "nothing is lost" only holds if data survives
+    even when the process dies during buffering.
     """
 
     def __init__(self, name: str, root: str = BUFFER_DIR):
@@ -247,20 +247,20 @@ class StoreAndForward:
         return len(self._files())
 
     def push(self, payload: dict) -> str:
-        """큐에 하나 쌓는다. 파일명은 나노초 타임스탬프."""
+        """Push one item onto the queue. The file name is a nanosecond timestamp."""
         fn = f"{time.time_ns()}.json"
         path = os.path.join(self.dir, fn)
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False)
-        os.replace(tmp, path)   # 쓰다 죽어도 반쪽 파일이 큐에 안 남는다
+        os.replace(tmp, path)   # Even if it dies mid-write, no half-written file is left in the queue
         return path
 
     def drain(self, container_path: str, labels_of=None,
               max_items: int = 0) -> int:
         """
-        쌓인 것을 CSE로 밀어 넣는다. 성공한 것만 지운다.
-        하나라도 실패하면 거기서 멈춘다 — 순서를 지켜야 한다.
+        Push the queued items into the CSE. Only successful ones are deleted.
+        Stop at the first failure — order must be preserved.
         """
         sent = 0
         for fn in self._files():
@@ -271,7 +271,7 @@ class StoreAndForward:
                 with open(path, encoding="utf-8") as f:
                     payload = json.load(f)
             except Exception:
-                os.remove(path)     # 깨진 파일은 버린다
+                os.remove(path)     # Discard corrupt files
                 continue
 
             labels = labels_of(payload) if labels_of else None
@@ -292,10 +292,10 @@ def cmd_scenario3(node: str, robot_ae: str,
                   outage: float = 40.0,
                   inject: bool = True) -> bool:
     """
-    링크를 끊고, 그 동안 들어오는 윈도우를 큐에 쌓고, 복구 후 밀어 넣는다.
+    Cut the link, queue windows arriving in the meantime, and push them in after recovery.
 
-    현실에서는 로봇(Isaac) 쪽이 버퍼링한다. 데모에서는 그 역할을 이 쪽에서
-    대신 보여준다. 중요한 것은 "유실 0"이 눈에 보이는 것이다.
+    In reality the robot (Isaac) side buffers. In the demo this side plays that role
+    instead. What matters is that "zero loss" is visible.
     """
     bind(node)
     mep = config.MEP_OF_NODE.get(node)
@@ -339,9 +339,9 @@ def cmd_scenario3(node: str, robot_ae: str,
     seq = 0
     while time.time() < end:
         st = wai.link_state(mep, ue)
-        # 끊긴 동안에도 로봇은 계속 주행하고 관측을 만든다.
-        # 보낼 수 없으니 큐에 넣는다. 실제 윈도우는 Isaac이 주므로
-        # 여기서는 보관 사실만 기록하는 봉투를 넣는다.
+        # Even while disconnected, robots keep driving and producing observations.
+        # They cannot be sent, so they go into the queue. The real windows come from Isaac,
+        # so here an envelope recording only the fact of storage is queued.
         queue.push({
             "buffered_at": time.time(),
             "robot": robot_ae,
@@ -400,7 +400,7 @@ def cmd_scenario3(node: str, robot_ae: str,
 # ════════════════════════════════════════════════════════
 
 def cmd_restore(node: str) -> None:
-    """이 사업장 AP 전부를 평상시 품질로 되돌린다."""
+    """Restore all of this site's APs to normal quality."""
     bind(node)
     site = topo.SITE_OF_NODE.get(node)
     if not site:

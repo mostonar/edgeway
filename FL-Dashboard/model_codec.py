@@ -1,40 +1,40 @@
 """
-model_codec.py — FL 모델 가중치를 oneM2M contentInstance로 실어 나르기 위한 코덱
+model_codec.py — codec for carrying FL model weights in oneM2M contentInstances
 
-[왜 필요한가]
-기존 구현은 contentInstance의 con에 로컬 파일 경로(model_path)만 넣고,
-실제 PyTorch 가중치는 같은 PC의 파일시스템으로 주고받았다.
-그래서 (1) MN-AE를 다른 머신에 올리면 즉시 깨지고,
-(2) "oneM2M 리소스로 연합학습을 수행한다"는 주장도 성립하지 않았다.
-(oneM2M이 나르는 것은 제어 메시지와 메타데이터뿐이었다)
+[Why it is needed]
+The previous implementation put only a local file path (model_path) in the contentInstance con,
+and the actual PyTorch weights were exchanged through the file system of the same PC.
+So (1) it broke immediately once an MN-AE ran on a different machine, and
+(2) the claim "federated learning runs over oneM2M resources" did not hold.
+(oneM2M was only carrying control messages and metadata)
 
-[무엇을 하는가]
-state_dict -> torch.save 직렬화 -> (선택) fp16 축소 -> gzip 압축 -> base64 문자열.
-이 문자열을 con에 넣어 CSE를 통해 전송한다. 수신측은 역순으로 복원하고,
-sha256으로 무결성을 검증한다.
+[What it does]
+state_dict -> torch.save serialization -> (optional) fp16 reduction -> gzip -> base64 string.
+The string is put in con and sent through the CSE. The receiver restores it in reverse order
+and verifies integrity with sha256.
 
-[크기와 CSE 한계]
-CVAE1D(latent 24, hidden 48, seq_len 60) = 90,806 파라미터 기준
-    fp32 그대로   : base64 약 474 KB
-    fp16 + gzip   : base64 약 217 KB   <- 기본값
+[Size and CSE limits]
+Based on CVAE1D (latent 24, hidden 48, seq_len 60) = 90,806 parameters
+    fp32 as is    : base64 about 474 KB
+    fp16 + gzip   : base64 about 217 KB   <- default
 
-ACME에는 작은 페이로드 상한이 없어 한 CIN에 그대로 들어간다. 다만 상한이
-작은 CSE로 옮길 수 있으므로 두 가지 경로를 모두 지원한다.
+ACME has no small payload limit, so it fits in one CIN as is. But since it may move to
+a CSE with a small limit, both paths are supported.
 
-  (1) 단일 CIN  — base64가 상한 이하면 con에 그대로 넣는다
-  (2) 청크 분할 — 상한을 넘으면 조각내어 전용 자식 컨테이너에 쌓고,
-                  본 CIN에는 조각 개수와 해시만 담은 매니페스트를 싣는다
+  (1) Single CIN  — if the base64 is under the limit, put it in con as is
+  (2) Chunking    — if over the limit, split it into a dedicated child container,
+                  and the main CIN carries a manifest with only the chunk count and hash
 
-청크는 자식 컨테이너(cnt-weights)에 쌓기 때문에, 부모 컨테이너에 걸린
-구독(CREATE_OF_DIRECT_CHILD)을 건드리지 않는다. 즉 조각 수십 개가
-알림을 폭주시키지 않고, 매니페스트를 담은 CIN 하나만 알림을 발생시킨다.
-각 조각 CIN은 rn을 명시적으로 주므로(w{round}_{0000}) 수신측이 discovery
-없이 이름으로 바로 RETRIEVE 할 수 있다.
+Chunks go into a child container (cnt-weights), so they do not trigger the subscription
+(CREATE_OF_DIRECT_CHILD) on the parent container. Dozens of chunks therefore do not
+flood notifications; only the single CIN holding the manifest fires a notification.
+Each chunk CIN has an explicit rn (w{round}_{0000}), so the receiver can RETRIEVE it
+by name without discovery.
 
-[fp16에 대하여]
-가중치를 half로 줄여 보내는 것은 FL에서 흔한 양자화 압축이다.
-상대오차가 4e-04 수준이라 AE 재구성 오차에 묻히지만, 민감하면
-config.FL_WEIGHTS_FP16 = False 로 끄면 된다(전송량은 두 배).
+[About fp16]
+Sending weights as half precision is a common quantization compression in FL.
+Relative error is around 4e-04, which is buried in the AE reconstruction error; if that matters,
+turn it off with config.FL_WEIGHTS_FP16 = False (transfer size doubles).
 """
 
 import base64
@@ -48,8 +48,8 @@ import torch
 CODEC_FP16_GZIP = "fp16+gzip+b64"
 CODEC_FP32_GZIP = "fp32+gzip+b64"
 
-# 조각 CIN 하나에 들어가는 con은 {"i":번호,"d":"조각"} 형태의 JSON이다.
-# 번호와 따옴표, 중괄호 등 부가 문자를 넉넉히 빼두기 위한 여유분.
+# The con of one chunk CIN is JSON of the form {"i":index,"d":"chunk"}.
+# Headroom reserved for extra characters such as the index, quotes and braces.
 CHUNK_OVERHEAD_BYTES = 2048
 
 
@@ -59,13 +59,13 @@ def encode_state_dict(
     gzip_level: int = 6,
 ) -> Dict[str, Any]:
     """
-    state_dict를 contentInstance에 넣을 수 있는 base64 문자열로 만든다.
+    Turn a state_dict into a base64 string that fits in a contentInstance.
 
-    반환값은 con에 그대로 펼쳐 넣을 수 있는 dict이다:
-        weights_b64    : base64 문자열 (실제 가중치)
-        weights_codec  : 복원 방법 식별자
-        weights_sha256 : 압축된 바이트의 해시 (무결성 검증용)
-        weights_bytes  : base64 문자열 길이 (크기 가드용)
+    The return value is a dict that can be spread directly into con:
+        weights_b64    : base64 string (the actual weights)
+        weights_codec  : identifier for how to restore
+        weights_sha256 : hash of the compressed bytes (for integrity check)
+        weights_bytes  : length of the base64 string (for the size guard)
     """
     if fp16:
         payload_sd = {
@@ -94,14 +94,14 @@ def split_for_cin(
     overhead: int = CHUNK_OVERHEAD_BYTES,
 ) -> Tuple[List[str], Dict[str, Any]]:
     """
-    encode_state_dict 결과를 CIN 크기 상한에 맞게 조각낸다.
+    Split the encode_state_dict result to fit the CIN size limit.
 
-    돌려주는 것:
-        chunks   : base64 조각 문자열 리스트 (순서가 곧 조각 번호)
-        manifest : 본 CIN에 실을 메타데이터. weights_b64는 빠져 있고
-                   대신 weights_chunked / weights_chunk_count 가 들어간다.
-                   조각이 어느 컨테이너에 어떤 이름으로 쌓였는지는
-                   경로를 아는 호출측이 추가로 채워 넣는다.
+    Returns:
+        chunks   : list of base64 chunk strings (order is the chunk index)
+        manifest : metadata for the main CIN. weights_b64 is removed and
+                   weights_chunked / weights_chunk_count are added instead.
+                   Which container the chunks went into and under what names
+                   is filled in by the caller, who knows the paths.
     """
     b64 = enc["weights_b64"]
     size = max(1024, int(max_cin_bytes) - int(overhead))
@@ -124,15 +124,15 @@ def decode_state_dict(
     fetch_chunk: Optional[Callable[[int], Optional[str]]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    con(또는 그 일부)에서 state_dict를 복원한다.
+    Restore a state_dict from con (or part of it).
 
-    세 가지 경우를 처리한다.
-      - weights_b64 가 있으면 그대로 복원 (단일 CIN)
-      - weights_chunked 가 True 면 fetch_chunk(i)로 조각을 받아 이어붙인 뒤 복원
-      - 둘 다 없으면 None. 가중치가 실려 오지 않은 것이므로 호출측이 실패로 처리한다.
+    Handles three cases.
+      - If weights_b64 is present, restore it directly (single CIN)
+      - If weights_chunked is True, fetch chunks with fetch_chunk(i), join them, then restore
+      - If neither, None. No weights were carried, so the caller treats it as a failure.
 
-    fetch_chunk 는 조각 번호를 받아 base64 조각 문자열을 돌려주는 함수다.
-    수신측이 CSE에서 어떻게 가져올지는 호출측이 정한다(이 모듈은 통신을 모른다).
+    fetch_chunk is a function that takes a chunk index and returns the base64 chunk string.
+    How the receiver fetches it from the CSE is up to the caller (this module knows nothing about networking).
     """
     b64 = meta.get("weights_b64")
 
@@ -159,8 +159,8 @@ def decode_state_dict(
     if not b64:
         return None
 
-    # 전송된 바이트(압축 상태) 그대로를 검증한다.
-    # 인코딩 쪽도 같은 바이트를 해싱하므로 두 값이 일치해야 한다.
+    # Verify the transmitted bytes (compressed) as they are.
+    # The encoding side hashes the same bytes, so the two values must match.
     compressed = base64.b64decode(b64)
 
     expected = meta.get("weights_sha256")
@@ -177,10 +177,10 @@ def decode_state_dict(
     try:
         sd = torch.load(io.BytesIO(raw), map_location="cpu", weights_only=True)
     except TypeError:
-        # weights_only 인자가 없는 구버전 torch
+        # Older torch without the weights_only argument
         sd = torch.load(io.BytesIO(raw), map_location="cpu")
 
-    # fp16으로 보냈으면 학습/집계를 위해 fp32로 되돌린다
+    # If sent as fp16, convert back to fp32 for training/aggregation
     if meta.get("weights_codec") == CODEC_FP16_GZIP:
         sd = {
             k: (v.float() if torch.is_tensor(v) and v.dtype == torch.float16 else v)
@@ -190,12 +190,12 @@ def decode_state_dict(
 
 
 def chunk_resource_name(round_num: int, index: int) -> str:
-    """조각 CIN의 리소스 이름. 수신측이 discovery 없이 바로 RETRIEVE 하기 위함."""
+    """Resource name of a chunk CIN, so the receiver can RETRIEVE it directly without discovery."""
     return f"w{int(round_num)}_{int(index):04d}"
 
 
 def describe(meta: Dict[str, Any]) -> str:
-    """로그용 한 줄 요약."""
+    """One-line summary for logs."""
     n = meta.get("weights_bytes", 0)
     codec = meta.get("weights_codec", "?")
     if meta.get("weights_chunked"):

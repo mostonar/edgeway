@@ -1,28 +1,28 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_iot.py — ETSI GS MEC 033 (IoT API) 클라이언트
+Edge-ESTIMED-VM/Local-Model/site_app/mec_iot.py — ETSI GS MEC 033 (IoT API) client
 
-사업장 앱이 자기 MN-CSE 주소를 MEC 에게 묻는다. MEP 의 IoT 서비스(meep-iot)에
-등록된 IoT 플랫폼이 바로 그 사업장의 MN-CSE 다.
+The site app asks MEC for its own MN-CSE address. The IoT platform registered with the MEP's
+IoT service (meep-iot) is exactly that site's MN-CSE.
 
   GET /{sbx}/{mep}/iots/v1/registered_iot_platforms
       [{"iotPlatformId", "enabled",
         "userTransportInfo":          [{"name", "protocol", "endpoint": {...}}],
         "customServicesTransportInfo":[{"name", "protocol", "endpoint": {...}}]}]
 
-  transport 의 name 이 CSE 이름이고 endpoint 의 uris 가 CSE 주소다
-  (meep-sss 도 같은 필드로 CSE 를 찾는다).
+  The transport name is the CSE name and the endpoint uris are the CSE address
+  (meep-sss finds CSEs with the same fields).
 
-[쓰는 순서]
-  1) FL_MN_BASE_URL_<NODE> 를 직접 줬으면 그걸 쓴다. 사람이 정한 값이 이긴다.
-  2) MEC033 에서 받은 주소를 실제로 CSEBase 조회해 본다. 응답하면 그걸 쓴다.
-  3) 아니면 기존 규칙(config.mn_endpoint)으로 돌아간다. FL 은 멈추지 않는다.
+[Order of use]
+  1) If FL_MN_BASE_URL_<NODE> is given directly, use it. A value set by a person wins.
+  2) Actually retrieve the CSEBase at the address from MEC033. If it responds, use it.
+  3) Otherwise fall back to the existing rule (config.mn_endpoint). FL does not stop.
 
-[주소 다시 쓰기]
-등록된 URI 는 샌드박스 내부 이름일 수 있다. MEC011 서비스 발견과 같이 경로만
-받아서 우리가 붙는 호스트(FL_SANDBOX_HOST) 위에 다시 붙인다. 그래서 2)의
-확인이 필요하다. 경로가 내부 전용이면 조회가 실패하고 3)으로 간다.
+[Address rewriting]
+Registered URIs may be sandbox-internal names. As with MEC011 service discovery, only the path
+is taken and re-attached onto the host we connect to (FL_SANDBOX_HOST). That is why the check in 2)
+is needed. If the path is internal-only, the retrieve fails and it goes to 3).
 
-끄기: FL_MEC_IOT=0
+Disable: FL_MEC_IOT=0
 """
 
 import os
@@ -90,12 +90,12 @@ def _uri_of(tr: dict) -> Optional[str]:
 def _rebase(uri: str) -> Optional[str]:
     path = urlparse(uri).path.rstrip("/")
     if not path:
-        return None          # 호스트만 있는 내부 주소는 밖에서 못 쓴다
+        return None          # Internal addresses with only a host cannot be used from outside
     return f"{_scheme()}://{config.SANDBOX_HOST}{path}"
 
 
 def candidates(mep: str) -> List[Tuple[str, str, str]]:
-    """[(base_url, cse_name, iotPlatformId)] — 이 MEP 에 등록된 HTTP CSE 들."""
+    """[(base_url, cse_name, iotPlatformId)] — HTTP CSEs registered with this MEP."""
     out = []
     for p in platforms(mep):
         if p.get("enabled") is False:
@@ -105,18 +105,18 @@ def candidates(mep: str) -> List[Tuple[str, str, str]]:
         for tr in trs:
             proto = str(tr.get("protocol") or "").upper()
             if proto and "HTTP" not in proto:
-                continue      # MQTT 등은 우리가 쓰지 않는다
+                continue      # MQTT etc. are not used by us
             uri, cse = _uri_of(tr), tr.get("name")
             base = _rebase(uri) if uri else None
             if base and cse:
                 out.append((base, cse, str(p.get("iotPlatformId") or "")))
-    # 플랫폼이 여럿이면 CSE 이름에 MEP 이름이 든 것을 앞에 둔다.
+    # If there are several platforms, put the ones whose CSE name contains the MEP name first.
     out.sort(key=lambda c: mep not in c[1])
     return out
 
 
 def _get_cse_base(base: str, cse: str, origin: Optional[str] = None):
-    """CSEBase 를 한 번 RETRIEVE 한다. origin 을 안 주면 지금 신원으로 나간다."""
+    """RETRIEVE the CSEBase once. Without origin it goes out with the current identity."""
     try:
         return requests.get(
             f"{base}/{cse}", timeout=TIMEOUT, verify=config.TLS_VERIFY,
@@ -130,22 +130,22 @@ def _get_cse_base(base: str, cse: str, origin: Optional[str] = None):
 
 
 def probe(base: str, cse: str) -> Optional[int]:
-    """CSEBase 조회의 HTTP 상태. 연결 실패·타임아웃이면 None."""
+    """HTTP status of the CSEBase retrieve. None on connection failure / timeout."""
     r = _get_cse_base(base, cse)
     return None if r is None else r.status_code
 
 
 def cse_answers(base: str, cse: str, origin: Optional[str] = None) -> bool:
-    """정말 CSE 인지까지 본다(200 이고 본문이 m2m:cb)."""
+    """Also check it really is a CSE (200 and the body is m2m:cb)."""
     r = _get_cse_base(base, cse, origin)
     return r is not None and r.status_code == 200 and "m2m:cb" in r.text
 
 
-_cse_answers = cse_answers   # 예전 이름
+_cse_answers = cse_answers   # Old name
 
 
 def resolve(node: str) -> Tuple[str, str]:
-    """사업장 노드의 (base_url, cse_name). MEC033 → 확인 → 실패 시 기존 규칙."""
+    """(base_url, cse_name) of a site node. MEC033 → verify → on failure, the existing rule."""
     fallback = config.mn_endpoint(node)
     mep = config.MEP_OF_NODE.get(node, "")
     if os.getenv(f"FL_MN_BASE_URL_{node.upper()}"):
@@ -166,7 +166,7 @@ def resolve(node: str) -> Tuple[str, str]:
 
 
 def main() -> None:
-    """점검: python3 Edge-ESTIMED-VM/Local-Model/site_app/mec_iot.py [mn1,mn2,mn3]"""
+    """Check: python3 Edge-ESTIMED-VM/Local-Model/site_app/mec_iot.py [mn1,mn2,mn3]"""
     import sys
     config.require_sandbox()
     nodes = (sys.argv[1] if len(sys.argv) > 1 else ",".join(config.ALL_NODES))

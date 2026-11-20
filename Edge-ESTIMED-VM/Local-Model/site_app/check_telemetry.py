@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-Edge-ESTIMED-VM/Local-Model/site_app/check_telemetry.py — 로봇 telemetry 컨테이너가 어떻게 차고 있는지 본다.
+Edge-ESTIMED-VM/Local-Model/site_app/check_telemetry.py — shows how the robot telemetry containers are filling up.
 
-[왜 필요한가]
-사업장별 수집이 "윈도우 33/50" 에서 안 늘어날 때, 원인이 셋 중 어느 것인지
-로그만으로는 가릴 수 없다.
+[Why it is needed]
+When per-site collection does not grow past "windows 33/50", logs alone cannot tell
+which of three causes it is.
 
-  (1) 로봇이 발행을 멈췄다            -> cni 와 마지막 ct 가 안 변한다
-  (2) 컨테이너 mni 가 작아 지워진다   -> cni 가 mni 에 붙어 멈춘다
-  (3) 커서(cra) 조회가 새 걸 안 준다  -> 새 CIN 은 생기는데 조회가 0건
+  (1) Robots stopped publishing              -> cni and the last ct do not change
+  (2) Container mni is small, so entries are deleted -> cni sticks at mni
+  (3) The cursor (cra) query returns nothing new -> new CINs appear but the query returns 0
 
-15초 간격으로 두 번 보고 그 셋을 가른다.
+Looks twice, 15 seconds apart, to tell those three apart.
 
-사용:
+Usage:
     cd ~/projects/edgeway-FL
     set -a; source .env.local; set +a
-    python3 Edge-ESTIMED-VM/Local-Model/site_app/check_telemetry.py              # 전체
-    python3 Edge-ESTIMED-VM/Local-Model/site_app/check_telemetry.py mn2          # 한 사업장만
+    python3 Edge-ESTIMED-VM/Local-Model/site_app/check_telemetry.py              # all
+    python3 Edge-ESTIMED-VM/Local-Model/site_app/check_telemetry.py mn2          # one site only
 """
 
 import os
@@ -32,7 +32,7 @@ GAP_SEC = float(os.getenv("CHECK_GAP_SEC", "15"))
 
 
 def snapshot(node):
-    """이 사업장 로봇들의 telemetry 컨테이너 현재 상태."""
+    """Current state of the telemetry containers of this site's robots."""
     om2m.set_endpoint(*config.mn_endpoint(node))
     cse = config.mn_endpoint(node)[1]
     out = {}
@@ -51,16 +51,16 @@ def snapshot(node):
 
         out[rb] = {
             "path": path,
-            "mni": cnt.get("mni"),      # 최대 보관 수 (없으면 무제한)
-            "cni": cnt.get("cni"),      # 지금 들어 있는 수
-            "last_ct": last_ct,         # 마지막 CIN 의 생성 시각
+            "mni": cnt.get("mni"),      # Max instances (unlimited if absent)
+            "cni": cnt.get("cni"),      # Current count
+            "last_ct": last_ct,         # Creation time of the last CIN
         }
 
     return out
 
 
 def count_after(path, since_ct):
-    """커서 이후 CIN 이 몇 개로 조회되는지. MN-AE 가 쓰는 바로 그 경로."""
+    """How many CINs the query after the cursor returns. The exact path the MN-AE uses."""
     try:
         uril = om2m.discover_cins_after(path, since_ct, lim=300)
         return len(uril or [])
@@ -108,8 +108,8 @@ def main():
                 print(f"  ✗ {rb}: 컨테이너를 못 읽음")
                 continue
 
-            # 첫 스냅샷의 마지막 ct 를 커서로 두고 그 뒤로 몇 개가
-            # 조회되는지 본다. MN-AE 가 라운드마다 하는 것과 같다.
+            # Use the last ct of the first snapshot as the cursor and see how many
+            # are returned after it. Same as what the MN-AE does every round.
             after = count_after(a["path"], a["last_ct"])
             grew = (a["last_ct"] != b["last_ct"])
 

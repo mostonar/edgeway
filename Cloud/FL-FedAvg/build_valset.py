@@ -1,24 +1,24 @@
 """
-Cloud/FL-FedAvg/build_valset.py — 아이작심 jsonl 캡처에서 고정 검증셋을 만든다.
+Cloud/FL-FedAvg/build_valset.py — builds a fixed validation set from Isaac Sim jsonl captures.
 
-왜 따로 만드나
-  prepare_data_amr.py 는 사업장별 '학습' 데이터를 만든다. 검증셋은 목적이
-  달라서 요구가 다르다. 운영에서 실제로 나오는 조건 분포를 닮아야 하고,
-  이상 라벨이 신호가 아니라 '주입 사실' 에서 와야 한다.
+Why build it separately
+  prepare_data_amr.py builds per-site 'training' data. The validation set has a different
+  purpose and different requirements. It must resemble the condition distribution seen in operation,
+  and anomaly labels must come from 'the fact of injection', not from the signal.
 
-세 가지를 맞춘다
-  (가) 조건 분포   cond 칸(nav x speed x 적재)마다 하한/상한을 둬서
-                   한 칸이 전체를 좌우하지 않게 한다. 지금 검증셋은
-                   45칸 중 7칸만 차 있고 직진이 98.7% 다.
-  (나) 라벨        CIN 에 fault 필드가 있으면 그걸 쓴다. 없으면 사람이
-                   --anomaly 로 '어느 로봇 / 어느 구간' 을 직접 준다.
-                   신호에서 라벨을 뽑으면(예: lift.eff > 1e4) 그 채널만
-                   봐도 AUROC 1.0 이 나오는 동어반복이 된다. 금지한다.
-  (다) cond 폭     amr_schema.COND_DIM 을 그대로 쓴다. 숫자를 박지 않는다.
+Three things to get right
+  (a) Condition distribution   Put a floor/cap on each cond cell (nav x speed x load)
+                   so no single cell dominates. The current validation set
+                   fills only 7 of 45 cells and is 98.7% straight.
+  (b) Labels        Use the fault field in the CIN if present. Otherwise a person
+                   gives 'which robot / which interval' directly via --anomaly.
+                   Deriving labels from the signal (e.g. lift.eff > 1e4) becomes a tautology
+                   where looking at that channel alone gives AUROC 1.0. Forbidden.
+  (c) cond width     Use amr_schema.COND_DIM as is. Do not hard-code numbers.
 
-쓰는 법
+Usage
   python3 Cloud/FL-FedAvg/build_valset.py CAPTURE_DIR -o Cloud/FL-FedAvg/valset_amr.npz \
-      --anomaly siteC_AMR_2:240-   # 240초부터 끝까지가 이상
+      --anomaly siteC_AMR_2:240-   # anomalous from 240 s to the end
 """
 from __future__ import annotations
 import argparse, collections, glob, json, os, sys
@@ -29,7 +29,7 @@ import amr_schema as sch
 
 
 def parse_anomaly(specs):
-    """'siteC_AMR_2:240-380' -> ('siteC_AMR_2', 240.0, 380.0). 끝이 비면 무한."""
+    """'siteC_AMR_2:240-380' -> ('siteC_AMR_2', 240.0, 380.0). An empty end means infinity."""
     out = []
     for s in specs or []:
         robot, _, rng = s.partition(":")
@@ -41,7 +41,7 @@ def parse_anomaly(specs):
 
 
 def load_capture(d):
-    """jsonl 묶음 -> 창 리스트. window_from_con 이 거르는 건 그대로 건너뛴다."""
+    """Bundle of jsonl -> list of windows. Whatever window_from_con filters out is skipped as is."""
     rows, skipped = [], 0
     for f in sorted(glob.glob(os.path.join(d, "*.jsonl"))):
         for line in open(f, encoding="utf-8"):
@@ -53,7 +53,7 @@ def load_capture(d):
             if sig is None:
                 skipped += 1
                 continue
-            # CIN 의 lbl 에서 정답을 읽는다. amr_ingest._labels_of 와 같은 규칙.
+            # Read the ground truth from the CIN's lbl. Same rules as amr_ingest._labels_of.
             #   lbl: ["cond:bearing", "run:...", "load:250", ...]
             kv = {x.split(":", 1)[0]: x.split(":", 1)[1]
                   for x in (obj.get("lbl") or []) if ":" in x}
@@ -63,7 +63,7 @@ def load_capture(d):
                 nav=str(con.get("nav") or ""),
                 seq=int(con.get("seq") or 0),
                 t=float(np.mean(ts)) if ts else float("nan"),
-                # 정답은 두 곳에서 올 수 있다. lbl 의 cond 가 우선이다.
+                # Ground truth can come from two places. The cond in lbl takes priority.
                 cond=kv.get("cond"),
                 load_lbl=kv.get("load"),
                 fault=con.get("fault"),
@@ -102,14 +102,14 @@ def main() -> int:
     t = np.array([r["t"] for r in rows])
     seq = np.array([r["seq"] for r in rows])
 
-    # ── 라벨 ───────────────────────────────────────────────
-    # 우선순위: lbl 의 cond -> con 의 fault -> --anomaly
+    # ── Labels ─────────────────────────────────────────────────
+    # Priority: cond in lbl -> fault in con -> --anomaly
     fault_name = np.array([r["cond"] or "" for r in rows])
     has_cond = any(fault_name != "")
     has_field = any(r["fault"] is not None for r in rows)
     if has_cond:
         y = (fault_name != "normal").astype(np.int64)
-        # exclude 는 아이작심이 '쓰지 말라' 고 표시한 구간이다. 통째로 뺀다.
+        # exclude marks intervals Isaac Sim flagged as 'do not use'. Dropped entirely.
         drop_ex = fault_name == "exclude"
         print(f"  라벨: lbl 의 cond 사용. "
               + ", ".join(f"{k} {v}" for k, v in
@@ -136,21 +136,21 @@ def main() -> int:
         fault_name = np.where(y == 1, "anomaly", "normal")
         drop_ex = np.zeros(len(rows), dtype=bool)
 
-    # ── 로봇 걸러내기 ──────────────────────────────────────
-    # 학습에 쓰는 사업장을 검증셋에 넣으면 '이미 본 데이터' 로 채점하게
-    # 되어 점수가 부풀려진다. mn3(사업장 C)는 로컬 전용이라 글로벌 모델에
-    # 가중치를 안 올리므로, 거기 데이터로 채점해야 누수가 없다.
+    # ── Filter robots ─────────────────────────────────────────
+    # Putting a training site into the validation set means scoring on 'data already seen',
+    # which inflates the score. mn3 (site C) is local-only and does not upload weights to the
+    # global model, so scoring on its data avoids leakage.
     inc = np.ones(len(rows), dtype=bool)
     if a.only:
         inc = np.array([r.startswith(a.only) for r in robot])
         print(f"  로봇 필터 '{a.only}': {int(inc.sum())}/{len(rows)}창 남김")
 
-    # ── 주행 중만. 정지 구간은 재구성이 쉬워 평가가 쉬워진다 ──
+    # ── Driving only. Stopped windows are easy to reconstruct and make evaluation easy ──
     mov = sch.moving_mask(X)
     keep = mov & inc & ~drop_ex
     print(f"  주행 {int(mov.sum())} / 정지 {int((~mov).sum())} -> 주행만 쓴다")
 
-    # ── 조건 칸 균형 ───────────────────────────────────────
+    # ── Balance condition cells ───────────────────────────────
     cond = np.stack([sch.cond_vector(n, sch.speed_of(x), x)
                      for n, x in zip(nav, X)]).astype(np.float32)
     g = np.array([sch.nav_group(n) for n in nav])
@@ -161,7 +161,7 @@ def main() -> int:
     rng = np.random.default_rng(a.seed)
     sel = np.zeros(len(rows), dtype=bool)
     dropped = kept = 0
-    # 정상과 이상을 따로 균형 잡는다. 이상은 수가 적어 상한을 안 건다.
+    # Balance normal and anomalous separately. Anomalies are few, so they are not capped.
     for c in np.unique(cell[keep]):
         idx = np.flatnonzero(keep & (cell == c))
         nrm = idx[y[idx] == 0]
@@ -181,20 +181,20 @@ def main() -> int:
         print("✗ 정상 또는 이상 한쪽이 비었다. valset.load() 가 거부한다.")
         return 1
 
-    # ── 저장 ───────────────────────────────────────────────
+    # ── Save ──────────────────────────────────────────────────
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     np.savez_compressed(
         a.out,
         signals=X[sel], cond=cond[sel], labels=y[sel],
         robot=robot[sel], nav=nav[sel], seq=seq[sel],
-        # 이상 종류. 종류마다 난이도가 완전히 달라서(실측 AUROC
-        # floor 0.95 / wknob 0.69 / bearing 0.55) 하나로 합친 숫자만
-        # 보면 어느 쪽이 안 되는지 안 보인다.
+        # Anomaly type. Difficulty varies completely by type (measured AUROC
+        # floor 0.95 / wknob 0.69 / bearing 0.55), so looking only at a single combined number
+        # hides which one is failing.
         fault_type=fault_name[sel],
         speed=np.array([sch.speed_of(x) for x in X[sel]], dtype=np.float32),
     )
 
-    # ── 결과 보고 ──────────────────────────────────────────
+    # ── Report results ────────────────────────────────────────
     yy = y[sel]
     print(f"\n저장: {a.out}")
     print(f"  {int(sel.sum())}창   정상 {int((yy==0).sum())} / "
@@ -211,7 +211,7 @@ def main() -> int:
     cc = collections.Counter(cell[sel].tolist())
     print(f"  조건 칸 {len(cc)}/45, 10창 이상 {sum(1 for v in cc.values() if v>=10)}개")
 
-    # 3회 연속 덩어리. 판정이 K=3 연속이라 이 수가 실제 탐지 기회다.
+    # Runs of 3 consecutive. The verdict is K=3 consecutive, so this count is the real detection opportunity.
     runs = []
     for rb in sorted(set(robot[sel].tolist())):
         m = robot[sel] == rb

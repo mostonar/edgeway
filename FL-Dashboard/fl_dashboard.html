@@ -6,8 +6,8 @@
 <title>AMR Floor Anomaly Monitor — Federated Learning</title>
 <script src="/vendor/chart.umd.js"></script>
 <script>
-// 로컬 파일이 없으면 CDN 으로 물러선다. 받아둔 PC 에서는 바깥으로 안 나간다.
-// document.write 를 쓰는 건 뒤 스크립트가 Chart 를 바로 쓰기 때문이다.
+// If the local file is missing, fall back to the CDN. On a PC that has it downloaded, nothing goes outside.
+// document.write is used because the following script uses Chart right away.
 if (!window.Chart) {
   document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/'
     + 'Chart.js/4.4.1/chart.umd.js"><\/scr' + 'ipt>');
@@ -31,8 +31,8 @@ if (!window.Chart) {
     --tr-bg:    #e6f1fb; --tr-text:  #0c447c; --tr-bar:   #378add;
     --fd-bg:    #fcebeb; --fd-text:  #791f1f; --fd-bar:   #e24b4a;
     --fault-line: #e24b4a;
-    --mn3-bg:   #f4f5f8;    /* mn3(로컬 전용) 카드 바탕. 누런 페이지 배경과 갈리도록 푸른 기가 도는 연회색 */
-    --mn3-bar:  #e5b300;    /* mn3 위 띠·테두리. Fault 때는 빨강이 덮는다 */
+    --mn3-bg:   #f4f5f8;    /* Background of the mn3 (local-only) card. A light gray with a bluish tint to stand apart from the yellowish page background */
+    --mn3-bar:  #e5b300;    /* Top band and border of mn3. Red overrides them on Fault */
   }
 
   @media (prefers-color-scheme: dark) {
@@ -60,8 +60,8 @@ if (!window.Chart) {
     padding: 24px;
   }
 
-  /* 화면 전체(헤더~Reconnect)를 가로 4 : 세로 3 상자에 넣는다. 높이는 창 높이(위아래 body 패딩 24px 제외)에
-     맞추고, 폭은 그 4/3. 창이 그보다 좁으면 창 폭을 다 쓴다. 남는 높이는 차트 두 줄이 반씩 나눠 가진다. */
+  /* Fit the whole screen (header to Reconnect) into a 4:3 box. Height matches the window height (minus 24px top/bottom body padding),
+     and width is 4/3 of that. If the window is narrower, use the full window width. Leftover height is split evenly between the two chart rows. */
   .root { width: min(100%, calc((100vh - 48px) * 4 / 3)); aspect-ratio: 4 / 3; margin: 0 auto;
           display: flex; flex-direction: column; gap: 14px; }
   .charts-sec { display: contents; }
@@ -70,7 +70,7 @@ if (!window.Chart) {
   .topbar { display: flex; justify-content: space-between; align-items: center; }
   .logo-title { font-size: 28.5px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
   .logo-sub   { font-size: 16px; color: var(--text2); position: relative; top: 4px; }
-  /* 부제는 타이틀 오른쪽, 글자 아랫선을 맞춘다. */
+  /* The subtitle sits to the right of the title, aligned on the text baseline. */
   .logo { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
 
   .round-pill {
@@ -95,10 +95,10 @@ if (!window.Chart) {
     letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
   }
 
-  /* 노드 카드 3장이 라운드 진행 바와 같은 폭을 쓴다. 칸은 아래 차트 줄과 같은 3등분. */
+  /* The 3 node cards use the same width as the round progress bar. Columns are the same thirds as the chart row below. */
   .nodes-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
-  /* 맨 위: Edge nodes 라벨 → 노드 카드 3장 → 라운드 진행. 왼쪽 정렬.
-     아래 차트 줄과 같은 3칸 격자를 써서, 라운드 진행은 mn1~mn2 차트 폭(2칸)에 맞춘다. */
+  /* Top: Edge nodes label → 3 node cards → round progress. Left aligned.
+     Uses the same 3-column grid as the chart rows below, so round progress matches the width of the mn1~mn2 charts (2 columns). */
   .top-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); column-gap: 10px; }
   .top-row > .section-label,
   .top-row > .nodes-row     { grid-column: 1 / -1; }
@@ -127,15 +127,15 @@ if (!window.Chart) {
   .node-badge.ok       { background: var(--ok-bg); color: var(--ok-text); }
   .node-badge.training { background: var(--tr-bg); color: var(--tr-text); }
   .node-badge.fault    { background: var(--fd-bg); color: var(--fd-text); }
-  /* 이상 감지 표시. 배너 대신 이름 옆에서 조용히 깜박인다. */
+  /* Anomaly indicator. Instead of a banner, it blinks quietly next to the name. */
   .fault-dot {
     display: none; width: 8px; height: 8px; border-radius: 50%;
     background: var(--fault-line); margin-left: 7px; flex: none;
-    margin-right: auto;   /* 이름 바로 옆. 배지는 오른쪽 끝으로 */
+    margin-right: auto;   /* Right next to the name. The badge goes to the far right */
     box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.6);
   }
   .fault-dot.show { display: inline-block; animation: faultPulse 1.1s ease-out infinite; }
-  /* 안정화 구간: 라운드가 돌면 파랑, 이상이 잡히면 빨강 */
+  /* Warm-up window: blue while rounds run, red when an anomaly is caught */
   .fault-dot.calm { background: #378add; animation-name: calmPulse; }
   @keyframes calmPulse {
     0%   { opacity: 1;    box-shadow: 0 0 0 0   rgba(55, 138, 221, 0.6); }
@@ -177,21 +177,21 @@ if (!window.Chart) {
   .dot.cur  { background: var(--tr-bg);   border-color: var(--tr-bar);  color: var(--tr-text); font-weight: 600; }
   .dot.bad  { background: var(--fd-bar);  border-color: var(--fd-bar);  color: #fff; }
 
-  /* 두 차트 줄은 4:3 상자에서 남는 높이를 반씩 나눠 쓴다. 카드 높이가 줄 높이로 정해지므로
-     mn3 아래 경고가 붙으면 mn3 그래프만 그만큼 줄고, mn1·mn2 카드는 그대로다. */
+  /* The two chart rows split the remaining height of the 4:3 box in half. Card height is set by row height,
+     so when a warning appears under mn3 only the mn3 chart shrinks by that much; the mn1/mn2 cards stay the same. */
   .charts-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; flex: 1 1 0; min-height: 200px; }
-  /* 아래 줄도 차트 줄과 같은 3칸: 글로벌 loss 는 mn1 아래 1칸, 검증셋 표는 mn2~mn3 아래 2칸. */
-  /* 창 높이가 낮아도 차트 두 줄은 200px 아래로 줄지 않는다. 그때는 4:3 을 넘어 아래로 스크롤된다. */
+  /* The bottom row uses the same 3 columns as the chart rows: global loss takes 1 column under mn1, the validation table 2 columns under mn2~mn3. */
+  /* Even with a short window, the two chart rows do not shrink below 200px. Then it exceeds 4:3 and scrolls down. */
   .bottom-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; flex: 1 1 0; min-height: 200px; }
-  /* 검증셋 표는 줄 수와 상관없이 loss 카드 높이에 맞춘다. contain:size 라 행 높이를 키우지 않고,
-     넘치는 줄은 표 안에서 스크롤한다. 처음부터 빈 표(열 이름만)로 같은 크기를 차지한다. */
+  /* The validation table matches the loss card height regardless of row count. With contain:size it does not grow the row height,
+     and overflowing rows scroll inside the table. From the start an empty table (column names only) takes the same size. */
   .bottom-grid > .evallog { grid-column: span 2; display: flex; flex-direction: column; contain: size; }
   .bottom-grid > .evallog .evallog-body { flex: 1; min-height: 0; max-height: none; }
-  /* 그래프는 카드에서 머리·값·AUROC 줄을 뺀 나머지 높이를 다 쓴다. */
+  /* The chart uses all of the card's height minus the header, value and AUROC lines. */
   .charts-grid > .chart-card, .bottom-grid > #cc-loss { display: flex; flex-direction: column; min-height: 0; }
   :root { --auroc-h: 18px; }
   .node-plot, .loss-plot { position: relative; flex: 1 1 0; min-height: 40px; }
-  /* 1라운드 점수가 오기 전까지 그래프 자리에 띄우는 안내 */
+  /* Hint shown in place of the chart until round 1 scores arrive */
   .plot-wait {
     position: absolute; inset: 0; display: none;
     align-items: center; justify-content: center;
@@ -206,8 +206,8 @@ if (!window.Chart) {
   }
   .chart-card.hl     { border-color: var(--tr-bar); }
   .chart-card.hl-red { border-color: var(--fault-line); border-width: 1px; }
-  /* mn3(로컬 전용) 노드 카드와 차트 카드: 연한 회색 바탕, 노란 띠·테두리.
-     Fault 때는 .node.fault / .chart-card.hl-red 의 빨강이 그대로 이긴다. */
+  /* mn3 (local-only) node card and chart card: light gray background, yellow band and border.
+     On Fault, the red of .node.fault / .chart-card.hl-red still wins. */
   #nd-mn3, #cc-mn3 { background: var(--mn3-bg); }
   #nd-mn3:not(.fault)::before { background: var(--mn3-bar); }
   #cc-mn3.hl { border-color: var(--mn3-bar); border-width: 1.5px; }
@@ -216,7 +216,7 @@ if (!window.Chart) {
   .chart-name { font-size: 22px; font-weight: 600; color: var(--text); }
   .chart-unseen { font-size: 12px; font-weight: 500; color: var(--tr-bar); margin-left: 4px; }
   .chart-tag  { font-size: 12px; color: var(--text3); }
-  /* 오른쪽 위: threshold 아래에 val_loss. */
+  /* Top right: val_loss under threshold. */
   .chart-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
   .live-val   { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 8px; transition: color 0.3s; }
   .live-val.danger { color: #a32d2d; }
@@ -225,7 +225,7 @@ if (!window.Chart) {
   .auroc-chip { font-size: 12px; color: var(--text2); }
   .auroc-chip span { font-weight: 600; color: var(--text); }
 
-  /* ── 상단 고정 배너 ── */
+  /* ── Fixed top banner ── */
   .fault-banner {
     display: none;
     position: fixed; top: 0; left: 0; right: 0; z-index: 200;
@@ -252,7 +252,7 @@ if (!window.Chart) {
   }
   .banner-close:hover { opacity: 1; }
 
-  /* ── mn3 카드 흔들림 + glow ── */
+  /* ── mn3 card shake + glow ── */
   @keyframes shake {
     0%,100% { transform: translateX(0); }
     15%     { transform: translateX(-7px); }
@@ -271,9 +271,9 @@ if (!window.Chart) {
     animation: shake 0.5s ease;
   }
 
-  /* ── 카드 내 alert strip ── */
-  /* 4:3 화면에서는 카드 높이가 고정이라, 경고가 붙으면 mn3 그래프가 그만큼 준다.
-     그래서 경고를 한 줄로 줄인다: [⚠ Fault Detected] [상세 …] [ALERT]. 상세 전체는 마우스를 올리면 보인다. */
+  /* ── In-card alert strip ── */
+  /* On a 4:3 screen card height is fixed, so when a warning appears the mn3 chart shrinks by that much.
+     So the warning is reduced to one line: [⚠ Fault Detected] [details …] [ALERT]. Full details show on hover. */
   .alert-strip {
     display: none; flex-direction: row; align-items: center; gap: 10px;
     margin-top: 6px; padding: 6px 10px;
@@ -293,7 +293,7 @@ if (!window.Chart) {
   }
   .alert-detail { font-size: 12px; color: var(--fd-text); opacity: 0.75; line-height: 1.5; }
 
-  /* ── Summary 모달 ── */
+  /* ── Summary modal ── */
   .summary-overlay {
     display: none; position: fixed; inset: 0; z-index: 300;
     background: rgba(0,0,0,0.50);
@@ -364,9 +364,9 @@ if (!window.Chart) {
   }
   .conn-label { font-size: 14px; font-weight: 500; color: var(--text2); }
 
-  /* 라운드별 평가 로그. 고정 검증셋으로 잰 값이 여기에 쌓인다.
-     배경·테두리·글꼴은 차트 카드와 같은 토큰을 쓴다. 전에는 정의되지
-     않은 --card/--line 을 참조해 배경과 테두리가 통째로 빠졌다. */
+  /* Per-round evaluation log. Values measured on the fixed validation set accumulate here.
+     Background, border and font use the same tokens as the chart cards. Previously it referenced
+     undefined --card/--line, so the background and border were missing entirely. */
   .evallog {
     background: var(--bg); border: 0.5px solid var(--border);
     border-radius: var(--radius-lg); overflow: hidden;
@@ -376,27 +376,27 @@ if (!window.Chart) {
                   gap: 4px 16px; flex-wrap: wrap; }
   .evallog-title { font-size: 22px; font-weight: 600; color: var(--text); }
   .evallog-sub  { font-size: 12px; font-weight: 500; color: var(--text3); }
-  /* 고정폭 글꼴을 쓰지 않는다. 숫자만 등폭으로 두고 열은 그리드로 맞춘다. */
+  /* No monospace font. Only digits are tabular, and columns are aligned with a grid. */
   .evallog-body { max-height: 250px; overflow-y: auto; padding: 6px 0;
                   font-variant-numeric: tabular-nums; }
   .evallog-body .row,
   .evallog-cols {
     display: grid;
-    /* 열 폭 비율 = (열 이름과 값 중 긴 쪽 글자 수) + 6. 글자 길이에 비례하게 나누고,
-       +6 은 열 사이 여백 몫이라 짧은 열도 너무 붙지 않는다.
+    /* Column width ratio = (character count of the longer of column name and value) + 6. Split in proportion to text length;
+       the +6 is for spacing between columns so short columns are not too cramped.
        Round 5 · AUROC 6(0.8060) · Detected / anomaly 18 · False alarm / normal 20 · Mean score (normal vs anomaly) 30 */
     grid-template-columns: minmax(0,11fr) minmax(0,12fr) minmax(0,24fr) minmax(0,26fr) minmax(0,36fr);
     gap: 8px; padding: 5px 16px; white-space: nowrap;
     font-size: 15px; color: var(--text2);
   }
-  /* 종류별 열(bearing·floor·wknob …)은 왼쪽 합계 열과 세로선으로 나눈다. */
+  /* Per-type columns (bearing, floor, wknob …) are separated from the left total column by a vertical line. */
   .evallog-body .row > span, .evallog-cols > span { overflow: hidden; text-overflow: ellipsis; }
-  /* 열 이름 줄. 스크롤 영역 밖에 있어서 항상 위에 보인다. */
+  /* Column name row. It sits outside the scroll area, so it always shows at the top. */
   .evallog-cols {
     padding-top: 7px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border);
     font-size: 12px; font-weight: 600; color: var(--text3); letter-spacing: 0.02em;
   }
-  /* 맨 위가 최신 라운드다. 한 톤 진하게 둔다. */
+  /* The top row is the latest round. Made one shade darker. */
   .evallog-body .row:first-child { color: var(--text); }
   .evallog-body .row b { color: var(--text); font-weight: 600; }
   .evallog-body .empty { padding: 10px 16px; color: var(--text3); font-size: 13px; }
@@ -442,7 +442,7 @@ if (!window.Chart) {
 </style>
 </head>
 <body>
-<!-- 상단 고정 배너 -->
+<!-- Fixed top banner -->
 <div class="fault-banner" id="fault-banner">
   <span class="banner-icon">⚠</span>
   <div class="banner-main">
@@ -452,7 +452,7 @@ if (!window.Chart) {
   <button class="banner-close" id="banner-close" title="Close">✕</button>
 </div>
 
-<!-- Summary 모달 -->
+<!-- Summary modal -->
 <div class="summary-overlay" id="summary-overlay">
   <div class="summary-modal">
     <div class="summary-header">
@@ -472,7 +472,7 @@ if (!window.Chart) {
 
 <div class="root">
 
-  <!-- 헤더 -->
+  <!-- Header -->
   <div class="topbar">
     <div class="logo">
       <div class="logo-title">AMR Floor Anomaly Monitor</div>
@@ -485,7 +485,7 @@ if (!window.Chart) {
     </div>
   </div>
 
-  <!-- 맨 위 줄: 노드 상태 + 라운드 진행 -->
+  <!-- Top row: node status + round progress -->
   <div class="top-row">
     <div class="section-label">Edge nodes</div>
     <div class="nodes-row">
@@ -513,7 +513,7 @@ if (!window.Chart) {
       </div>
     </div>
 
-    <!-- 라운드 진행 -->
+    <!-- Round progress -->
     <div class="progress-wrap">
       <div class="round-info">
         <div>
@@ -527,7 +527,7 @@ if (!window.Chart) {
     </div>
   </div>
 
-  <!-- 차트 -->
+  <!-- Charts -->
   <div class="charts-sec">
     <div class="section-label">Reconstruction error (MSE) — live stream</div>
     <div class="charts-grid">
@@ -578,7 +578,7 @@ if (!window.Chart) {
     </div>
   </div>
 
-  <!-- 글로벌 loss + 라운드별 평가 로그 -->
+  <!-- Global loss + per-round evaluation log -->
   <div class="bottom-grid">
 
     <div class="chart-card" id="cc-loss">
@@ -590,7 +590,7 @@ if (!window.Chart) {
       <div class="loss-plot"><canvas id="c-loss"></canvas></div>
     </div>
 
-    <!-- 라운드별 평가 로그 -->
+    <!-- Per-round evaluation log -->
     <div class="evallog">
       <div class="evallog-head">
         <span class="evallog-title">ROUND EVALUATION — Fixed validation set</span>
@@ -604,7 +604,7 @@ if (!window.Chart) {
 
   </div>
 
-  <!-- 연결 상태 바 -->
+  <!-- Connection status bar -->
   <div class="ctrl">
     <div class="pill-dot conn" id="conn-dot" style="width:8px;height:8px;"></div>
     <span class="conn-label" id="conn-label">Connecting to dashboard server…</span>
@@ -616,7 +616,7 @@ if (!window.Chart) {
 
 <script>
 // ═══════════════════════════════════════════════════
-// Chart 초기화
+// Chart initialization
 // ═══════════════════════════════════════════════════
 const isDark    = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
@@ -630,11 +630,11 @@ function mkNodeChart(id, color) {
     data: {
       labels: [],
       datasets: [
-        {   // 재구성 오차
+        {   // Reconstruction error
           data: [], borderColor: color, backgroundColor: color + '18',
           borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true,
         },
-        {   // threshold 점선
+        {   // Threshold dashed line
           data: [], borderColor: '#e24b4a', borderDash: [4, 4],
           borderWidth: 1.2, pointRadius: 0, fill: false,
         },
@@ -675,9 +675,9 @@ function mkLossChart() {
       scales: {
         x: { ticks: { font: { size: 11 }, color: tickColor }, grid: { display: false } },
         y: {
-          // 값에 맞춰 축을 잡는다. 예전에는 suggestedMax 1.5 로 고정돼 있어
-          // 손실이 0.05~0.15 로 내려오면 바닥에 붙은 직선으로 보였다.
-          // grace 로 위쪽에 15% 여유를 둔다.
+          // Set the axis to fit the values. It used to be fixed at suggestedMax 1.5, so
+          // once the loss dropped to 0.05~0.15 it looked like a flat line stuck to the bottom.
+          // grace leaves 15% headroom at the top.
           beginAtZero: true, grace: '15%',
           ticks: { font: { size: 11 }, color: tickColor, maxTicksLimit: 5 },
           grid: { color: gridColor, drawBorder: false },
@@ -741,7 +741,7 @@ function updateDots(round, maxRounds, faultRound) {
 }
 
 // ═══════════════════════════════════════════════════
-// UI 헬퍼
+// UI helpers
 // ═══════════════════════════════════════════════════
 function toNumber(value, fallback = null) {
   if (value === null || value === undefined || value === '') return fallback;
@@ -794,38 +794,38 @@ const STATE_BADGE = {
 };
 
 // ═══════════════════════════════════════════════════
-// 공유 상태
+// Shared state
 // ═══════════════════════════════════════════════════
 let thresholds  = { mn1: null, mn2: null, mn3: null };
 let faulted     = false;
 let faultRound  = null;
 let mn3Consec   = 0;
-let verdictStartRound = 1;   // 서버가 init 에서 알려준다
-let faultShown  = false;     // 아래쪽 상세를 이미 켰는지
+let verdictStartRound = 1;   // Sent by the server in init
+let faultShown  = false;     // Whether the lower details have already been turned on
 let faultDetail = '';
-let warmupRed   = false;     // 안정화 구간에서 한 번이라도 잡혔는지
+let warmupRed   = false;     // Whether anything was caught even once during the warm-up window
 const K_FAULT   = 3;
 let lossHistory = {};
-let scoresSeen  = false; // 이번 실행의 점수를 한 번이라도 받았는지
-let lastStateEvt = null; // 첫 점수가 올 때 라운드 표시를 다시 그리려고 둔다
-let scoreIdx    = 0;   // 스트리밍 샘플 카운터
-let onsetIdx    = null; // mn3_label=1이 처음 나온 샘플 인덱스
+let scoresSeen  = false; // Whether any score from this run has been received
+let lastStateEvt = null; // Kept to redraw the round display when the first score arrives
+let scoreIdx    = 0;   // Streaming sample counter
+let onsetIdx    = null; // Sample index where mn3_label=1 first appears
 
 // ═══════════════════════════════════════════════════
-// 이벤트 핸들러
+// Event handlers
 // ═══════════════════════════════════════════════════
 /*
- * 안정화 구간(1 ~ verdictStartRound)의 점.
+ * Dot for the warm-up window (1 ~ verdictStartRound).
  *
- * 이상치는 그 구간 뒤에 나오게 해 뒀으므로, 여기서 잡히는 건 모델이 아직
- * 덜 자란 탓이다. 경보로 올리지 않고 점 하나로만 보여 준다.
- *   라운드가 돌면   파랑
- *   그래도 잡히면   빨강
- * 구간이 끝나면 점을 지우고, 그때부터는 평소대로 경보를 띄운다.
+ * Anomalies are set to appear after that window, so anything caught here is because the model
+ * has not matured yet. It is not raised as an alarm, just shown as a single dot.
+ *   While rounds run    blue
+ *   If still caught     red
+ * When the window ends the dot is cleared, and from then on alarms are raised as usual.
  */
 function updateWarmupDot(round) {
-  // verdictStartRound 는 '판정을 내도 되는 첫 라운드'다.
-  // 그 앞(1 ~ start-1)이 안정화 구간이고, 여기서만 점을 띄운다.
+  // verdictStartRound is 'the first round in which verdicts may be issued'.
+  // Before it (1 ~ start-1) is the warm-up window, and the dot is shown only there.
   const dot = document.getElementById('fault-dot-mn3');
   if (!dot) return;
   if (round >= verdictStartRound || round < 1) {
@@ -842,21 +842,21 @@ function updateWarmupDot(round) {
 }
 
 function applyState(evt) {
-  // init / round 이벤트 공통 처리
+  // Common handling for init / round events
   if (evt.verdict_start_round !== undefined) {
     verdictStartRound = toNumber(evt.verdict_start_round, 1);
   }
   lastStateEvt = evt;
   const realRound = toNumber(evt.round, 0);
   if (realRound === 0) scoresSeen = false;
-  // 1라운드 점수는 노드가 그 라운드 창을 다 모아 채점한 뒤에야 온다.
-  // 그 전까지는 라운드를 0 으로 두고 안내 문구만 띄웠다가, 점수가 오면
-  // 라운드 1 표시와 그래프를 같이 띄운다.
+  // Round 1 scores arrive only after the node has collected and scored all of that round's windows.
+  // Until then the round is kept at 0 with only a hint shown, and when scores arrive
+  // the round 1 display and the chart are shown together.
   const waitingR1 = realRound === 1 && !scoresSeen;
   document.body.classList.toggle('waiting-r1', waitingR1);
   const round     = waitingR1 ? 0 : realRound;
-  // 안정화 구간이 끝나면 거기서 잡힌 건 없던 일로 한다. 모델이 덜 자란
-  // 탓이고, 진짜 이상치는 그 뒤에 온다.
+  // When the warm-up window ends, whatever was caught in it is treated as if it never happened. It was because the model
+  // had not matured, and the real anomalies come after.
   if (round >= verdictStartRound && faulted && !faultShown) {
     faulted = false; mn3Consec = 0; onsetIdx = null;
   }
@@ -876,7 +876,7 @@ function applyState(evt) {
 
   updateDots(round, maxRounds, faultRound);
 
-  // 노드 배지
+  // Node badge
   const [badgeClass, badgeText] = STATE_BADGE[state] || ['ok', 'Normal'];
   if (!faulted) {
     setNode('mn1', badgeClass, badgeText === 'Done' ? 'Normal' : badgeText);
@@ -885,7 +885,7 @@ function applyState(evt) {
             badgeClass === 'ok' ? 'Monitoring' : badgeText);
   }
 
-  // pill 상태
+  // Pill state
   if (state === 'FL_COMPLETED') {
     document.getElementById('pill-dot').className  = faulted ? 'pill-dot alert' : 'pill-dot active';
     document.getElementById('pill-label').textContent = faulted ? 'Fault detected' : 'Complete';
@@ -894,11 +894,11 @@ function applyState(evt) {
     document.getElementById('pill-label').textContent = STATE_LABEL[state];
   }
 
-  // 노드별 메트릭 + 글로벌 loss 계산
+  // Per-node metrics + global loss computation
   const nodeList = Object.keys(nodes);
-  // 글로벌 loss 는 FedAvg 에 들어가는 노드(mn1·mn2)가 '같은 라운드'를 다 올렸을 때,
-  // 그 업로드의 라운드 번호로 찍는다. 전에는 화면의 현재 라운드로 찍어서,
-  // R1 결과를 읽은 시점에 이미 R2 가 시작돼 있으면 R1 값이 R2 자리에 들어갔다.
+  // Global loss is plotted when the nodes that go into FedAvg (mn1, mn2) have all uploaded 'the same round',
+  // under that upload's round number. Previously it was plotted at the screen's current round, so
+  // if R2 had already started by the time R1's results were read, R1's value landed in R2's slot.
   const FEDAVG_NODES = ['mn1', 'mn2'];
   const upRounds = FEDAVG_NODES.map(n => nodes[n] ? toNumber(nodes[n].round, 0) : 0);
   const upRound  = upRounds.every(r => r > 0 && r === upRounds[0]) ? upRounds[0] : 0;
@@ -918,7 +918,7 @@ function applyState(evt) {
       if (au) au.textContent = fmt(d.val_auroc, 3);
       if (vl) vl.textContent = fmt(d.val_loss, 4);
 
-      // MN-CSE 핸드오버(MEC033)로 다른 CSE 에 붙어 있으면 spare 표시
+      // Show spare if attached to a different CSE due to an MN-CSE handover (MEC033)
       const ct = document.getElementById('cse-' + node);
       if (ct) {
         const h = toNumber(d.cse_handovers, 0);
@@ -938,7 +938,7 @@ function applyState(evt) {
     }
   }
 
-  // threshold 업데이트가 이벤트에 포함돼 있으면 반영
+  // Apply the threshold update if the event includes one
   if (evt.thresholds) applyThresholds(evt.thresholds);
 }
 
@@ -969,16 +969,16 @@ function handleScore(evt) {
     setLV(node, score.toFixed(4), score > thr);
   });
 
-  // mn3 onset 추적
+  // Track mn3 onset
   if (onsetIdx === null && evt['mn3_label'] === 1) {
     onsetIdx = scoreIdx;
   }
 
-  // mn3 fault 감지 (K회 연속 threshold 초과)
+  // Detect mn3 fault (K consecutive threshold exceedances)
   //
-  // 판정 시작 라운드 전에는 아무 표시도 하지 않는다. 그때의 임계값은
-  // 거의 학습되지 않은 모델로 잡은 것이라 화면에 띄울 근거가 없다.
-  // MN 이 CSE 에 판정을 안 올리는 기준과 같은 값을 쓴다.
+  // Nothing is shown before the verdict start round. The threshold at that point
+  // was set with a barely trained model, so there is no basis for showing it.
+  // Uses the same value as the criterion by which the MN does not upload verdicts to the CSE.
   const curRound = toNumber(evt.round, 0);
   if (!faulted && evt.mn3 !== undefined) {
     const score = toNumber(evt.mn3, null);
@@ -987,7 +987,7 @@ function handleScore(evt) {
       mn3Consec++;
       if (mn3Consec >= K_FAULT) {
         if (curRound < verdictStartRound) {
-          // 안정화 구간. 점만 빨갛게 하고 경보는 올리지 않는다.
+          // Warm-up window. Only the dot turns red; no alarm is raised.
           warmupRed = true;
           updateWarmupDot(curRound);
           mn3Consec = 0;
@@ -1025,14 +1025,14 @@ function triggerFault(detectSampleIdx) {
   faulted    = true;
   faultRound = parseInt(document.getElementById('rnum').textContent) || null;
 
-  // 탐지 지연 계산
+  // Compute detection delay
   const delay    = (onsetIdx !== null && detectSampleIdx !== null)
                    ? detectSampleIdx - onsetIdx : null;
   const aurocEl  = document.getElementById('au-mn3');
   const auroc    = aurocEl ? aurocEl.textContent : '—';
   const thrVal   = fmt(thresholds.mn3, 4);
 
-  // 카드 내 상세
+  // In-card details
   const detail = [
     onsetIdx    !== null ? `Onset: sample #${onsetIdx}` : null,
     detectSampleIdx !== null ? `Detection: sample #${detectSampleIdx}` : null,
@@ -1045,7 +1045,7 @@ function triggerFault(detectSampleIdx) {
   showFaultDetail();
 }
 
-// 차트 카드 쪽 상세. 판정 시작 라운드가 되면 켠다.
+// Details on the chart card side. Turned on when the verdict start round is reached.
 function showFaultDetail() {
   if (faultShown || !faulted) return;
   faultShown = true;
@@ -1068,8 +1068,8 @@ document.getElementById('summary-close').addEventListener('click', () => {
   document.getElementById('summary-overlay').classList.remove('show');
 });
 
-// 고정 검증셋(valset) 평가 결과. 라이브 스트림과 달리 라벨이 있어서
-// AUROC·탐지·오경보를 말할 수 있는 유일한 수치다.
+// Fixed validation set (valset) evaluation results. Unlike the live stream it has labels, so
+// it is the only figure that can speak to AUROC, detections and false alarms.
 function renderGlobalEval(ev) {
   const box = document.getElementById('summary-global');
   if (!ev) { box.innerHTML = ''; box.style.display = 'none'; return; }
@@ -1172,8 +1172,8 @@ function handleSummary(evt) {
         <span class="summary-val">${fmt(meanScore, 2)} / ${fmt(maxScore, 2)}</span>
       </div>`;
 
-    // 라벨이 붙은 스트림(PKL 재생)일 때만 나오는 값들.
-    // 라이브 스트림은 라벨이 없어서 서버가 아예 안 싣는다.
+    // Values that appear only for a labeled stream (PKL replay).
+    // The live stream has no labels, so the server does not include them at all.
     if (d.labeled) {
       const auroc = toNumber(d.auroc, null);
       const detected = d.detect_idx !== null && d.detect_idx !== undefined;
@@ -1215,7 +1215,7 @@ function handleSummary(evt) {
 }
 
 // ═══════════════════════════════════════════════════
-// SSE 연결
+// SSE connection
 // ═══════════════════════════════════════════════════
 let es = null;
 let reconnectTimer = null;
@@ -1243,14 +1243,14 @@ function connect() {
     try { evt = JSON.parse(e.data); } catch { return; }
 
     if (evt.type === 'init' || evt.type === 'round') {
-      // 접속 시 서버가 그동안의 라운드 평가를 같이 보낸다. 오래된 것부터
-      // 꽂으므로 마지막(최신)이 맨 위에 남는다. applyState 보다 먼저 둬서
-      // 그쪽이 실패해도 로그는 뜨게 한다.
+      // On connect, the server also sends the round evaluations so far. They are inserted oldest first,
+      // so the last (newest) stays on top. Placed before applyState so the log
+      // still shows even if that fails.
       (evt.evals || []).forEach(handleEval);
       applyState(evt);
     } else if (evt.type === 'threshold') {
       applyThresholds(evt.thresholds || {});
-      // 새 모델 로드 시 스트리밍 카운터·탐지 상태 리셋
+      // Reset the streaming counter and detection state when a new model loads
       scoreIdx  = 0;
       onsetIdx  = null;
       mn3Consec = 0;
@@ -1274,10 +1274,10 @@ function connect() {
 }
 
 // ───────────────────────────────────────────────────
-// 라운드별 평가 로그
+// Per-round evaluation log
 //
-// 매 라운드 같은 검증셋·같은 자로 잰 값이라 라운드 간 비교가 된다.
-// 라운드에 받은 데이터로 계산하던 기존 val_auroc 와는 다르다.
+// Measured every round on the same validation set with the same ruler, so rounds can be compared.
+// Different from the old val_auroc, which was computed on the data received that round.
 // ───────────────────────────────────────────────────
 const evalSeen = new Set();
 
@@ -1297,7 +1297,7 @@ function handleEval(e) {
     `<span><b>${e.detected}</b> / ${e.n_anomaly}</span>` +
     `<span><b>${e.false_alarms}</b> / ${e.n_normal}</span>` +
     `<span>${Number(e.mean_normal).toFixed(3)} vs ${Number(e.mean_anomaly).toFixed(3)}</span>`;
-  // 최신이 위로 오게 맨 앞에 꽂는다.
+  // Insert at the front so the newest is on top.
   body.insertBefore(row, body.firstChild);
 
   document.getElementById('evallog-meta').textContent =
@@ -1321,19 +1321,19 @@ document.getElementById('btn-reconnect').addEventListener('click', () => {
   const _d = document.getElementById('fault-dot-mn3');
   if (_d) { _d.classList.remove('show', 'calm'); _d.title = ''; }
 
-  // 평가 로그도 비운다. 다시 접속하면 서버가 쌓아 둔 걸 보내 준다.
+  // Clear the evaluation log too. On reconnect the server sends what it has accumulated.
   evalSeen.clear();
   document.getElementById('evallog-body').innerHTML = '';
   document.getElementById('evallog-meta').textContent = 'Waiting';
 
-  // 차트 초기화
+  // Chart initialization
   ['mn1', 'mn2', 'mn3', 'loss'].forEach(k => {
     C[k].data.labels = [];
     C[k].data.datasets.forEach(d => d.data = []);
     C[k].update('none');
   });
 
-  // UI 초기화
+  // UI initialization
   document.getElementById('rnum').textContent = '0';
   document.getElementById('rfill').style.width      = '0%';
   document.getElementById('rfill').style.background = 'var(--tr-bar)';
@@ -1350,7 +1350,7 @@ document.getElementById('btn-reconnect').addEventListener('click', () => {
   connect();
 });
 
-// 시작
+// Start
 connect();
 </script>
 </body>

@@ -1,51 +1,51 @@
 """
-FL-Dashboard/dashboard_server.py — FL 대시보드 백엔드
+FL-Dashboard/dashboard_server.py — FL dashboard backend
 
-백그라운드 스레드:
+Background threads:
 
 1. fl-poll
-   - oneM2M 상태 폴링
-   - 새로운 글로벌 모델 감지
-   - validation threshold 재계산
-   - test stream reconstruction score 재계산
+   - oneM2M status polling
+   - detect new global models
+   - recompute the validation threshold
+   - recompute the test stream reconstruction score
 
 2. score-stream
-   - 테스트 샘플의 재구성 오차를 SSE로 전송
-   - score_idx는 글로벌 모델이 갱신돼도 유지
-   - MN3는 설정된 라운드 전에는 정상 데이터만 표시
-   - 설정된 라운드부터 이상 데이터만 표시
+   - send test sample reconstruction errors via SSE
+   - score_idx is preserved even when the global model updates
+   - MN3 shows only normal data before the configured round
+   - shows only anomalous data from the configured round
 
-SSE 이벤트:
+SSE events:
 
   init
-    접속 직후 현재 상태
+    current state right after connecting
 
   round
-    FL 상태 및 라운드 변경
+    FL state and round changes
 
   threshold
-    글로벌 모델에 따른 threshold 재계산
+    threshold recomputed for the global model
 
   score
-    노드별 reconstruction error
+    per-node reconstruction error
 
   summary
-    최종 평가 결과
+    final evaluation result
 
-읽는 곳:
+Reads from:
 
-  중앙 IN-CSE    라운드 상태(cnt-fl-control), 사업장별 요약(드롭박스의 손실·샘플 수),
-                 글로벌 모델(cnt-global-model), 라운드별 평가(cnt-fl-inference)
-  사업장 MN-CSE  윈도우별 이상 점수(TRAINING-AE-i/cnt-window-scores).
-                 사업장 탐지 결과라 IN-CSE 로 올라가지 않으므로 사업장 쪽에서 읽는다.
+  Central IN-CSE    round state (cnt-fl-control), per-site summary (loss and sample count from the drop box),
+                 global model (cnt-global-model), per-round evaluation (cnt-fl-inference)
+  Site MN-CSE       per-window anomaly scores (TRAINING-AE-i/cnt-window-scores).
+                 These are site detection results and are not uploaded to the IN-CSE, so they are read on the site side.
 
-그래서 이 대시보드는 사업장 MN-CSE 에 닿는 호스트(지금 배치에서는 Edge VM)에서 띄운다.
+So this dashboard runs on a host that can reach the site MN-CSEs (the Edge VM in the current deployment).
 
-실행:
+Run:
 
   bash FL-Dashboard/run_dashboard.sh
 
-주소:
+Address:
 
   http://localhost:7000
 """
@@ -72,7 +72,7 @@ from model_cvae import CVAE1D
 
 
 # ════════════════════════════════════════════════════════
-# 기본 설정
+# Defaults
 # ════════════════════════════════════════════════════════
 
 PORT = int(
@@ -87,9 +87,9 @@ POLL_INTERVAL = float(
         "3.0",
     )
 )
-# 라운드 상태(cnt-fl-control)만 따로, 더 자주 본다. 노드 업로드(가중치가
-# 실린 큰 CIN)와 모델 재채점까지 도는 폴링 한 바퀴는 수 초가 걸려서,
-# 거기에 묶여 있으면 IN-AE 가 다음 라운드를 열어도 화면이 늦게 따라왔다.
+# Watch only the round state (cnt-fl-control) separately and more often. One full polling cycle that includes
+# node uploads (large CINs carrying weights) and model re-scoring takes several seconds,
+# so when tied to it the screen lagged behind even after the IN-AE opened the next round.
 CONTROL_POLL_INTERVAL = float(
     os.getenv(
         "FL_DASHBOARD_CONTROL_INTERVAL",
@@ -130,7 +130,7 @@ ANOMALY_START_ROUND = int(
         7,
     )
 )
-# 화면 파일(fl_dashboard.html)과 vendor/ 는 이 파일과 같은 폴더에 둔다.
+# The screen file (fl_dashboard.html) and vendor/ go in the same folder as this file.
 PROJECT_ROOT = Path(
     __file__
 ).resolve().parent
@@ -157,7 +157,7 @@ app = Flask(
 
 
 # ════════════════════════════════════════════════════════
-# SSE 구독자
+# SSE subscribers
 # ════════════════════════════════════════════════════════
 
 _subscribers: list[queue.Queue] = []
@@ -165,7 +165,7 @@ _subscribers_lock = threading.Lock()
 
 
 # ════════════════════════════════════════════════════════
-# 공유 상태
+# Shared state
 # ════════════════════════════════════════════════════════
 
 _shared: dict = {
@@ -185,45 +185,45 @@ _shared: dict = {
     # node → test labels
     "labels": {},
 
-    # 글로벌 모델이 변경돼도 유지되는 스트림 위치
+    # Stream position preserved even when the global model changes
     "score_idx": 0,
 
-    # 현재 Dashboard가 반영한 global model round
+    # Global model round currently reflected by the dashboard
     "model_round": -1,
 
-    # CSE 드롭박스 점수를 반영한 FL round.
-    # 글로벌 모델 없이도 라운드마다 패널을 갱신하기 위한 표식이다.
+    # FL round whose CSE drop-box scores have been reflected.
+    # A marker for updating panels every round even without a global model.
     "scores_round": -1,
 
     "summary_sent": False,
 
     "anomaly_start_round": ANOMALY_START_ROUND,
 
-    # 이 라운드 전에는 화면에도 이상 표시를 안 한다.
-    # MN 쪽 판정(CIN)을 막는 기준과 같은 값을 쓴다. 둘이 어긋나면
-    # CSE 에는 아무것도 없는데 화면만 빨개지는 일이 생긴다.
+    # Before this round, no anomaly is shown on screen either.
+    # Uses the same value as the criterion that blocks verdicts (CINs) on the MN side. If the two disagree,
+    # the screen turns red while there is nothing on the CSE.
     "verdict_start_round": int(
         getattr(config, "VERDICT_START_ROUND", 1)
     ),
 
-    # 라운드별 고정 검증셋 평가 결과. 나중에 접속한 클라이언트에도
-    # 지난 라운드를 보내기 위해 쌓아 둔다.
+    # Per-round fixed validation set evaluation results. Kept so that clients connecting later
+    # also receive past rounds.
     "evals": [],
 }
 
-# 평가 로그를 몇 라운드까지 들고 있을지. 라운드 수보다 넉넉하게 둔다.
+# How many rounds of evaluation log to hold. Set comfortably above the round count.
 EVAL_HISTORY_MAX = 60
 
 _shared_lock = threading.Lock()
 
 
 # ════════════════════════════════════════════════════════
-# SSE 헬퍼
+# SSE helpers
 # ════════════════════════════════════════════════════════
 
 def _broadcast(event: dict) -> None:
     """
-    현재 연결된 모든 SSE 클라이언트에 이벤트를 전송한다.
+    Send an event to every currently connected SSE client.
     """
 
     message = (
@@ -261,11 +261,11 @@ def _broadcast(event: dict) -> None:
 @app.route("/vendor/<path:name>")
 def vendor(name: str):
     """
-    외부 CDN 대신 저장소 안의 라이브러리를 내준다.
+    Serve the library from inside the repo instead of an external CDN.
 
-    Chart.js 를 cdnjs 에서 받게 두면 <head> 에서 파싱이 막혀, 캠퍼스 밖에서
-    열 때 그게 다 받아질 때까지 화면이 비어 있다. 망이 막혀 있으면 타임아웃
-    까지 기다린다. 시연 중에 바깥 망에 기대지 않도록 여기서 내준다.
+    Loading Chart.js from cdnjs blocks parsing in <head>, so when opened from off campus
+    the screen stays blank until it finishes downloading. If the network is blocked it waits
+    until the timeout. It is served from here so the demo does not depend on the outside network.
     """
     return send_from_directory(PROJECT_ROOT / "vendor", name,
                                max_age=86400)
@@ -343,7 +343,7 @@ def stream():
             subscriber,
         )
 
-    # 접속 직후 현재 상태 전송
+    # Send the current state right after connecting
     with _shared_lock:
         snapshot = {
             "type": "init",
@@ -353,7 +353,7 @@ def stream():
             "nodes": _shared["nodes"],
             "thresholds": _shared["thresholds"],
             "model_round": _shared["model_round"],
-            # 접속 전에 끝난 라운드의 평가도 같이 보낸다.
+            # Also send evaluations of rounds that finished before connecting.
             "evals": list(_shared["evals"]),
         }
 
@@ -400,36 +400,36 @@ def stream():
 
 
 # ════════════════════════════════════════════════════════
-# 현재 데모 실행 시작 시각
+# Start time of the current demo run
 # ════════════════════════════════════════════════════════
 
 # ════════════════════════════════════════════════════════
-# 최신 글로벌 모델 탐색
+# Find the latest global model
 # ════════════════════════════════════════════════════════
 
 def _find_latest_model(
     max_round: int | None = None,
 ) -> tuple[int, Path | None]:
     """
-    IN-CSE 의 cnt-global-model 에서 가장 최근 글로벌 모델을 받는다.
-    현재 FL round 보다 미래 라운드인 모델은 제외한다.
-    반환: (라운드, state_dict) 또는 (-1, None)
+    Get the most recent global model from cnt-global-model on the IN-CSE.
+    Models from rounds later than the current FL round are excluded.
+    Returns: (round, state_dict) or (-1, None)
     """
 
-    # 글로벌 모델은 IN-AE 가 con 에 실어 cnt-global-model 로 배포한다.
-    # 대시보드는 그것을 받는다. IN-AE 와 다른 호스트에서 돌기 때문에
-    # IN-AE 의 로컬 디스크(/tmp/fl_models/global)는 보지 않는다.
+    # The IN-AE distributes the global model in con via cnt-global-model.
+    # The dashboard receives it from there. It runs on a different host from the IN-AE,
+    # so it does not look at the IN-AE's local disk (/tmp/fl_models/global).
     return _latest_global_from_cse(max_round)
 
 
 def _latest_global_from_cse(max_round: int | None = None):
     """
-    중앙 CSE 의 cnt-global-model 에서 최신 글로벌 모델을 가져온다.
+    Fetch the latest global model from cnt-global-model on the central CSE.
 
-    반환: (라운드, state_dict) 또는 (-1, None)
+    Returns: (round, state_dict) or (-1, None)
 
-    con 에 가중치가 fp16+gzip+base64 로 실려 있다. 조각으로 나뉘어 있으면
-    model_codec 이 fetch_chunk 로 나머지를 받아 온다.
+    con carries the weights as fp16+gzip+base64. If split into chunks,
+    model_codec fetches the rest via fetch_chunk.
     """
     path = om2m.in_path(f"{config.IN_AE_NAME}/cnt-global-model")
     try:
@@ -467,7 +467,7 @@ def _latest_global_from_cse(max_round: int | None = None):
 
 
 # ════════════════════════════════════════════════════════
-# 모델 로드
+# Load the model
 # ════════════════════════════════════════════════════════
 
 def _load_model(
@@ -475,8 +475,8 @@ def _load_model(
 ) -> CVAE1D:
     ae_config = config.AE_CFG
 
-    # cond_dim 을 빠뜨리면 CVAE1D 기본값(11)로 만들어진다. 실제 설정은 8이라
-    # encoder.0.weight 의 입력 채널이 46 대신 49 가 되고 로드가 실패한다.
+    # Omitting cond_dim builds it with the CVAE1D default (11). The actual setting is 8, so
+    # encoder.0.weight gets 49 input channels instead of 46 and loading fails.
     model = CVAE1D(
         n_channels=ae_config.n_channels,
         cond_dim=ae_config.cond_dim,
@@ -484,7 +484,7 @@ def _load_model(
         seq_len=ae_config.seq_len,
     )
 
-    # CSE 에서 받아 온 경우에는 이미 state_dict 다. 파일 경로면 읽는다.
+    # If it came from the CSE it is already a state_dict. If it is a file path, read it.
     state_dict = (
         model_path
         if isinstance(model_path, dict)
@@ -501,7 +501,7 @@ def _load_model(
 
 
 # ════════════════════════════════════════════════════════
-# Reconstruction score 계산
+# Reconstruction score computation
 # ════════════════════════════════════════════════════════
 
 def _compute_scores(
@@ -563,7 +563,7 @@ def _compute_scores(
 
 
 # ════════════════════════════════════════════════════════
-# Threshold 계산
+# Threshold computation
 # ════════════════════════════════════════════════════════
 
 def _compute_threshold(
@@ -590,7 +590,7 @@ def _compute_threshold(
 
 
 # ════════════════════════════════════════════════════════
-# 글로벌 모델 변경 시 score 재계산
+# Recompute scores when the global model changes
 # ════════════════════════════════════════════════════════
 
 _mn_lock = threading.Lock()
@@ -598,10 +598,10 @@ _mn_lock = threading.Lock()
 
 def _mn_endpoint_of(node: str):
     """
-    사업장 앱이 지금 붙어 있는 MN-CSE (base, cse).
+    MN-CSE the site app is currently attached to (base, cse).
 
-    드롭박스 업로드의 mn_base / mn_cse 를 따른다. CSE 핸드오버(시나리오 6)
-    뒤에도 사업장 앱이 옮겨 간 CSE 를 읽는다. 아직 업로드가 없으면 규칙 주소.
+    Follows mn_base / mn_cse from the drop-box uploads. After a CSE handover (scenario 6)
+    it still reads the CSE the site app moved to. If there is no upload yet, the rule-based address.
     """
     with _shared_lock:
         data = dict(_shared["nodes"].get(node) or {})
@@ -612,21 +612,21 @@ def _mn_endpoint_of(node: str):
 
 def _node_scores_from_cse(node: str):
     """
-    사업장 MN-CSE 에서 노드의 윈도우별 점수를 읽는다.
+    Read a node's per-window scores from the site MN-CSE.
 
-    사업장 앱이 라운드마다 TRAINING-AE-i/cnt-window-scores 에 window_scores /
-    window_labels / threshold 를 쓴다. 사업장 탐지 결과라 IN-CSE 로는 올라가지
-    않는다. CSE 모드에는 PKL 파일이 없으므로 이쪽을 쓴다.
+    Each round the site app writes window_scores / window_labels / threshold to
+    TRAINING-AE-i/cnt-window-scores. These are site detection results and are not uploaded
+    to the IN-CSE. In CSE mode there are no PKL files, so this is used.
 
-    반환: (scores, labels, threshold) 또는 None
+    Returns: (scores, labels, threshold) or None
     """
     base, cse = _mn_endpoint_of(node)
     path = (f"{cse}/{config.training_ae_name(node)}"
             f"/{config.WINDOW_SCORES_CNT}")
 
     try:
-        # om2m 의 사업장 쪽 연결은 하나라, 사업장을 바꿔 가며 읽을 때 잠근다.
-        # 다른 스레드는 중앙(@in/) 경로만 쓰므로 영향이 없다.
+        # om2m has a single site-side connection, so lock while switching sites to read.
+        # Other threads use only central (@in/) paths, so they are unaffected.
         with _mn_lock:
             om2m.set_endpoint(base, cse)
             content = _parse_content_instance(
@@ -639,9 +639,9 @@ def _node_scores_from_cse(node: str):
     if not content:
         return None
 
-    # 컨테이너는 실행마다 비우지 않는다. 이 대시보드가 뜨기 전에 올라온 CIN 은
-    # 지난 실행의 마지막 라운드 점수라, 그걸 쓰면 라운드 0 에서 그래프가 먼저
-    # 그려졌다.
+    # Containers are not cleared between runs. CINs uploaded before this dashboard started
+    # are the previous run's last-round scores, and using them made the chart draw early
+    # at round 0.
     if _is_stale_payload(content):
         return None
 
@@ -655,7 +655,7 @@ def _node_scores_from_cse(node: str):
     if raw_labels is not None and len(raw_labels) == len(scores):
         labels = np.asarray(raw_labels, dtype=np.int64)
     else:
-        # 이상 주입을 끈 실험에서는 라벨이 전부 정상이다.
+        # In experiments with anomaly injection off, all labels are normal.
         labels = np.zeros(len(scores), dtype=np.int64)
 
     threshold = content.get("threshold")
@@ -669,13 +669,13 @@ def _node_scores_from_cse(node: str):
 
 def _reload_scores_if_needed() -> None:
     """
-    새로운 글로벌 모델이 생성되면:
+    When a new global model is created:
 
-    1. validation threshold 재계산
-    2. test stream reconstruction score 재계산
-    3. 기존 score_idx 유지
+    1. recompute the validation threshold
+    2. recompute the test stream reconstruction score
+    3. keep the existing score_idx
 
-    기존 코드처럼 score_idx를 0으로 되돌리지 않는다.
+    score_idx is not reset to 0 as in the old code.
     """
 
     with _shared_lock:
@@ -692,7 +692,7 @@ def _reload_scores_if_needed() -> None:
 
     with _shared_lock:
         current_scores_round = _shared["scores_round"]
-        # 노드별로 마지막에 올린 라운드. 바뀌면 새 점수가 올라온 것이다.
+        # Last round uploaded per node. If it changes, new scores have arrived.
         uploads = tuple(sorted(
             (node, data.get("round", 0))
             for node, data in _shared["nodes"].items()
@@ -703,9 +703,9 @@ def _reload_scores_if_needed() -> None:
         model_round > current_model_round
         and model_path is not None
     )
-    # 글로벌 모델이 아직 없어도(Round 1) MN-AE 가 올린 점수는 있다.
-    # 라운드 번호만 보면, 라운드 N 의 점수는 노드가 다 올린 뒤에도 N+1 이
-    # 시작될 때까지 안 읽혀 그래프가 한 라운드씩 늦었다. 업로드가 바뀌어도 읽는다.
+    # Even without a global model yet (Round 1), there are scores uploaded by the MN-AE.
+    # Looking only at the round number, round N's scores were not read until N+1 started even after every node
+    # had uploaded, so the chart lagged by a round. Read whenever the uploads change too.
     has_new_round = (current_fl_round > current_scores_round
                      or uploads != last_uploads)
 
@@ -750,9 +750,9 @@ def _reload_scores_if_needed() -> None:
             / f"{node}.pkl"
         )
 
-        # PKL 로 직접 채점하려면 글로벌 모델이 있어야 한다.
+        # Scoring directly from PKL requires a global model.
         if not pkl_path.exists() or model is None:
-            # CSE 모드. 사업장 앱이 MN-CSE 에 쓴 점수를 그대로 쓴다.
+            # CSE mode. Use the scores the site app wrote to the MN-CSE as is.
             from_cse = _node_scores_from_cse(node)
 
             if from_cse is None:
@@ -765,8 +765,8 @@ def _reload_scores_if_needed() -> None:
             cse_scores, cse_labels, cse_threshold = from_cse
 
             if cse_threshold is None:
-                # 임계값을 못 받았으면 받은 점수로 임시 산출한다.
-                # 모델이 수렴하기 전 초반 라운드에서 생길 수 있다.
+                # If no threshold was received, compute a provisional one from the received scores.
+                # Can happen in early rounds before the model converges.
                 cse_threshold = float(
                     cse_scores.mean()
                     + config.THRESHOLD_N_SIGMA * cse_scores.std()
@@ -851,21 +851,21 @@ def _reload_scores_if_needed() -> None:
         )
 
     if not new_scores:
-        # 아무 노드도 점수를 못 줬다. 기존 패널을 지우지 말고 그대로 두고,
-        # scores_round 도 올리지 않아 다음 tick 에 다시 시도한다.
+        # No node provided scores. Do not clear the existing panels; leave them,
+        # and do not bump scores_round either, so the next tick retries.
         #
-        # 다만 모델을 읽은 사실은 여기서 기록해야 한다. 안 하면
-        # has_new_model 이 계속 참이라, 점수가 빈 동안 매 tick 마다
-        # 213KB 글로벌 모델을 CSE 에서 내려받아 gzip+base64 를 풀고
-        # torch 로 적재한다. 그 CPU 때문에 Flask 가 요청을 못 받아
-        # 대시보드가 "Connecting..." 에서 멈춘다.
+        # But the fact that the model was read must be recorded here. Otherwise
+        # has_new_model stays true, and every tick while scores are empty
+        # downloads the 213 KB global model from the CSE, unpacks gzip+base64 and
+        # loads it with torch. That CPU load keeps Flask from serving requests and
+        # the dashboard hangs at "Connecting...".
         if model is not None:
             with _shared_lock:
                 _shared["model_round"] = model_round
 
-        # 이번 실행 업로드가 아직 없는 동안(라운드 0, 1라운드 학습 중) 매 tick
-        # 다시 읽지 않게, 본 상태를 기록해 둔다. 노드가 올리면 uploads 가
-        # 바뀌어 그때 다시 읽는다.
+        # While there are no uploads from this run yet (round 0, training round 1), record what was seen
+        # so it is not re-read every tick. When a node uploads, uploads changes
+        # and it is read again then.
         with _shared_lock:
             _shared["scores_round"] = current_fl_round
             _shared["scores_uploads"] = uploads
@@ -877,8 +877,8 @@ def _reload_scores_if_needed() -> None:
         return
 
     with _shared_lock:
-        # 핵심 수정:
-        # 글로벌 모델이 바뀌더라도 기존 스트림 진행 위치를 유지한다.
+        # Key fix:
+        # Keep the existing stream position even when the global model changes.
         current_score_idx = _shared[
             "score_idx"
         ]
@@ -918,7 +918,7 @@ def _reload_scores_if_needed() -> None:
 
 
 # ════════════════════════════════════════════════════════
-# 최종 Summary 계산
+# Final summary computation
 # ════════════════════════════════════════════════════════
 
 def _compute_summary() -> dict | None:
@@ -952,9 +952,9 @@ def _compute_summary() -> dict | None:
     ):
         return None
 
-    # 라이브 스트림에는 라벨이 없다. 그래서 AUROC·오경보 같은 수치는
-    # 고정 검증셋(valset) 평가 결과에서 가져온다. 라운드가 가장 큰 것을
-    # 쓰고, 없으면 None 으로 두고 화면에서 해당 블록을 감춘다.
+    # The live stream has no labels. So figures like AUROC and false alarms
+    # come from the fixed validation set (valset) evaluation results. The one with the highest round is
+    # used; if none, it is left as None and the corresponding block is hidden on screen.
     global_eval = None
     if evals:
         def _round_of(e: dict) -> int:
@@ -1069,8 +1069,8 @@ def _compute_summary() -> dict | None:
             else:
                 false_alarm_consecutive = 0
 
-        # K 회 연속 초과가 '시작된' 지점의 개수. verdict.py 와 같은 규칙이라
-        # 실제로 CSE 에 올라간 판정 건수와 맞는다.
+        # Number of points where K consecutive exceedances 'start'. Same rule as verdict.py,
+        # so it matches the number of verdicts actually uploaded to the CSE.
         detections = 0
         run = 0
         for score in node_scores:
@@ -1096,7 +1096,7 @@ def _compute_summary() -> dict | None:
             ),
             "labeled": labeled,
 
-            # 라벨이 없어도 말할 수 있는 것들
+            # Things that can be said without labels
             "n_windows": int(
                 len(node_scores)
             ),
@@ -1120,9 +1120,9 @@ def _compute_summary() -> dict | None:
             ),
         }
 
-        # 라벨이 있을 때만 의미가 있는 것들. 라이브 스트림은 전부 정상
-        # 라벨이라 AUROC 가 0 으로 찍혔고, 그 0 을 화면에 띄우면 거짓말이
-        # 된다. 아예 싣지 않는다.
+        # Things that only make sense with labels. The live stream has all-normal
+        # labels, so AUROC printed as 0, and showing that 0 on screen would be
+        # a lie. It is not included at all.
         if labeled:
             entry.update({
                 "auroc": round(
@@ -1151,7 +1151,7 @@ def _compute_summary() -> dict | None:
 
 
 # ════════════════════════════════════════════════════════
-# 표시할 테스트 스트림 인덱스 선택
+# Pick test stream indices to show
 # ════════════════════════════════════════════════════════
 
 def _select_stream_index(
@@ -1161,16 +1161,16 @@ def _select_stream_index(
     fl_round: int,
 ) -> int | None:
     """
-    노드와 현재 FL round에 따라 표시할 샘플 인덱스를 선택한다.
-    기본 동작:
+    Pick the sample indices to show based on the node and current FL round.
+    Default behavior:
       MN1:
-        정상 샘플 반복
+        repeat normal samples
       MN2:
-        정상 샘플 반복
+        repeat normal samples
       MN3 Round 1~6:
-        정상 샘플 반복
-      MN3 Round 7 이상:
-        이상 샘플 반복
+        repeat normal samples
+      MN3 Round 7 or later:
+        repeat anomalous samples
     """
 
     if len(node_labels) == 0:
@@ -1188,7 +1188,7 @@ def _select_stream_index(
         node_labels == target_label
     )
 
-    # 해당 라벨이 없다면 전체 데이터 사용
+    # If there is no such label, use all data
     if len(candidate_indices) == 0:
         candidate_indices = np.arange(
             len(node_labels),
@@ -1214,8 +1214,8 @@ def _select_stream_index(
 
 def _score_thread() -> None:
     """
-    테스트 reconstruction score를 주기적으로 전송한다.
-    score_idx는 글로벌 모델이 변경돼도 초기화하지 않는다.
+    Periodically send test reconstruction scores.
+    score_idx is not reset even when the global model changes.
     """
 
     while True:
@@ -1291,8 +1291,8 @@ def _score_thread() -> None:
                 )
             )
 
-        # type, round, anomaly_active 이외에
-        # 실제 노드 데이터가 하나 이상 들어간 경우만 전송
+        # Besides type, round and anomaly_active,
+        # send only if at least one node's actual data is included
         if len(event) > 3:
             with _shared_lock:
                 _shared["score_idx"] = (
@@ -1304,7 +1304,7 @@ def _score_thread() -> None:
 
 
 # ════════════════════════════════════════════════════════
-# oneM2M CIN 파싱
+# oneM2M CIN parsing
 # ════════════════════════════════════════════════════════
 
 def _parse_content_instance(
@@ -1346,7 +1346,7 @@ def _parse_content_instance(
 
 
 # ════════════════════════════════════════════════════════
-# FL 상태 polling thread
+# FL state polling thread
 # ════════════════════════════════════════════════════════
 
 DASHBOARD_STARTED_AT = time.time()
@@ -1356,8 +1356,8 @@ _stale_control_warned = False
 
 def _is_stale_payload(content: dict) -> bool:
     """
-    지난 실행이 남긴 CIN 인지 본다. _is_stale_control 과 기준은 같고
-    경고를 찍지 않는다. 평가 결과처럼 조용히 걸러야 하는 곳에서 쓴다.
+    Check whether a CIN is left over from a previous run. Same criterion as _is_stale_control
+    but without printing a warning. Used where it must be filtered quietly, like evaluation results.
     """
     if not IGNORE_STALE_CONTROL:
         return False
@@ -1372,17 +1372,17 @@ def _is_stale_payload(content: dict) -> bool:
 
 def _is_stale_control(content: dict) -> bool:
     """
-    지난 실행이 남긴 라운드 명령인지 본다.
+    Check whether a round command is left over from a previous run.
 
-    cnt-fl-control 은 라운드마다 CIN 을 덧붙이기만 하고 비우지 않는다.
-    그래서 새로 띄워도 IN-AE 가 첫 명령을 올리기 전까지는 지난 판의
-    마지막 상태가 그대로 보인다. "대시보드가 2라운드부터 시작"하는 것이
-    이것이다. run_fl.sh 에서 대시보드는 [2/5], IN-AE 는 [5/5] 라
-    그 틈이 수십 초다.
+    cnt-fl-control only gets CINs appended each round and is never cleared.
+    So even after a fresh start, until the IN-AE posts its first command the previous run's
+    last state is shown as is. That is the "dashboard starts from round 2" issue.
+    In run_fl.sh the dashboard is [2/5] and the IN-AE is [5/5], so
+    the gap is tens of seconds.
 
-    MN-AE 가 묵은 명령을 거를 때와 같은 기준을 쓴다. payload 의
-    timestamp 가 이 대시보드 기동 시각보다 이르면 지난 실행 것이다.
-    FL_DASH_IGNORE_STALE=0 으로 끄면 예전처럼 그대로 보여준다.
+    Uses the same criterion the MN-AE uses to filter stale commands. If the payload's
+    timestamp is earlier than this dashboard's start time, it belongs to a previous run.
+    Turning it off with FL_DASH_IGNORE_STALE=0 shows it as is, as before.
     """
     global _stale_control_warned
 
@@ -1411,11 +1411,11 @@ def _is_stale_control(content: dict) -> bool:
 
 def _control_thread() -> None:
     """
-    라운드 상태만 본다. 바뀌면 바로 화면에 보낸다.
+    Watch only the round state. Push to the screen as soon as it changes.
 
-    jobState / currentRound / maxRounds 는 이 스레드만 고친다. _poll_thread 가
-    고치면, 그쪽이 느린 한 바퀴 앞부분에서 읽은 옛 라운드로 덮어써 화면이
-    한 라운드 뒤로 갔다가 돌아올 수 있다.
+    jobState / currentRound / maxRounds are modified only by this thread. If _poll_thread
+    modified them, it could overwrite with an old round read at the start of its slow cycle, and the screen
+    would go back a round and then return.
     """
     fl_control_path = om2m.in_path(
         f"{config.IN_AE_NAME}/cnt-fl-control"
@@ -1461,15 +1461,15 @@ def _control_thread() -> None:
 
 
 def _poll_thread() -> None:
-    # IN-AE 의 컨테이너는 중앙 IN-CSE 에 있다. config.CSE_NAME 은 사업장
-    # MN-CSE 이름이라, 그걸로 경로를 만들면 없는 리소스를 찾게 된다.
+    # The IN-AE's containers are on the central IN-CSE. config.CSE_NAME is the site
+    # MN-CSE name, so building paths with it looks for resources that do not exist.
     fl_control_path = om2m.in_path(
         f"{config.IN_AE_NAME}/cnt-fl-control"
     )
     local_updates_path = om2m.in_path(
         f"{config.IN_AE_NAME}/cnt-local-updates"
     )
-    # IN-AE 가 라운드마다 고정 검증셋으로 잰 결과를 올리는 곳.
+    # Where the IN-AE posts results measured on the fixed validation set each round.
     fl_inference_path = om2m.in_path(
         f"{config.IN_AE_NAME}/cnt-fl-inference"
     )
@@ -1488,7 +1488,7 @@ def _poll_thread() -> None:
             )
 
             if control_content and _is_stale_control(control_content):
-                # 지난 실행의 잔상. 새 명령이 올 때까지 아무것도 안 바꾼다.
+                # Afterimage of a previous run. Change nothing until a new command arrives.
                 control_content = None
 
             if control_content:
@@ -1526,7 +1526,7 @@ def _poll_thread() -> None:
                     if not node_content:
                         continue
 
-                    # 지난 실행이 남긴 업로드(이 대시보드 기동 전)는 이번 판 것이 아니다.
+                    # Uploads left by a previous run (before this dashboard started) do not belong to this run.
                     if _is_stale_payload(node_content):
                         continue
 
@@ -1570,8 +1570,8 @@ def _poll_thread() -> None:
                                 0,
                             )
                         ),
-                        # 사업장 앱이 지금 붙어 있는 MN-CSE 와 핸드오버 횟수.
-                        # 0 보다 크면 화면에 spare 표시를 띄운다.
+                        # The MN-CSE the site app is currently attached to and the handover count.
+                        # If greater than 0, show the spare indicator on screen.
                         "mn_cse": node_content.get("mn_cse"),
                         "mn_base": node_content.get("mn_base"),
                         "cse_handovers": int(
@@ -1582,8 +1582,8 @@ def _poll_thread() -> None:
                         ),
                     }
 
-                # 라운드 상태는 _control_thread 가 맡는다. 여기서는 노드
-                # 업로드가 바뀌었을 때만 보낸다.
+                # Round state is handled by _control_thread. Here it is sent only when
+                # node uploads change.
                 snapshot = {
                     "node_keys": sorted(
                         nodes.keys(),
@@ -1628,7 +1628,7 @@ def _poll_thread() -> None:
                         f"nodes={ {n: d['round'] for n, d in nodes.items()} }"
                     )
 
-            # 라운드별 평가 결과. 새 라운드 것만 한 번씩 내보낸다.
+            # Per-round evaluation results. Emit each new round's once.
             ev = _parse_content_instance(
                 om2m.get_latest_content_instance(fl_inference_path)
             )
@@ -1638,9 +1638,9 @@ def _poll_thread() -> None:
                 last_eval_round = int(ev["round"])
                 ev = dict(ev)
                 ev["type"] = "eval"
-                # 접속 중인 쪽에 보내고, 나중에 접속한 쪽도 지난 라운드를
-                # 볼 수 있게 쌓아 둔다. 새로고침하면 그동안의 라운드가
-                # 통째로 사라지던 것이 이것이다.
+                # Send to those connected, and keep them so those connecting later can also
+                # see past rounds. This fixes past rounds disappearing entirely
+                # on refresh.
                 with _shared_lock:
                     _shared["evals"].append(ev)
                     del _shared["evals"][:-EVAL_HISTORY_MAX]
@@ -1656,11 +1656,11 @@ def _poll_thread() -> None:
                 f"{error}"
             )
 
-        # 새로운 글로벌 모델이 있는지 확인
+        # Check whether there is a new global model
         _reload_scores_if_needed()
 
-        # FL 완료 후 최종 모델까지 준비되면
-        # summary를 한 번만 전송한다.
+        # Once FL is complete and the final model is ready,
+        # send the summary only once.
         with _shared_lock:
             fl_completed = (
                 _shared["fl_state"]
@@ -1702,9 +1702,9 @@ def _poll_thread() -> None:
 # ════════════════════════════════════════════════════════
 
 def main() -> None:
-    # 대시보드는 양쪽을 다 본다.
-    #   사업장 MN-CSE  윈도우별 이상 점수 (사업장마다 바꿔 가며 읽는다)
-    #   중앙 IN-CSE    라운드 상태 / 사업장별 요약 / 공통 모델 / 라운드별 평가
+    # The dashboard looks at both sides.
+    #   Site MN-CSE     per-window anomaly scores (read site by site)
+    #   Central IN-CSE  round state / per-site summary / shared model / per-round evaluation
     config.require_sandbox()
     om2m.set_endpoint(*config.mn_endpoint("mn1"))
     om2m.set_in_endpoint(*config.in_endpoint())

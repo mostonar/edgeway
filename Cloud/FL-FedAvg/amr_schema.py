@@ -1,23 +1,23 @@
 """
-amr_schema.py — AMR 주행 데이터의 채널 규격과 조건 벡터 정의
+amr_schema.py — channel spec and condition vector definition for AMR driving data
 
-prepare_data_amr(오프라인 파일)과 amr_ingest(라이브 CSE)가 같은 정의를 쓰도록
-한 곳에 모았다. 채널을 바꾸거나 조건 구성을 바꿀 때 여기만 고치면 된다.
+Gathered in one place so prepare_data_amr (offline files) and amr_ingest (live CSE) use
+the same definitions. To change channels or the condition layout, edit only this file.
 
-[채널 38개]
+[38 channels]
     IMU   front/left/right × (ax ay az gx gy gz roll pitch) = 24
     ENC   drive(pos,vel,eff) swivel(pos) roller_fl/fr/rl/rr(pos,vel) lift(pos,eff) = 14
 
-[조건 벡터 8차원]
-    nav 그룹 5 : 정지 / 직진 / 회전 / 적재·하역 / 기타
-    속도 버킷 3 : 저 / 중 / 고   (drive.vel 절대값 평균)
+[8-dim condition vector]
+    nav group 5 : stop / straight / turn / load-unload / other
+    speed bucket 3 : low / mid / high   (mean of |drive.vel|)
 
-운영 중에는 cond:normal 같은 라벨이 붙지 않는다. 로봇은 그냥 주행하고
-데이터를 올릴 뿐이다. 그래서 조건은 payload 안에서 끌어낸다. nav와 속도는
-추론 시점에도 그대로 얻을 수 있다.
+In operation there are no labels like cond:normal. The robots just drive and
+upload data. So the condition is derived from the payload. nav and speed are
+available as-is at inference time too.
 
-over_bump 는 조건에 넣지 않는다. 넣으면 "여기가 단차다"를 모델에 알려주는
-셈이라 이상 탐지가 성립하지 않는다. 직진 그룹으로 묶는다.
+over_bump is not part of the condition. Including it would amount to telling the model
+"this is a bump", which defeats anomaly detection. It is grouped with straight.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from typing import Iterable, List, Optional, Tuple
 
 import numpy as np
 
-# ── 채널 ──────────────────────────────────────────────────
+# ── Channels ──────────────────────────────────────────────────
 CH_SPEC = [("imu", p, c) for p in ("front", "left", "right")
            for c in ("ax", "ay", "az", "gx", "gy", "gz", "roll", "pitch")]
 CH_SPEC += [("enc", "drive", c) for c in ("pos", "vel", "eff")]
@@ -44,22 +44,22 @@ LIFT_EFF_IDX = CH_NAMES.index("lift.eff")
 
 T = int(os.getenv("AMR_WINDOW", "60"))
 
-# ── 조건 ──────────────────────────────────────────────────
+# ── Condition ─────────────────────────────────────────────────
 NAV_GROUPS = ["stop", "straight", "turn", "loadunload", "other"]
 N_NAV = len(NAV_GROUPS)
 N_SPD = 3
 
-# 적재 상태. 아이작심이 무게를 안 보내므로 nav 의 '구간' 에서 읽는다.
-#   to_pick*  픽업하러 가는 길  -> 빈 차
-#   to_drop*  내려놓으러 가는 길 -> 적재
-#   loading / unloading        -> 싣고 내리는 중
-# 짐을 실으면 관성이 커져 IMU 가속도가 눌리고 drive.eff 가 더 든다.
-# 그 차이를 조건으로 안 주면 전부 '이상' 으로 해석된다.
+# Load state. Isaac Sim does not send weight, so it is read from the nav 'segment'.
+#   to_pick*  heading to pick up     -> empty
+#   to_drop*  heading to drop off    -> loaded
+#   loading / unloading        -> loading or unloading
+# With a load, inertia grows, so IMU acceleration is damped and drive.eff rises.
+# If that difference is not given as a condition, everything is read as 'anomaly'.
 LOAD_STATES = ["empty", "light", "heavy"]
 N_LOAD = len(LOAD_STATES)
 
-# lift.eff 경계. 실측 히스토그램(아이작심 1857창, 500 단위):
-#   4500~5000  1166   <- 빈차. 4561 에 아주 좁게 뭉쳐 있다
+# lift.eff boundaries. Measured histogram (Isaac Sim, 1857 windows, bins of 500):
+#   4500~5000  1166   <- empty. Tightly clustered around 4561
 #   5000~5500    79
 #   5500~6000    73
 #   6000~6500    80
@@ -67,21 +67,21 @@ N_LOAD = len(LOAD_STATES)
 #   7000~7500   136
 #   7500~8000   137
 #   8000~8500    98
-# 5000 에서 뚝 끊긴다(1166 -> 79). 빈차/적재 경계는 여기가 깨끗하다.
-# 그 위는 5000~8500 에 고르게 퍼져 있다. 짐 무게가 연속으로 변한다는
-# 뜻이라, 적재를 한 칸으로 묶지 않고 가벼움/무거움으로 나눈다.
+# Drops off sharply at 5000 (1166 -> 79). The empty/loaded boundary is clean here.
+# Above that it spreads evenly over 5000~8500. The load weight varies continuously,
+# so instead of one 'loaded' bucket it is split into light/heavy.
 LIFT_EDGES = tuple(
     float(x) for x in os.getenv("AMR_LIFT_EDGES", "5000,6500").split(",")
 )
 
 COND_DIM = N_NAV + N_SPD + N_LOAD
 
-# nav 문자열 -> 그룹. 모르는 값은 'other'.
+# nav string -> group. Unknown values map to 'other'.
 NAV_TO_GROUP = {
     "idle": 0, "done": 0, "reset": 0, "stopped": 0,
     "to_pick": 1, "to_drop": 1, "to_aisle": 1, "to_lane": 1,
     "straight": 1,
-    # 단차 통과는 '직진'으로 둔다. 별도 그룹으로 만들면 정답 유출이다.
+    # Crossing a bump counts as 'straight'. A separate group would leak the answer.
     "over_bump": 1,
     "turn_in": 2, "turn_out": 2, "turn_drop": 2, "turn_unload": 2,
     "turn_start": 2, "turn_lane": 2, "left": 2, "right": 2,
@@ -89,16 +89,16 @@ NAV_TO_GROUP = {
     "aborted": 4,
 }
 
-# 속도 버킷 경계. 학습과 추론이 같은 값을 써야 한다.
+# Speed bucket boundaries. Training and inference must use the same values.
 SPD_EDGES = tuple(
     float(x) for x in os.getenv("AMR_SPD_EDGES", "2.0,6.0").split(",")
 )
 
-# 이 속도 아래는 '정지'로 보고 뺀다.
-# nav 라벨이 아니라 실제 속도로 판정하므로, 주행 중 잠깐 멈춘 구간은 살아남는다.
+# Below this speed the window is treated as 'stopped' and dropped.
+# Since this uses actual speed rather than the nav label, brief stops while driving survive.
 MIN_SPEED = float(os.getenv("AMR_MIN_SPEED", "0.1"))
 
-# 학습에서 뺄 nav. 중단된 주행은 정상 주행으로 보기 어렵다.
+# nav values excluded from training. Aborted runs are hard to treat as normal driving.
 EXCLUDE_NAV_TRAIN = {
     n.strip() for n in os.getenv("AMR_EXCLUDE_NAV", "aborted").split(",")
     if n.strip()
@@ -112,15 +112,15 @@ def nav_parts(nav: Optional[str]) -> list:
 
 def nav_group(nav: Optional[str]) -> int:
     """
-    nav 문자열 -> 동작 그룹.
+    nav string -> motion group.
 
-    아이작심은 'to_pick/turn_side' 처럼 구간과 동작을 '/' 로 붙여 보낸다.
-    예전에는 통째로 사전에서 찾아서 못 맞추면 전부 'other' 로 떨어졌다.
-    실측에서 1857건 중 926건(49.9%)이 그렇게 'other' 한 칸에 몰렸고,
-    회전 그룹에는 아무것도 안 들어갔다. 조각으로 나눠서 찾는다.
+    Isaac Sim sends segment and motion joined by '/', like 'to_pick/turn_side'.
+    Previously the whole string was looked up in a dict, and any miss fell into 'other'.
+    In measurements, 926 of 1857 (49.9%) piled into the single 'other' bucket that way,
+    and nothing went into the turn group. Now the pieces are looked up separately.
 
-    뒤 조각(동작)을 앞 조각(구간)보다 우선한다. 'to_drop/turn_out' 은
-    회전이지 직진이 아니다.
+    The trailing piece (motion) takes priority over the leading piece (segment). 'to_drop/turn_out'
+    is a turn, not straight.
     """
     raw = str(nav or "").strip()
     if raw in NAV_TO_GROUP:
@@ -133,12 +133,12 @@ def nav_group(nav: Optional[str]) -> int:
 
 def load_state_from_nav(nav: Optional[str]) -> int:
     """
-    nav 문자열만 보고 적재 상태를 고른다. lift.eff 가 없을 때의 보조.
+    Pick the load state from the nav string alone. Fallback when lift.eff is missing.
 
-    nav 는 '어느 구간을 달리는 중인가' 지 '지금 무엇을 들고 있는가' 가
-    아니다. 실측에서 to_drop 828창 중 309창(37%)은 lift.eff 가 빈차
-    수준이었고, 로봇 3대는 to_drop 구간을 아예 빈 차로 달렸다.
-    그래서 이건 어디까지나 보조다.
+    nav says 'which segment is being driven', not 'what is being carried
+    right now'. In measurements, 309 of 828 to_drop windows (37%) had lift.eff at
+    empty level, and 3 robots drove the to_drop segment entirely empty.
+    So this is strictly a fallback.
     """
     parts = nav_parts(nav)
     if any(p in ("loading", "unloading") for p in parts):
@@ -152,12 +152,12 @@ def load_state_from_nav(nav: Optional[str]) -> int:
 def load_state(nav: Optional[str] = None,
                window: Optional[np.ndarray] = None) -> int:
     """
-    적재 상태 인덱스. lift.eff(측정값)를 1순위로 쓰고, 없으면 nav 로 간다.
+    Load state index. Uses lift.eff (measured) first, falls back to nav if missing.
 
-    왜 측정값이 먼저인가. nav 는 아이작심이 붙이는 라벨이라 이름이 바뀌면
-    조용히 틀린다. 실제로 'to_pick/turn_side' 같은 복합 라벨 때문에 전체의
-    절반이 'other' 한 칸에 몰려 있었고 아무도 몰랐다. lift.eff 는 짐을
-    들어올리는 데 드는 힘이라 라벨과 무관하게 무게를 따라간다.
+    Why the measurement first? nav is a label Isaac Sim attaches, so if names change it is
+    silently wrong. In fact, composite labels like 'to_pick/turn_side' had put half of
+    everything into the single 'other' bucket and nobody noticed. lift.eff is the force needed
+    to lift the load, so it tracks weight regardless of labels.
     """
     if window is not None:
         try:
@@ -174,7 +174,7 @@ def load_state(nav: Optional[str] = None,
 
 
 def speed_of(window: np.ndarray) -> float:
-    """윈도우 하나의 평균 주행 속도 (drive.vel 절대값)."""
+    """Mean driving speed of one window (|drive.vel|)."""
     return float(np.abs(window[VEL_IDX]).mean())
 
 
@@ -189,10 +189,10 @@ def speed_bucket(speed: float) -> int:
 def cond_vector(nav: Optional[str], speed: float,
                 window: Optional[np.ndarray] = None) -> np.ndarray:
     """
-    조건 벡터. window 를 주면 적재 상태를 lift.eff 로 정한다.
+    Condition vector. If window is given, the load state is determined from lift.eff.
 
-    window 는 window_from_con() 이 돌려준 (C, T) 원신호여야 한다.
-    .pos 채널의 평균을 빼는 가공은 lift.eff 에 영향을 주지 않는다.
+    window must be the raw (C, T) signal returned by window_from_con().
+    Subtracting the mean of the .pos channels does not affect lift.eff.
     """
     v = np.zeros(COND_DIM, dtype=np.float32)
     v[nav_group(nav)] = 1.0
@@ -201,9 +201,9 @@ def cond_vector(nav: Optional[str], speed: float,
     return v
 
 
-# ── 레거시 라벨 변환 ──────────────────────────────────────
-# 옛 데이터(merged.json)는 scn/spd/load 라벨을 갖고 있다.
-# 새 구성과 맞추기 위해 같은 8차원으로 옮긴다. load는 새 데이터에 없으므로 버린다.
+# ── Legacy label conversion ───────────────────────────────────
+# Old data (merged.json) has scn/spd/load labels.
+# Mapped into the same 8 dims to match the new layout. load does not exist in the new data, so it is dropped.
 LEGACY_SCN_TO_NAV = {
     "idle": "idle", "straight": "straight", "left": "left", "right": "right",
 }
@@ -217,11 +217,11 @@ def cond_from_labels(scn: str, spd: str) -> np.ndarray:
     )
 
 
-# ── 윈도우 추출 ───────────────────────────────────────────
+# ── Window extraction ─────────────────────────────────────────
 def window_from_con(payload: dict) -> Optional[np.ndarray]:
     """
-    CIN의 con(dict) 하나 -> 신호 (C, T). 채널이 모자라면 None.
-    누적 위치(.pos)는 윈도우 평균을 빼서 '이 구간의 변화'만 남긴다.
+    One CIN con (dict) -> signal (C, T). None if channels are missing.
+    For cumulative positions (.pos), subtract the window mean so only 'the change within this window' remains.
     """
     cols = []
     for grp, part, chan in CH_SPEC:
@@ -243,30 +243,30 @@ def pose_of(payload: dict) -> Tuple[float, float]:
 
 
 def moving_mask(X: np.ndarray) -> np.ndarray:
-    """실제 속도로 정지 구간을 가려낸다."""
+    """Filter out stopped windows using actual speed."""
     if len(X) == 0:
         return np.zeros(0, dtype=bool)
     return np.array([speed_of(w) >= MIN_SPEED for w in X])
 
 
 # ════════════════════════════════════════════════════════
-# 채널별 값을 조건 칸 기준으로 z 화하는 공용 루틴
+# Shared routine that z-scores per-channel values against the condition-cell reference
 #
-# 학습 쪽(edge_node)과 평가 쪽(valset)이 같은 자를 써야 라운드별
-# 숫자와 운영 판정이 어긋나지 않는다. 그래서 여기 한 곳에 둔다.
+# The training side (edge_node) and the evaluation side (valset) must use the same ruler, or
+# per-round numbers and operational verdicts disagree. So it lives in one place here.
 #
-# [MAD 하한이 왜 필요한가]
-# 어떤 채널은 캡처 내내 상수다(예: 적재 안 하는 주행의 lift.pos).
-# 그 채널의 MAD 는 0 이고, 0 에 가까운 값으로 나누면 z 가 10^7 까지
-# 튄다. 실제로 그래서 모든 사업장이 똑같이 "이상" 으로 보였다.
-# 두 가지로 막는다.
-#   - 전체가 상수인 채널은 아예 뺀다(z=0). 정보가 없는 채널이다.
-#   - 칸의 MAD 는 그 채널 전체 MAD 의 일정 비율 아래로 못 내려간다.
-#     칸 표본이 적어 우연히 몰려 있을 때 터지는 것을 막는다.
+# [Why an MAD floor is needed]
+# Some channels are constant for the whole capture (e.g. lift.pos when driving unloaded).
+# Their MAD is 0, and dividing by something near 0 makes z jump as high as 10^7.
+# That is exactly why every site once looked equally "anomalous".
+# Two guards:
+#   - Channels that are constant overall are dropped entirely (z=0). They carry no information.
+#   - A cell's MAD cannot fall below a fixed fraction of that channel's overall MAD.
+#     This prevents blow-ups when a cell has few samples that happen to be clustered.
 # ════════════════════════════════════════════════════════
 
-MAD_K = 1.4826          # 정규분포에서 MAD 를 표준편차와 같은 자로
-MAD_FLOOR_REL = 0.1     # 칸 MAD 하한 = 채널 전체 MAD 의 10%
+MAD_K = 1.4826          # Scale MAD to the same units as the standard deviation under a normal distribution
+MAD_FLOOR_REL = 0.1     # Cell MAD floor = 10% of the channel's overall MAD
 
 
 def _mad(A, axis=0):
@@ -275,15 +275,15 @@ def _mad(A, axis=0):
 
 
 def robust_ref(D, keys, min_cell: int = 8):
-    """채널별 값 (N, C) -> (칸별 기준, 전체 기준, 살아있는 채널 마스크).
+    """Per-channel values (N, C) -> (per-cell reference, overall reference, live-channel mask).
 
-    D    : (N, C) 창마다 채널마다 하나씩인 값
-    keys : (N,)   조건 칸 번호
-    반환 : ({칸: (중앙값, MAD)}, (중앙값, MAD), 유효채널 bool (C,))
+    D    : (N, C) one value per window per channel
+    keys : (N,)   condition cell index
+    Returns : ({cell: (median, MAD)}, (median, MAD), valid-channel bool (C,))
     """
     D = np.asarray(D, dtype=np.float64)
     g_med, g_mad = _mad(D)
-    alive = g_mad > 0                      # 전체가 상수인 채널은 버린다
+    alive = g_mad > 0                      # Drop channels that are constant overall
     floor = np.where(alive, g_mad * MAD_FLOOR_REL, np.inf)
     g_mad = np.maximum(g_mad, floor)
 
@@ -299,7 +299,7 @@ def robust_ref(D, keys, min_cell: int = 8):
 
 
 def apply_ref(D, keys, ref, glob, alive):
-    """robust_ref 의 기준으로 z 화 (N, C). 죽은 채널은 0 으로 둔다."""
+    """z-score against the robust_ref reference (N, C). Dead channels are set to 0."""
     D = np.asarray(D, dtype=np.float64)
     g_med, g_mad = glob
     keys = (np.asarray(keys) if keys is not None
@@ -313,39 +313,39 @@ def apply_ref(D, keys, ref, glob, alive):
 
 
 # ════════════════════════════════════════════════════════
-# 사업장별 입력 정규화 통계
+# Per-site input normalization statistics
 #
-# [왜 R1 에서 고정하면 안 되나]
-# 예전에는 첫 수집분(약 50창)으로 평균/표준편차를 잡고 끝까지 썼다.
-# 아이작심은 빈 차로 출발하므로 첫 수집은 거의 다 빈 차다. 실측
-# (2026-11-19 01:19 실행, siteA): R1 은 45/45 빈 차, R6 은 0/50 빈 차.
-# R1 의 lift.pos 표준편차가 6.7e-5 라 적재 구간이 오면 |z| 가 40~80
-# 까지 튀었고, 학습 손실이 1.1 -> 14.3 으로 오른 것은 학습이 망가진
-# 게 아니라 이 자가 어긋난 것이었다(재현한 평균 z² 와 손실이 거의 같다).
+# [Why not freeze at R1]
+# Previously the mean/std were taken from the first batch (~50 windows) and used to the end.
+# Isaac Sim starts with empty robots, so the first batch is almost all empty. Measured
+# (run of 2026-11-19 01:19, siteA): R1 was 45/45 empty, R6 was 0/50 empty.
+# R1's lift.pos std was 6.7e-5, so once loaded segments arrived |z| jumped to 40~80,
+# and the training loss rising from 1.1 -> 14.3 was not training breaking down
+# but this ruler being off (the reproduced mean z² nearly matches the loss).
 #
-# [어떻게 하나]
-#   - 적재 상태(빈/가벼움/무거움)가 각각 NORM_MIN_PER_LOAD 창 이상 모일
-#     때까지는 받은 창을 쌓아 가며 통계를 다시 잡는다.
-#   - 다 모였거나 NORM_FREEZE_ROUND 에 이르면 고정한다. 그 뒤로 자가
-#     바뀌면 라운드끼리 점수를 비교할 수 없다.
-#   - 표준편차 하한과 |z| 클리핑을 같이 건다. 고정 전에도, 희귀한 창
-#     하나가 손실을 지배하지 못하게 하는 안전장치다.
+# [How it works]
+#   - Until each load state (empty/light/heavy) has at least NORM_MIN_PER_LOAD windows,
+#     keep accumulating received windows and recompute the statistics.
+#   - Once all are collected or NORM_FREEZE_ROUND is reached, freeze. If the ruler changed
+#     after that, scores could not be compared across rounds.
+#   - A std floor and |z| clipping are applied together. Even before freezing, this is a
+#     safeguard so a single rare window cannot dominate the loss.
 #
-# 같은 telemetry 로 재현한 라운드별 평균 z² (siteA):
-#   R1 고정        1.0 2.9 1.4 5.4 13.6 16.7 16.8 15.4 10.8 5.1
-#   누적 후 고정    1.0 1.2 0.6 0.6  0.7  0.6  0.5  2.0  0.8 0.6  (R5 에 고정)
+# Per-round mean z² reproduced from the same telemetry (siteA):
+#   Frozen at R1     1.0 2.9 1.4 5.4 13.6 16.7 16.8 15.4 10.8 5.1
+#   Accumulate then freeze 1.0 1.2 0.6 0.6  0.7  0.6  0.5  2.0  0.8 0.6  (frozen at R5)
 # ════════════════════════════════════════════════════════
 
 NORM_MIN_PER_LOAD = int(os.getenv("AMR_NORM_MIN_PER_LOAD", "20"))
 NORM_FREEZE_ROUND = int(os.getenv("AMR_NORM_FREEZE_ROUND", "5"))
 NORM_STD_FLOOR = float(os.getenv("AMR_NORM_STD_FLOOR", "1e-4"))
 NORM_CLIP = float(os.getenv("AMR_NORM_CLIP", "10"))
-# 쌓아 둘 원신호 창의 상한. 고정 전까지만 쓰고 고정하면 버린다.
+# Cap on raw-signal windows to keep. Used only until freezing, then discarded.
 NORM_MAX_BUFFER = int(os.getenv("AMR_NORM_MAX_BUFFER", "2000"))
 
 
 class NormStats:
-    """사업장 하나의 채널별 정규화 통계. 고정될 때까지 누적한다."""
+    """Per-channel normalization statistics for one site. Accumulated until frozen."""
 
     def __init__(self,
                  min_per_load: int = NORM_MIN_PER_LOAD,
@@ -368,7 +368,7 @@ class NormStats:
 
     @staticmethod
     def load_of(cond: np.ndarray) -> np.ndarray:
-        """cond 벡터 (N, COND_DIM) -> 적재 상태 인덱스 (N,)."""
+        """cond vector (N, COND_DIM) -> load state index (N,)."""
         C = np.asarray(cond)
         lo = N_NAV + N_SPD
         if C.ndim != 2 or C.shape[1] < lo + N_LOAD:
@@ -377,7 +377,7 @@ class NormStats:
 
     def update(self, X: np.ndarray, cond: Optional[np.ndarray],
                round_num: int) -> None:
-        """이번 라운드의 원신호 창 (N, C, T) 로 통계를 갱신한다. 고정됐으면 무시."""
+        """Update the statistics with this round's raw-signal windows (N, C, T). Ignored once frozen."""
         if self.frozen or X is None or len(X) == 0:
             return
         X = np.asarray(X, dtype=np.float32)
@@ -388,7 +388,7 @@ class NormStats:
 
         A = np.concatenate(self._buf)
         if len(A) > self.max_buffer:
-            # 넘치면 시간축 전체에서 고르게 남긴다.
+            # If over the cap, keep an even spread across the whole time axis.
             keep = np.linspace(0, len(A) - 1, self.max_buffer).astype(np.int64)
             A = A[keep]
             self._buf = [A]
@@ -404,7 +404,7 @@ class NormStats:
             self._buf = []
 
     def apply(self, X: np.ndarray) -> np.ndarray:
-        """(N, C, T) 원신호 -> 표준화 + 클리핑."""
+        """(N, C, T) raw signal -> standardize + clip."""
         if X is None or np.asarray(X).size == 0:
             return X
         if self.mean is None:

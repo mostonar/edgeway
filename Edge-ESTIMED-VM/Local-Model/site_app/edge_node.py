@@ -1,14 +1,14 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/edge_node.py — AMR 주행 데이터용 Edge 노드
+Edge-ESTIMED-VM/Local-Model/site_app/edge_node.py — edge node for AMR driving data
 
-AEEdgeNode: 조건부 1D CNN VAE 기반 정상 주행 재구성 학습 (이상 탐지)
-  - 입력: 다채널 시계열 (N, 38, 60) + 조건 one-hot (N, 11)
-  - 손실: ELBO (재구성 MSE + beta * KL), 정상 데이터만
-  - 점수: 채널별 재구성 오차를 기준 오차로 정규화해 집계
-  - FedAvg 집계: get/set_state_dict()
+AEEdgeNode: learns to reconstruct normal driving with a conditional 1D CNN VAE (anomaly detection)
+  - Input: multichannel time series (N, 38, 60) + condition one-hot (N, 11)
+  - Loss: ELBO (reconstruction MSE + beta * KL), normal data only
+  - Score: per-channel reconstruction error normalized by the reference error, then aggregated
+  - FedAvg aggregation: get/set_state_dict()
 
-레거시:
-  EdgeNode: 통계 피처 기반 MLP 분류기 (이전 버전, 미사용)
+Legacy:
+  EdgeNode: MLP classifier on statistical features (previous version, unused)
 """
 from __future__ import annotations
 
@@ -24,25 +24,25 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from config import FEDBN
 
-# 점수를 주행 조건별 기준으로 나눌지. 기본값은 config 와 같은 환경변수를
-# 본다(edge_node 는 단독 실험에서도 돌아야 해서 config 를 안 들여온다).
+# Whether to divide scores by a per-driving-condition reference. The default reads the same environment
+# variable as config (edge_node must run in standalone experiments too, so it does not import config).
 #
-# 측정(2노드 FedAvg, 10라운드, 8시드): AUROC +0.0016, 승률 74%.
-# 크기는 작지만 8시드 중 6승으로 방향이 일관됐다.
+# Measured (2-node FedAvg, 10 rounds, 8 seeds): AUROC +0.0016, win rate 74%.
+# Small, but the direction was consistent with 6 wins out of 8 seeds.
 #
-# 주의: 이걸 켜면 임계값의 n_sigma 도 같이 올려야 한다. 이유와 실측은
-# config.THRESHOLD_N_SIGMA 주석에 있다.
+# Caution: turning this on means n_sigma for the threshold must be raised too. The reason and measurements
+# are in the comment on config.THRESHOLD_N_SIGMA.
 COND_NORM = os.getenv("FL_COND_NORM", "1") not in ("0", "false", "False")
 
-# 점수를 어디서 재는가.
-#   diff  : |diff(x) - diff(x_hat)| 를 채널마다 학습 기준으로 z 화 -> 최대 (기본)
-#   recon : |x - x_hat| 를 채널 평균 (예전 방식)
-# 세 고장 모두 가속도계의 1 샘플 떨림으로 나타나는데 원신호 오차는 저주파
-# 궤적 복원 오차에 덮인다. 실측은 model_cvae.channel_diff_error 주석 참조.
+# Where the score is measured.
+#   diff  : z-score |diff(x) - diff(x_hat)| per channel against the training reference -> max (default)
+#   recon : mean over channels of |x - x_hat| (old method)
+# All three faults show up as one-sample jitter in the accelerometers, but raw-signal error is masked by the
+# low-frequency trajectory reconstruction error. For measurements see the comment on model_cvae.channel_diff_error.
 SCORE_MODE = os.getenv("FL_SCORE_MODE", "diff").strip().lower()
 
-# 조건 칸 기준 z 화. edge_node 는 단독 실험에서도 돌아야 해서 없으면
-# recon 으로 물러선다(z 화 없이는 diff 점수가 의미가 없다).
+# Condition-cell z-scoring. edge_node must run in standalone experiments too, so if missing it
+# falls back to recon (without z-scoring the diff score is meaningless).
 try:
     from amr_schema import robust_ref as _robust_ref, apply_ref as _apply_ref
 except Exception:                                   # pragma: no cover
@@ -62,15 +62,15 @@ StateDict = dict[str, torch.Tensor]
 
 class AEEdgeNode:
     """
-    조건부 1D CNN VAE 기반 Edge 노드
+    Edge node based on a conditional 1D CNN VAE
 
-    학습: 정상 주행 데이터만 사용, ELBO(재구성 + KL) 최소화
-    평가: 재구성 오차 기반 이상 점수로 AUROC / 임계값 산출
+    Training: normal driving data only, minimizing ELBO (reconstruction + KL)
+    Evaluation: AUROC / threshold from the reconstruction-error-based anomaly score
 
-    입력 형태
-        train_signals (N, C, T)  C=센서 채널(38), T=윈도우 길이(60)
-        train_cond    (N, D)     조건 one-hot. 없으면 0 벡터로 채운다.
-        (N, T) 2차원으로 들어오면 단일 채널로 보고 (N, 1, T)로 올린다.
+    Input shapes
+        train_signals (N, C, T)  C=sensor channels (38), T=window length (60)
+        train_cond    (N, D)     condition one-hot. Filled with zero vectors if absent.
+        If it comes in as 2D (N, T), it is treated as a single channel and lifted to (N, 1, T).
     """
 
     def __init__(
@@ -109,13 +109,13 @@ class AEEdgeNode:
         self.train_ds = TensorDataset(X_train, C_train)
         self.val_ds   = TensorDataset(X_val, C_val, y_val)
 
-        # 기준·임계값을 잡을 '정상 기준 창'. 주지 않으면 이번 학습 창을 쓴다.
+        # 'Normal reference windows' for setting the reference and threshold. If not given, this round's training windows are used.
         #
-        # 이번 학습 창으로 잡으면 그 안에 섞인 이상이 기준을 끌어올린다.
-        # 2026-11-19 10:25 실행에서 siteC_AMR_2 의 이상 창(고정 기준으로
-        # 200~400점)이 R8/R9 학습에 들어가, 학습 뒤 같은 창으로 다시 잡은
-        # 기준 때문에 9~11점으로 내려갔다(임계 15~17). 워밍업 동안 모은
-        # 창을 고정해 두고 그것으로 잡으면 이상이 들어와도 기준이 안 움직인다.
+        # Using this round's training windows lets any anomalies mixed in pull the reference up.
+        # In the 2026-11-19 10:25 run, siteC_AMR_2's anomalous windows (200~400 points against a fixed
+        # reference) got into R8/R9 training, and the reference re-taken from the same windows after training
+        # brought them down to 9~11 points (threshold 15~17). Fixing the windows collected during warm-up
+        # and using those keeps the reference from moving even when anomalies come in.
         if calib_signals is not None and len(calib_signals):
             self.calib_ds = TensorDataset(
                 self._as_3d(calib_signals),
@@ -146,39 +146,39 @@ class AEEdgeNode:
             weight_decay = train_cfg.weight_decay,
         )
 
-        # 채널별 기준 오차. 학습 후 정상 데이터에서 채운다.
-        # 채널마다 오차 규모가 달라서, 정규화 없이 평균내면
-        # 규모가 큰 채널이 점수를 지배한다.
+        # Per-channel reference error. Filled from normal data after training.
+        # Error scales differ per channel, so averaging without normalization lets
+        # large-scale channels dominate the score.
         self.channel_norm: Optional[torch.Tensor] = None
 
-        # 주행 조건별 기준 점수. {조건키: 중앙값}
+        # Per-driving-condition reference score. {condition key: median}
         #
-        # 점수가 회전·저속 구간에서 10~20배 높은데, 고장이라서가 아니라
-        # 그 구간이 드물어 덜 배웠기 때문이다. 조건마다 기준을 따로 잡아
-        # 나누면 "느려서 높은 것"이 빠지고 "그 조건치고 높은 것"만 남는다.
-        # 채널마다 channel_norm 으로 나누는 것과 같은 생각을 조건 축에 쓴다.
+        # Scores are 10~20x higher in turning / low-speed segments, not because of faults but
+        # because those segments are rare and less learned. Taking a separate reference per condition and
+        # dividing removes "high because it is slow" and leaves only "high for that condition".
+        # The same idea as dividing each channel by channel_norm, applied along the condition axis.
         self.cond_norm: Optional[dict] = None
         self.cond_norm_fallback: float = 1.0
 
-        # SCORE_MODE="diff" 용 기준. {조건칸: (채널별 중앙값, 채널별 MAD)}
-        # 채널마다·조건마다 떨림의 정상 수준이 달라서, 한 기준으로 재면
-        # 회전 구간이나 떨림이 원래 큰 채널이 점수를 지배한다.
+        # Reference for SCORE_MODE="diff". {condition cell: (per-channel median, per-channel MAD)}
+        # The normal level of jitter differs per channel and per condition, so measuring with one reference lets
+        # turning segments or channels with inherently large jitter dominate the score.
         self.diff_ref: Optional[dict] = None
         self.diff_ref_global: Optional[tuple] = None
         self.diff_alive: Optional[np.ndarray] = None
-        # 정상 데이터로 잡은 임계값
+        # Threshold set from normal data
         self.threshold: Optional[float] = None
 
         print(f"    [AEEdgeNode] node={node_id}  train={self.num_train_samples}"
               f"  val={len(X_val)}  ch={n_ch}  seq={seq}"
               f"  cond={self.cond_dim}  latent={ae_cfg.latent_dim}")
 
-    # ── 입력 정리 ─────────────────────────────────────────
+    # ── Input cleanup ─────────────────────────────────────
 
     @staticmethod
     def _as_3d(a: np.ndarray) -> torch.Tensor:
         arr = np.asarray(a, dtype=np.float32)
-        if arr.ndim == 2:          # (N, T) → 단일 채널
+        if arr.ndim == 2:          # (N, T) → single channel
             arr = arr[:, None, :]
         elif arr.ndim == 1:
             arr = arr.reshape(0, 1, 0)
@@ -191,7 +191,7 @@ class AEEdgeNode:
             return torch.zeros(n, self.cond_dim, dtype=torch.float32)
         return torch.tensor(np.asarray(c, dtype=np.float32), dtype=torch.float32)
 
-    # ── 가중치 공유 ───────────────────────────────────────
+    # ── Weight sharing ────────────────────────────────────
 
     def get_state_dict(self) -> StateDict:
         return {k: v.detach().cpu().clone()
@@ -199,12 +199,12 @@ class AEEdgeNode:
 
     def set_state_dict(self, state: StateDict) -> None:
         """
-        글로벌 가중치를 싣는다.
+        Load the global weights.
 
-        FedBN 이 켜져 있으면 BatchNorm 층만 자기 것을 지킨다. 집계 쪽에서
-        빼는 것만으로는 부족하다. 글로벌 모델에는 어떤 값이든 들어 있고,
-        그걸 그대로 실으면 이 사업장의 통계가 덮인다. 양쪽이 다 막아야
-        사업장별 BatchNorm 이 유지된다.
+        With FedBN on, only the BatchNorm layers keep their own values. Excluding them on the
+        aggregation side is not enough. The global model holds some values for them anyway,
+        and loading it as is overwrites this site's statistics. Both sides must block it for
+        per-site BatchNorm to be preserved.
         """
         if FEDBN:
             own = self.model.state_dict()
@@ -216,7 +216,7 @@ class AEEdgeNode:
         self.model.load_state_dict(state)
         self.model.to(self.device)
 
-    # ── 로컬 학습 ─────────────────────────────────────────
+    # ── Local training ────────────────────────────────────
 
     def train_local(
         self,
@@ -225,7 +225,7 @@ class AEEdgeNode:
         dp_max_grad_norm: float = 1.5,
     ) -> tuple[float, float, float]:
         """
-        로컬 학습 (정상 데이터만). 반환: (train_loss, val_loss, val_auroc)
+        Local training (normal data only). Returns: (train_loss, val_loss, val_auroc)
         """
         if self.num_train_samples == 0:
             print("    ⚠ 학습 데이터가 없다")
@@ -240,43 +240,43 @@ class AEEdgeNode:
             self.train_ds,
             batch_size = self.train_cfg.batch_size,
             shuffle    = True,
-            # BatchNorm은 배치 크기 1에서 실패한다. 마지막 조각이 1이면 버린다.
+            # BatchNorm fails with batch size 1. If the last chunk is 1, drop it.
             drop_last  = (self.num_train_samples % self.train_cfg.batch_size == 1),
         )
 
-        # 절사 손실. 손실이 큰 쪽을 그 에폭 학습에서 뺀다.
+        # Trimmed loss. The high-loss samples are excluded from that epoch's training.
         #
-        # [왜]
-        # 재구성 기반 탐지기는 정상만 학습해야 이상의 오차가 커진다. 그런데
-        # 학습 집합은 비지도라 이상이 섞여 있고(FL_LABEL_FOR_TRAIN=0 이 기본),
-        # 그대로 두면 모델이 이상까지 복원하는 법을 배운다. 라운드가 갈수록
-        # 이상의 손실이 내려가 정상과 구분이 사라진다.
+        # [Why]
+        # A reconstruction-based detector must learn only normal data for anomaly errors to grow. But
+        # the training set is unsupervised and has anomalies mixed in (FL_LABEL_FOR_TRAIN=0 by default),
+        # and left alone the model learns to reconstruct anomalies too. As rounds go on
+        # the anomalies' loss drops and the distinction from normal disappears.
         #
-        # 이상은 정의상 손실이 크므로, 손실 상위 몇 %를 빼면 라벨 없이도
-        # 학습 집합이 정상 쪽으로 정리된다. 라벨은 한 글자도 보지 않는다.
-        # 통계의 trimmed mean, 회귀의 LTS 와 같은 생각이다.
+        # Anomalies by definition have high loss, so dropping the top few % of losses cleans the
+        # training set toward normal without labels. Not a single label is looked at.
+        # The same idea as a trimmed mean in statistics or LTS in regression.
         #
-        # 자르는 단위는 배치다. 전체를 모아 자르는 것의 근사지만 한 번의
-        # 순전파로 끝나고, 배치가 섞여 있으므로 편향되지 않는다.
+        # Trimming is per batch. It approximates trimming over the whole set but takes one
+        # forward pass, and batches are shuffled so it is not biased.
         #
-        # [기본값이 0 인 이유]
-        # 순위 능력은 올리지만 판정을 망친다. 2차 캡처로 학습하고 검증셋으로
-        # 잰 결과(시드 5개): 절사 0 -> AUROC 0.7796, 오경보 138/318.
-        # 절사 0.25 -> AUROC 0.7976, 오경보 244/318. 둘 다 비율에 단조다.
+        # [Why the default is 0]
+        # It improves ranking but ruins verdicts. Trained on the second capture and measured on the
+        # validation set (5 seeds): trim 0 -> AUROC 0.7796, false alarms 138/318.
+        # trim 0.25 -> AUROC 0.7976, false alarms 244/318. Both are monotonic in the ratio.
         #
-        # 기전도 쟀다. 절사하면 학습 집합 안의 점수는 그대로인데(중앙값
-        # 1.27 -> 1.30) 처음 보는 정상 주행의 점수가 3배가 된다(4.12 ->
-        # 11.79). 일반화가 좁아진 것이다. 임계값은 학습 집합에서 뽑으므로
-        # 그 변화를 못 따라가고(5.47 -> 5.98), 격차만큼 오경보가 된다.
+        # The mechanism was measured too. With trimming, scores within the training set stay the same (median
+        # 1.27 -> 1.30) but scores on unseen normal driving triple (4.12 ->
+        # 11.79). Generalization narrowed. The threshold is drawn from the training set, so
+        # it cannot follow that change (5.47 -> 5.98), and the gap turns into false alarms.
         #
-        # AUROC 만 보면 켜는 게 나아 보이지만, 운영에서 쓰는 것은 임계값을
-        # 넘는지 여부다. 그래서 끈다. 비교하려면 FL_TRIM_RATIO 로 켠다.
+        # Looking only at AUROC, turning it on seems better, but what operation uses is whether the threshold
+        # is crossed. So it is off. To compare, turn it on with FL_TRIM_RATIO.
         trim_ratio = float(os.getenv("FL_TRIM_RATIO", "0"))
         trim_warmup = int(os.getenv("FL_TRIM_WARMUP_EPOCHS", "2"))
 
-        # 에폭 수를 최소 스텝 수에 맞춰 늘린다(config.TrainConfig.min_steps).
-        # 라운드당 창이 50개 안팎이라 local_epochs 만으로는 스텝이 20번
-        # 남짓이고, 그 정도로는 모델이 '출력 0' 에서 벗어나지 못했다.
+        # Raise the epoch count to meet the minimum step count (config.TrainConfig.min_steps).
+        # There are about 50 windows per round, so local_epochs alone gives only ~20 steps,
+        # and with that the model never got away from 'output 0'.
         steps_per_epoch = max(1, len(train_loader))
         min_steps = int(getattr(self.train_cfg, "min_steps", 0) or 0)
         n_epochs = max(int(self.train_cfg.local_epochs),
@@ -289,11 +289,11 @@ class AEEdgeNode:
         loss_sum, total, trimmed = 0.0, 0, 0
 
         for epoch in range(n_epochs):
-            # 초반에는 모델이 무작위라 손실이 커도 이상이 아니다.
-            # 워밍업 동안은 자르지 않는다.
+            # Early on the model is random, so a high loss does not mean an anomaly.
+            # No trimming during warm-up.
             trim = trim_ratio if epoch >= trim_warmup else 0.0
-            # 보고하는 train_loss 는 마지막 에폭의 평균이다. 에폭이 많아지면
-            # 전체 평균은 초반의 큰 손실에 끌려 라운드끼리 비교가 안 된다.
+            # The reported train_loss is the mean of the last epoch. With many epochs,
+            # the overall mean is dragged by the large early losses and rounds cannot be compared.
             loss_sum, total = 0.0, 0
 
             for xb, cb in train_loader:
@@ -304,12 +304,12 @@ class AEEdgeNode:
                 per, rec, kl = self.model.loss_terms(xb, cb, beta=self.beta)
 
                 bs = int(xb.size(0))
-                # 기록은 자르기 전 전체 평균이다. 라운드 간 비교가 되려면
-                # 매번 같은 집합을 재야 한다.
+                # What is recorded is the overall mean before trimming. For rounds to be comparable
+                # the same set must be measured every time.
                 loss_sum += float(per.mean().item()) * bs
                 total    += bs
 
-                # 배치가 너무 작으면 자르는 쪽이 더 흔들린다.
+                # If a batch is too small, trimming fluctuates more.
                 if trim > 0 and bs > 4:
                     keep_n = max(1, int(round(bs * (1.0 - trim))))
                     kept = per.topk(keep_n, largest=False).values
@@ -337,40 +337,40 @@ class AEEdgeNode:
             print(f"    ◦ 절사 손실: {trimmed}/{total * n_epochs} 샘플을 학습에서 제외 "
                   f"(비율 {trim_ratio:.0%}, 워밍업 {trim_warmup}에폭)")
 
-        # 학습이 끝난 모델 기준으로 채널 기준 오차와 임계값을 다시 잡는다.
+        # Re-take the per-channel reference error and threshold against the trained model.
         self.calibrate()
 
         val_loss, val_auroc = self._evaluate_val()
         return float(train_loss), float(val_loss), float(val_auroc)
 
-    # ── 캘리브레이션 ──────────────────────────────────────
+    # ── Calibration ───────────────────────────────────────
 
     def calibrate(self, n_sigma: Optional[float] = None) -> Optional[float]:
         """
-        학습 데이터로 채널별 기준 오차와 임계값을 정한다.
+        Set per-channel reference errors and the threshold from training data.
 
-        임계값은 노드마다 자기 데이터로 잡아야 한다. 사업장·로봇마다
-        정상의 모습이 달라서 공용 임계값을 쓰면 정상도 이상으로 나온다.
+        Each node must set its threshold from its own data. What normal looks like differs per
+        site and robot, so a shared threshold makes normal look anomalous too.
 
-        [왜 평균이 아니라 중앙값인가]
-        학습 집합은 비지도라 이상이 섞여 있다(FL_LABEL_FOR_TRAIN=0 이 기본).
-        평균과 표준편차는 이상치에 끌려 올라가므로 임계값이 과하게 높아지고,
-        그러면 아무것도 안 잡힌다. 실제로 판정(cnt-verdict)이 0 건이었다.
+        [Why median rather than mean]
+        The training set is unsupervised and has anomalies mixed in (FL_LABEL_FOR_TRAIN=0 by default).
+        Mean and std get pulled up by outliers, so the threshold ends up too high,
+        and then nothing is caught. In fact there were 0 verdicts (cnt-verdict).
 
-        중앙값과 MAD 는 이상이 절반 미만이면 거의 움직이지 않아 정상 분포를
-        그대로 반영한다. 1.4826 은 정규분포에서 MAD 를 표준편차와 같은 자로
-        맞추는 상수라 n_sigma 의 의미(3σ)가 그대로 유지된다.
+        Median and MAD barely move as long as anomalies are under half, so they reflect the normal distribution
+        as is. 1.4826 is the constant that puts MAD on the same scale as the std under a normal distribution,
+        so the meaning of n_sigma (3σ) is preserved.
 
-        고정 검증셋에서 실측한 차이:
-          평균+3σ      thr 8.730  탐지  6/80  오경보 0/377
-          중앙값+3MAD  thr 2.320  탐지 26/80  오경보 0/377
+        Difference measured on the fixed validation set:
+          mean+3σ      thr 8.730  detected  6/80  false alarms 0/377
+          median+3MAD  thr 2.320  detected 26/80  false alarms 0/377
 
-        채널 기준 오차도 같은 이유로 중앙값을 쓴다. 평균을 쓰면 이상이 크게
-        튀는 채널일수록 기준이 위로 떠서, 정작 그 채널의 이상 신호가 눌린다.
+        Per-channel reference error also uses the median for the same reason. With the mean, the more a channel's
+        anomalies spike, the higher its reference floats, which suppresses that very channel's anomaly signal.
         """
         if n_sigma is None:
-            # edge_node 는 config 를 안 들여온다(단독 실험에서도 돌아야 한다).
-            # 있으면 쓰고 없으면 3.0 으로 간다.
+            # edge_node does not import config (it must run in standalone experiments too).
+            # Use it if present, otherwise 3.0.
             try:
                 import config as _cfg
                 n_sigma = float(getattr(_cfg, "THRESHOLD_N_SIGMA", 3.0))
@@ -395,11 +395,11 @@ class AEEdgeNode:
                     derrs.append(self.model.channel_diff_error(xb, cb).cpu())
 
         E = torch.cat(errs)                       # (N, C)
-        self.channel_norm = E.median(dim=0).values    # 채널별 기준 오차
+        self.channel_norm = E.median(dim=0).values    # Per-channel reference error
 
         if SCORE_MODE == "diff":
-            # 차분 오차의 '정상 수준' 을 채널 x 조건칸 마다 잡는다.
-            # 조건칸 표본이 적으면(8 개 미만) 전체 기준으로 물러선다.
+            # Set the 'normal level' of differenced error per channel x condition cell.
+            # If a condition cell has few samples (under 8), fall back to the overall reference.
             D = torch.cat(derrs).numpy()              # (N, C)
             cond_np = (C_ref[:len(D)].cpu().numpy()
                        if self.cond_dim else None)
@@ -416,8 +416,8 @@ class AEEdgeNode:
         else:
             scores = self._aggregate(E)
 
-        # 조건별 기준값을 학습 점수에서 잡는다. 그 다음 임계값은 '나눈'
-        # 점수로 잡아야 추론 때와 단위가 같아진다.
+        # Take the per-condition reference from training scores. After that the threshold must be set on the
+        # 'divided' score so its units match inference.
         if COND_NORM and self.cond_dim and SCORE_MODE != "diff":
             raw = scores.cpu().numpy()
             keys = self.cond_key(C_ref[:len(raw)].cpu().numpy())
@@ -435,16 +435,16 @@ class AEEdgeNode:
         med = scores.median()
         mad = (scores - med).abs().median() * 1.4826
         if not torch.isfinite(mad) or mad <= 0:
-            # 점수가 거의 같으면 MAD 가 0 이 된다. 표준편차로, 그것도
-            # 못 쓰면(샘플 1개) 중앙값의 10% 로 물러선다.
+            # If scores are nearly identical, MAD becomes 0. Fall back to the std, and if that is not
+            # usable either (1 sample), to 10% of the median.
             s = scores.std()
             mad = (s if torch.isfinite(s) and s > 0
                    else med.abs() * 0.1 + 1e-6)
 
         self.threshold = float(med + n_sigma * mad)
 
-        # 임계값이 정상 덩어리에 얼마나 붙어 있는지 눈으로 보려고 분포를
-        # 같이 찍는다. 넘은 것만 로그에 남으면 "너무 낮다"를 판단할 수 없다.
+        # Print the distribution too, to see by eye how close the threshold sits to the normal cluster.
+        # If only exceedances are logged, you cannot judge "too low".
         q = torch.quantile(
             scores.float(),
             torch.tensor([0.50, 0.90, 0.99], device=scores.device),
@@ -462,10 +462,10 @@ class AEEdgeNode:
     @staticmethod
     def cond_key(cond: np.ndarray) -> np.ndarray:
         """
-        cond 원핫(nav 5 + speed 3)을 조건키 하나로 접는다.
+        Fold the cond one-hot (nav 5 + speed 3) into a single condition key.
 
-        모델이 실제로 받는 벡터를 그대로 쓴다. 따로 nav/speed 를 받아오면
-        학습 때와 추론 때 기준이 어긋날 수 있다.
+        Uses exactly the vector the model receives. Fetching nav/speed separately could make
+        the reference differ between training and inference.
         """
         C = np.asarray(cond, dtype=np.float32)
         if C.ndim != 2 or C.shape[1] < 8:
@@ -475,10 +475,10 @@ class AEEdgeNode:
 
     @staticmethod
     def cell_key(cond: np.ndarray) -> np.ndarray:
-        """cond 원핫(nav 5 + speed 3 + 적재 3)을 조건칸 번호 하나로 접는다.
+        """Fold the cond one-hot (nav 5 + speed 3 + load 3) into a single condition cell index.
 
-        cond_key 와 달리 적재까지 넣는다. 떨림은 싣고 있는 무게에 따라
-        정상 수준이 달라서, 적재를 빼면 '무거워서 큰 것' 이 이상으로 샌다.
+        Unlike cond_key, this includes load. The normal level of jitter depends on the weight being carried,
+        so leaving load out lets 'large because it is heavy' leak through as anomalies.
         """
         C = np.asarray(cond, dtype=np.float32)
         if C.ndim != 2 or C.shape[1] < 8:
@@ -489,7 +489,7 @@ class AEEdgeNode:
         return k.astype(np.int64)
 
     def _diff_scores(self, E: np.ndarray, cond: Optional[np.ndarray]) -> np.ndarray:
-        """채널별 차분 오차 (N, C) -> 점수 (N,). 학습 기준으로 z 화 후 최대."""
+        """Per-channel differenced error (N, C) -> score (N,). z-score against the training reference, then max."""
         if self.diff_ref_global is None:
             return E.max(axis=1)
         keys = (self.cell_key(cond) if cond is not None
@@ -500,7 +500,7 @@ class AEEdgeNode:
 
     def _apply_cond_norm(self, scores: np.ndarray,
                          cond: Optional[np.ndarray]) -> np.ndarray:
-        """점수를 그 조건의 기준으로 나눈다. 기준이 없으면 그대로 둔다."""
+        """Divide the score by that condition's reference. Leave it as is if there is no reference."""
         if not COND_NORM or not self.cond_norm or cond is None:
             return scores
         keys = self.cond_key(cond)
@@ -514,17 +514,17 @@ class AEEdgeNode:
         return scores / div
 
     def _aggregate(self, E: torch.Tensor) -> torch.Tensor:
-        """채널별 오차 (N, C) -> 이상 점수 (N,)"""
+        """Per-channel error (N, C) -> anomaly score (N,)"""
         if self.channel_norm is not None:
             E = E / (self.channel_norm.to(E.device) + 1e-12)
         if self.topk and 0 < self.topk < E.shape[1]:
             E = E.topk(self.topk, dim=1).values
         return E.mean(dim=1)
 
-    # ── 평가 ──────────────────────────────────────────────
+    # ── Evaluation ────────────────────────────────────────
 
     def _evaluate_val(self) -> tuple[float, float]:
-        """val 세트 평가: (정상 평균 점수, AUROC)"""
+        """Evaluate on the val set: (mean normal score, AUROC)"""
         if len(self.val_ds) == 0:
             return 0.0, 0.5
 
@@ -542,8 +542,8 @@ class AEEdgeNode:
                 xb = xb.to(self.device)
                 cb_ = cb.to(self.device) if self.cond_dim else None
                 if SCORE_MODE == "diff":
-                    # 운영 점수와 같은 자로 잰다. 둘이 다르면 로컬 화면의
-                    # val AUROC 와 실제 판정이 어긋난다.
+                    # Measured with the same ruler as the operational score. If they differ, the val AUROC
+                    # on the local screen disagrees with the actual verdicts.
                     all_scores.append(
                         self.model.channel_diff_error(xb, cb_).cpu())
                     all_cond.append(cb.cpu())
@@ -570,7 +570,7 @@ class AEEdgeNode:
         signals: np.ndarray,
         cond: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """(N, C, T) 신호 -> 이상 점수 (N,)"""
+        """(N, C, T) signal -> anomaly score (N,)"""
         X = self._as_3d(signals).to(self.device)
         if len(X) == 0:
             return np.zeros((0,), dtype=np.float32)
@@ -590,7 +590,7 @@ class AEEdgeNode:
 
         E = np.concatenate(out)
         if SCORE_MODE == "diff":
-            # 조건칸별 z 화가 조건 정규화 역할까지 하므로 따로 안 나눈다.
+            # Per-condition-cell z-scoring already does the condition normalization, so no separate division.
             return self._diff_scores(
                 E, cond if cond is not None else C.cpu().numpy())
         return self._apply_cond_norm(E, cond)
@@ -601,11 +601,11 @@ class AEEdgeNode:
         run_ids: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         """
-        윈도우 점수를 주행 1회 단위로 평균낸다.
+        Average window scores per driving run.
 
-        실제 판단 단위는 1초가 아니라 "이 로봇이 이 구간을 지나는 동안"이다.
-        검증 실험에서 윈도우 단위 AUROC 0.65가 주행 단위로는 0.73까지 올랐다.
-        반환: (run별 점수, run id)
+        The real decision unit is not 1 second but "while this robot passes through this segment".
+        In validation experiments, a window-level AUROC of 0.65 rose to 0.73 at the run level.
+        Returns: (per-run scores, run ids)
         """
         runs = np.asarray(run_ids)
         uniq = np.unique(runs)
@@ -613,16 +613,16 @@ class AEEdgeNode:
 
 
 # ════════════════════════════════════════════════════════
-# AUROC 헬퍼
+# AUROC helper
 # ════════════════════════════════════════════════════════
 
 def _compute_auroc(scores: np.ndarray, labels: np.ndarray) -> float:
     """
-    scores가 높을수록 anomaly에 가깝다고 가정
-    labels: 0=정상, 1=이상
+    Assumes higher scores are closer to anomaly
+    labels: 0=normal, 1=anomaly
     """
     if len(np.unique(labels)) < 2:
-        return 0.5   # 단일 클래스면 의미 없음
+        return 0.5   # Meaningless with a single class
 
     try:
         from sklearn.metrics import roc_auc_score
@@ -632,11 +632,11 @@ def _compute_auroc(scores: np.ndarray, labels: np.ndarray) -> float:
 
 
 # ════════════════════════════════════════════════════════
-# 레거시 EdgeNode (통계 피처 기반 MLP, 미사용)
+# Legacy EdgeNode (MLP on statistical features, unused)
 # ════════════════════════════════════════════════════════
 
 class EdgeNode:
-    """레거시: 통계 피처 벡터 → 분류 (현재 미사용, 인터페이스 유지)"""
+    """Legacy: statistical feature vector → classification (currently unused, interface kept)"""
 
     def __init__(self, node_id, data, sensor_cols, train_cfg, device="cpu", **kwargs):
         raise NotImplementedError(

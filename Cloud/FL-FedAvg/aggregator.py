@@ -1,20 +1,20 @@
 # Cloud/FL-FedAvg/aggregator.py
 """
-FedAvg 집계.
+FedAvg aggregation.
 
-[가중 방식]
-표준 FedAvg는 클라이언트의 샘플 수에 비례해 가중한다. 중앙에 데이터를 모아
-학습한 결과를 근사하는 것이 목적이기 때문이다.
+[Weighting scheme]
+Standard FedAvg weights clients in proportion to their sample counts, because the goal
+is to approximate what training on centrally pooled data would give.
 
-이 데모는 그렇게 하지 않는다. 참여 주체가 '사업장'이고, 사업장마다 로봇
-대수가 다르다(A 4대, B 2대, C 2대). 로봇이 많으면 같은 시간에 더 많은
-윈도우가 쌓이므로, 샘플 수로 가중하면 로봇을 많이 둔 사업장이 공통 모델을
-더 끌어당긴다. 대수는 그 공장의 사정일 뿐 발언권의 근거가 아니다.
+This demo does not do that. The participants are 'sites', and each site has a different
+number of robots (A: 4, B: 2, C: 2). More robots means more windows pile up in the
+same time, so weighting by sample count lets the site with more robots pull the shared
+model harder. Robot count is just that factory's circumstance, not a basis for voting power.
 
-그래서 사업장마다 같은 무게를 준다. 기관 단위로 연합하는 경우(cross-silo FL)
-에서 흔히 쓰는 방식이다. 데이터를 버리지 않으면서 기여를 맞출 수 있다.
+So every site gets the same weight. This is common when federating at the
+institution level (cross-silo FL). It balances contributions without throwing away data.
 
-표준 방식으로 되돌리려면 FL_AGG_WEIGHTING=samples 로 실행한다.
+To go back to the standard scheme, run with FL_AGG_WEIGHTING=samples.
 """
 from __future__ import annotations
 
@@ -25,28 +25,28 @@ import torch
 
 StateDict = Dict[str, torch.Tensor]
 
-# "uniform" 사업장마다 동일 가중 (기본)
-# "samples" 샘플 수 비례 — 표준 FedAvg
+# "uniform" equal weight per site (default)
+# "samples" proportional to sample count — standard FedAvg
 WEIGHTING = os.getenv("FL_AGG_WEIGHTING", "uniform").strip().lower()
 
-# BatchNorm 층을 평균에서 뺄지 (FedBN). 설명은 config.py.
-# 사업장 앱(edge_node.py)도 같은 값을 봐야 해서 config 에 둔다.
+# Whether to exclude BatchNorm layers from averaging (FedBN). See config.py.
+# Kept in config because the site app (edge_node.py) needs the same value.
 from config import FEDBN
 
 
 def bn_prefixes(state) -> tuple:
     """
-    state_dict 에서 BatchNorm 층의 접두사를 찾는다.
+    Find the prefixes of BatchNorm layers in a state_dict.
 
-    running_mean 은 BatchNorm 에만 있으므로 그 키로 층을 특정한다.
-    모델 클래스를 몰라도 되고, 층 이름이 바뀌어도 따라간다.
+    running_mean exists only in BatchNorm, so that key identifies the layer.
+    No need to know the model class, and it keeps working if layer names change.
     """
     return tuple(k[: -len("running_mean")]
                  for k in state if k.endswith("running_mean"))
 
 
 class Aggregator:
-    """FedAvg Aggregator (모델 비의존적)"""
+    """FedAvg Aggregator (model-agnostic)"""
 
     def __init__(self, weighting: str | None = None):
         self.weighting = (weighting or WEIGHTING).lower()
@@ -58,11 +58,11 @@ class Aggregator:
 
     def _weights(self, counts: List[int]) -> List[float]:
         """
-        집계 가중치를 정한다. 합이 1이 되도록 정규화한다.
+        Decide the aggregation weights, normalized to sum to 1.
 
-        uniform: 참여한 노드 수로 균등 분배. 샘플 수는 보지 않는다.
-                 다만 샘플이 0인 노드는 학습을 못 한 것이므로 뺀다.
-        samples: 샘플 수에 비례. 표준 FedAvg.
+        uniform: split evenly over participating nodes. Sample counts are ignored.
+                 Nodes with zero samples are excluded, though, since they could not train.
+        samples: proportional to sample count. Standard FedAvg.
         """
         if self.weighting == "samples":
             total = sum(counts)
@@ -81,10 +81,10 @@ class Aggregator:
         client_states: List[Tuple[StateDict, int]],
     ) -> StateDict:
         """
-        가중 평균으로 집계한다.
+        Aggregate by weighted average.
 
         client_states: [(state_dict, num_samples), ...]
-        반환: 집계된 global state_dict
+        Returns: the aggregated global state_dict
         """
         if not client_states:
             raise ValueError("No client states to aggregate")
@@ -98,13 +98,13 @@ class Aggregator:
         for key in states[0].keys():
             ref = states[0][key]
             if bn and key.startswith(bn):
-                # BatchNorm 은 사업장에 남긴다. 여기 담는 값은 글로벌 모델을
-                # 평가할 때만 쓰이고, 각 사업장은 자기 것을 계속 쓴다.
+                # BatchNorm stays at each site. The values stored here are used only when
+                # evaluating the global model; each site keeps using its own.
                 global_state[key] = ref.clone()
                 continue
             if not torch.is_floating_point(ref):
-                # 정수 버퍼(num_batches_tracked 등)는 평균을 내면 뜻이 깨진다.
-                # 첫 노드 것을 그대로 쓴다.
+                # Averaging integer buffers (num_batches_tracked etc.) breaks their meaning.
+                # Use the first node's value as is.
                 global_state[key] = ref.clone()
                 continue
             global_state[key] = sum(
@@ -114,7 +114,7 @@ class Aggregator:
         return global_state
 
     def describe(self, client_states: List[Tuple[StateDict, int]]) -> str:
-        """집계에 쓴 가중치를 한 줄로 설명한다. 로그와 대시보드에 쓴다."""
+        """Describe the aggregation weights in one line. Used in logs and the dashboard."""
         counts = [int(n) for _, n in client_states]
         try:
             weights = self._weights(counts)

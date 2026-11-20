@@ -1,32 +1,32 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/cse_failover.py — 사업장 MN-CSE 핸드오버
+Edge-ESTIMED-VM/Local-Model/site_app/cse_failover.py — site MN-CSE handover
 
-학습 도중 사업장 MN-CSE 가 응답을 멈추면, 같은 MEP 의 MEC033(IoT API)에
-등록된 다른 IoT 플랫폼(CSE)을 찾아 그쪽으로 옮겨 간다.
+If the site MN-CSE stops responding mid-training, find another IoT platform (CSE)
+registered in the same MEP's MEC033 (IoT API) and move over to it.
 
-[감지 — 응답 실패로]
-MEC033 의 등록은 "이 MEP 에 이런 CSE 가 있다"는 신고일 뿐 생존 여부가 아니다.
-CSE 가 죽어도 등록이 남아 있을 수 있다. 그래서 죽었는지는 CSE 에 직접 묻는다.
+[Detection — by failed responses]
+A MEC033 registration only declares "this MEP has such a CSE"; it says nothing about liveness.
+The registration can remain after the CSE dies. So liveness is checked by asking the CSE directly.
 
-  뒤에서 FL_CSE_PROBE_SEC(기본 5초)마다 CSEBase 를 RETRIEVE 한다.
-  연결 실패·타임아웃·5xx·404 가 FL_CSE_FAILOVER_SEC(기본 30초) 동안
-  끊이지 않으면 "죽었다"로 본다. 401·403 은 살아 있는데 권한 문제라 세지 않는다.
+  In the background, CSEBase is RETRIEVEd every FL_CSE_PROBE_SEC (default 5 s).
+  If connection failures, timeouts, 5xx or 404 continue uninterrupted for FL_CSE_FAILOVER_SEC (default 30 s),
+  it is considered "dead". 401/403 mean alive but a permission problem, so they do not count.
 
-  30초로 짧게 잡는 이유: IN-AE 는 라운드마다 업로드를 600초까지 기다리고
-  (FL_COLLECTION_NOTIFY_TIMEOUT), 사업장 앱의 데이터 수집 예산은 그보다
-  60초 짧은 540초다. 감지를 길게 잡으면 옮겨 간 뒤 그 라운드에 낼 데이터를
-  모을 시간이 없다.
+  Why as short as 30 s: the IN-AE waits up to 600 s for uploads each round
+  (FL_COLLECTION_NOTIFY_TIMEOUT), and the site app's data collection budget is
+  540 s, 60 s shorter. A long detection window leaves no time after moving over to collect
+  the data due for that round.
 
-[대체 CSE 고르기 — MEC033 으로]
-  같은 MEP 의 registered_iot_platforms 후보 중 지금 CSE 를 빼고,
-  CSEBase 조회가 되는 첫 번째 것.
+[Picking a replacement CSE — via MEC033]
+  Among the same MEP's registered_iot_platforms candidates, excluding the current CSE,
+  the first one whose CSEBase can be retrieved.
 
-[전환은 학습 앱이 한다]
-이 모듈은 감지와 후보 선택만 한다. 리소스 재생성·구독·경로 갱신은
-mn_ae_standard.py 의 _maybe_cse_handover() 가 안전한 지점에서 한다.
-뒤 스레드가 직접 바꾸면 수집 중인 루프와 경로가 엇갈린다.
+[The training app does the switch]
+This module only detects and picks a candidate. Recreating resources, subscriptions and updating paths
+is done by _maybe_cse_handover() in mn_ae_standard.py at a safe point.
+If the background thread switched directly, paths would get out of sync with the collecting loop.
 
-끄기: FL_CSE_HANDOVER=0
+Disable: FL_CSE_HANDOVER=0
 """
 
 import os
@@ -47,12 +47,12 @@ FAILOVER_SEC = float(os.getenv("FL_CSE_FAILOVER_SEC", "30"))
 
 
 def is_down(code: Optional[int]) -> bool:
-    """CSE 가 없는 것으로 볼 응답. None 은 연결 실패·타임아웃."""
+    """Responses that mean the CSE is gone. None means connection failure / timeout."""
     return code is None or code == 404 or code >= 500
 
 
 class CseWatch:
-    """지금 붙어 있는 MN-CSE 를 뒤에서 계속 찔러 본다."""
+    """Keep probing the currently attached MN-CSE in the background."""
 
     def __init__(self, node: str, base: str, cse: str):
         self.node = node
@@ -80,7 +80,7 @@ class CseWatch:
             return self._base, self._cse
 
     def set_target(self, base: str, cse: str) -> None:
-        """핸드오버 뒤 새 CSE 를 감시한다."""
+        """After a handover, watch the new CSE."""
         with self._lock:
             self._base, self._cse = base, cse
             self._down_since = None
@@ -103,7 +103,7 @@ class CseWatch:
             code = mec_iot.probe(base, cse)
             with self._lock:
                 if (base, cse) != (self._base, self._cse):
-                    continue          # 그 사이 핸드오버됐다
+                    continue          # A handover happened in the meantime
                 self._last_code = code
                 if is_down(code):
                     if self._down_since is None:
@@ -121,8 +121,8 @@ class CseWatch:
 def pick_replacement(node: str,
                      current: Tuple[str, str]) -> Optional[Tuple[str, str, str]]:
     """
-    같은 MEP 의 MEC033 에서 지금 CSE 가 아닌, 응답하는 CSE 를 고른다.
-    반환: (base_url, cse_name, iotPlatformId) 또는 None
+    From the same MEP's MEC033, pick a responding CSE that is not the current one.
+    Returns: (base_url, cse_name, iotPlatformId) or None
     """
     mep = config.MEP_OF_NODE.get(node, "")
     if not mep:
@@ -130,8 +130,8 @@ def pick_replacement(node: str,
     for base, cse, pid in mec_iot.candidates(mep):
         if (base, cse) == tuple(current):
             continue
-        # 후보 CSE 에는 우리 AE 가 아직 없다. AE 신원으로 물으면 등록 안 된
-        # originator 라 403 이 날 수 있어서 관리자 신원으로 확인한다.
+        # Our AE does not exist on the candidate CSE yet. Asking with the AE identity could give 403 as an
+        # unregistered originator, so it is checked with the admin identity.
         if mec_iot.cse_answers(base, cse, origin=config.ORIGINATOR):
             return base, cse, pid
         print(f"    · 후보 {base}/{cse} 응답 없음")

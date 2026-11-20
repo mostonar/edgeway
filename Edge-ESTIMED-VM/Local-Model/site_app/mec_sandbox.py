@@ -1,18 +1,18 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_sandbox.py — MEC 샌드박스 컨트롤러 이벤트 클라이언트
+Edge-ESTIMED-VM/Local-Model/site_app/mec_sandbox.py — MEC sandbox controller event client
 
-명령을 내리는 쪽은 FL이 아니라 샌드박스다. FL/MN-AE는 탐지하고 판정만 하고,
-실제로 로봇을 옮기거나 링크를 망가뜨리는 것은 이 API가 한다.
+The side issuing commands is the sandbox, not FL. FL/MN-AE only detect and decide;
+actually moving robots or breaking links is done by this API.
 
-이 API는 AdvantEDGE(MEC 샌드박스) 자체의 제어 API이고 ETSI MEC 명세가
-아니다. 그래서 GS MEC 번호가 없다. 표준 API는 mec_app.py(MEC011),
-mec_loc.py(MEC013), mec_wai.py(MEC028) 쪽이다.
+This API is the control API of AdvantEDGE (MEC sandbox) itself, not an ETSI MEC
+spec. So it has no GS MEC number. The standard APIs are in mec_app.py (MEC011),
+mec_loc.py (MEC013) and mec_wai.py (MEC028).
 
   POST /{sbx}/sandbox-ctrl/v1/events/MOBILITY
        {"name": "...", "type": "MOBILITY",
         "eventMobility": {"elementName": "robot-c2",
-                          "dest": "site-c-poa-wifi-5"}}       AP 전환
-       dest를 "DISCONNECTED"로 주면 링크를 끊는다.
+                          "dest": "site-c-poa-wifi-5"}}       AP switch
+       Setting dest to "DISCONNECTED" cuts the link.
 
   POST /{sbx}/sandbox-ctrl/v1/events/NETWORK-CHARACTERISTICS-UPDATE
        {"name": "...", "type": "NETWORK-CHARACTERISTICS-UPDATE",
@@ -20,15 +20,15 @@ mec_loc.py(MEC013), mec_wai.py(MEC028) 쪽이다.
             "elementName": "site-c-poa-wifi-2", "elementType": "POA",
             "netChar": {"latency": 300, "latencyVariation": 100,
                         "throughputDl": 1, "throughputUl": 1,
-                        "packetLoss": 40}}}                    품질 저하
+                        "packetLoss": 40}}}                    quality degradation
 
-데모에서 쓰는 순서
-  1) 장애 주입    degrade_poa()  또는 disconnect()
-  2) 탐지         mec_wai.link_state()  — MEC028으로 본다
-  3) 조치         handover()  또는 버퍼링
-  4) 복구         restore_poa() / reconnect()
+Order used in the demo
+  1) Inject fault    degrade_poa()  or disconnect()
+  2) Detect         mec_wai.link_state()  — observed via MEC028
+  3) Act            handover()  or buffering
+  4) Recover        restore_poa() / reconnect()
 
-elementType은 POA, UE, EDGE, FOG, CLOUD, POA-CELL 등이 있다. Wi-Fi AP는 POA다.
+elementType can be POA, UE, EDGE, FOG, CLOUD, POA-CELL, etc. A Wi-Fi AP is a POA.
 """
 
 import os
@@ -42,8 +42,8 @@ import config
 
 TIMEOUT = float(os.getenv("FL_MEC_TIMEOUT_SEC", "8"))
 
-# 사업장 AP의 평상시 품질. edgeway.yaml의 POA-WIFI netChar 그대로다.
-# 복구할 때 이 값으로 되돌린다.
+# Normal quality of a site AP. Same as the POA-WIFI netChar in edgeway.yaml.
+# Restored to these values on recovery.
 POA_NETCHAR_NORMAL: Dict[str, int] = {
     "latency": 1,
     "latencyVariation": 1,
@@ -52,7 +52,7 @@ POA_NETCHAR_NORMAL: Dict[str, int] = {
     "packetLoss": 0,
 }
 
-# 시나리오 2용. 붙어는 있지만 쓸 수 없는 수준.
+# For scenario 2. Attached but unusable.
 POA_NETCHAR_DEGRADED: Dict[str, int] = {
     "latency": int(os.getenv("FL_DEGRADE_LATENCY_MS", "250")),
     "latencyVariation": int(os.getenv("FL_DEGRADE_JITTER_MS", "120")),
@@ -90,7 +90,7 @@ def _post_event(event_type: str, body: dict) -> bool:
 # ── MOBILITY ────────────────────────────────────────────
 
 def handover(ue_name: str, dest_poa: str) -> bool:
-    """로봇을 다른 AP에 붙인다. dest_poa는 요소 이름(site-c-poa-wifi-5)."""
+    """Attach a robot to another AP. dest_poa is the element name (site-c-poa-wifi-5)."""
     ok = _post_event("MOBILITY", {
         "name": f"handover-{ue_name}-{int(time.time())}",
         "type": "MOBILITY",
@@ -101,7 +101,7 @@ def handover(ue_name: str, dest_poa: str) -> bool:
 
 
 def disconnect(ue_name: str) -> bool:
-    """로봇의 무선 링크를 끊는다. 시나리오 3(버퍼링)의 출발점."""
+    """Cut the robot's wireless link. Starting point of scenario 3 (buffering)."""
     ok = _post_event("MOBILITY", {
         "name": f"disconnect-{ue_name}-{int(time.time())}",
         "type": "MOBILITY",
@@ -112,7 +112,7 @@ def disconnect(ue_name: str) -> bool:
 
 
 def reconnect(ue_name: str, poa: str) -> bool:
-    """끊었던 로봇을 다시 붙인다."""
+    """Reattach a disconnected robot."""
     return handover(ue_name, poa)
 
 
@@ -133,7 +133,7 @@ def set_poa_netchar(poa_name: str, netchar: Dict[str, int]) -> bool:
 
 def degrade_poa(poa_name: str,
                 netchar: Optional[Dict[str, int]] = None) -> bool:
-    """AP 품질을 떨어뜨린다. 시나리오 2의 출발점."""
+    """Degrade AP quality. Starting point of scenario 2."""
     nc = netchar or POA_NETCHAR_DEGRADED
     ok = set_poa_netchar(poa_name, nc)
     print(f"  {'✓' if ok else '✗'} AP 품질 저하 {poa_name}  "
@@ -143,7 +143,7 @@ def degrade_poa(poa_name: str,
 
 
 def restore_poa(poa_name: str) -> bool:
-    """AP 품질을 평상시로 되돌린다."""
+    """Restore AP quality to normal."""
     ok = set_poa_netchar(poa_name, POA_NETCHAR_NORMAL)
     print(f"  {'✓' if ok else '✗'} AP 품질 복구 {poa_name}")
     return ok

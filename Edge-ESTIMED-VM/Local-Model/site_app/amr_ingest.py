@@ -1,29 +1,29 @@
 """
-amr_ingest.py — MN-CSE의 contentInstance에서 주행 센서 데이터를 직접 가져온다
+amr_ingest.py — fetches driving sensor data directly from contentInstances on the MN-CSE
 
-[왜 필요한가]
-기존 구현은 cnt-sensor-data의 con에 로컬 pkl 경로(data_path)만 넣고, MN-AE가
-그 경로의 파일을 직접 읽었다. 모델 가중치와 똑같은 문제다.
+[Why it is needed]
+The previous implementation put only a local pkl path (data_path) in the con of cnt-sensor-data, and the MN-AE
+read the file at that path directly. Exactly the same problem as with model weights.
 
-  - 로봇/시뮬레이터와 학습 앱이 다른 머신에 있으면 즉시 깨진다
-  - oneM2M이 나르는 것은 '파일이 거기 있다'는 쪽지뿐이다
+  - It breaks immediately if the robot/simulator and the training app are on different machines
+  - All oneM2M carries is a note saying 'the file is over there'
 
-여기서는 CIN의 con에 들어 있는 실제 신호를 읽어 학습 입력으로 만든다.
-con 형식은 Isaac Sim이 MN-CSE로 올리는 것과 같고, 내보낸 export/merged.json의
-한 CIN과도 같다. 즉 오프라인 파일과 라이브 CSE가 같은 파서를 쓴다.
+Here the actual signal in the CIN's con is read and turned into training input.
+The con format is the same as what Isaac Sim uploads to the MN-CSE, and the same as one CIN in
+the exported export/merged.json. So offline files and the live CSE use the same parser.
 
-[con 형식]
+[con format]
     {"t_wall":…, "t_sim":[...], "nav":"…",
      "pose":{"x":[...],"y":[...],"yaw":[...]},
      "imu":{"front":{"ax":[...],…},"left":…,"right":…},
      "enc":{"drive":{"pos":[...],"vel":[...],"eff":[...]}, …},
      "robot":"siteA_AMR_1", "seq":12}
 
-채널 구성과 전처리는 prepare_data_amr과 공유한다(한 곳만 고치면 되게).
+Channel layout and preprocessing are shared with prepare_data_amr (so only one place needs editing).
 
-[라운드 구분]
-Isaac Sim이 CIN에 round_N 라벨을 붙여 올린다는 전제다.
-라벨이 없으면 con 안의 round 필드를 보고, 그것도 없으면 최신 N개를 쓴다.
+[Round separation]
+Assumes Isaac Sim uploads CINs with a round_N label.
+If there is no label, the round field inside con is used; if that is missing too, the latest N are used.
 """
 
 from __future__ import annotations
@@ -40,8 +40,8 @@ import onem2m_utils as om2m
 
 def parse_cin_window(payload: dict) -> Optional[Tuple[np.ndarray, dict]]:
     """
-    CIN의 con(dict) 하나를 윈도우 한 개로. 채널이 모자라면 None.
-    반환: (신호 (C, T), 메타)
+    One CIN con (dict) -> one window. None if channels are missing.
+    Returns: (signal (C, T), meta)
     """
     sig = sch.window_from_con(payload)
     if sig is None:
@@ -81,9 +81,9 @@ def _empty() -> Dict[str, np.ndarray]:
         "cond_name": np.asarray([]),
         "nav": np.asarray([]),
         "ct": np.asarray([]),
-        # 로봇이 측정한 시각(epoch 초). 사업장 전체 정렬 키다.
+        # Time measured by the robot (epoch seconds). The sort key across the whole site.
         "t_wall": np.zeros(0, np.float64),
-        # 로봇별 순번. 빠진 윈도우를 찾는 데 쓴다.
+        # Per-robot sequence number. Used to find missing windows.
         "seq": np.zeros(0, np.int64),
         "max_ct": "",
         "n_raw": 0,
@@ -95,10 +95,10 @@ def fetch_latest_windows(
     limit: int = 200,
 ) -> Dict[str, np.ndarray]:
     """
-    라운드 라벨과 무관하게 최근 CIN limit개를 가져온다.
+    Fetch the latest limit CINs regardless of round labels.
 
-    실시간 학습에서는 이쪽이 자연스럽다. "로봇들이 계속 주행 중이고,
-    이번 라운드에는 방금까지 들어온 구간으로 학습한다"에 해당한다.
+    This is the natural choice for real-time training. It corresponds to "the robots keep driving,
+    and this round trains on the segments that just came in".
     """
     uril = om2m.list_uril(container_path, lim=limit)
     if not uril:
@@ -115,16 +115,16 @@ def fetch_latest_windows(
 def balance_across_robots(got: Dict[str, np.ndarray],
                           cap: int) -> Dict[str, np.ndarray]:
     """
-    사업장 전체 윈도우를 cap개 이하로 줄이되, 로봇별로 고르게 남긴다.
+    Reduce the site's windows to at most cap, keeping them even across robots.
 
-    로봇 수가 사업장마다 다르면(A 4대, B 2대) 로봇당 같은 상한을 줘도
-    사업장 총량이 2배 차이 난다. FedAvg가 샘플 수로 가중하므로 그대로
-    두면 로봇이 많은 사업장이 더 큰 영향력을 갖는다. 사업장별 기여를
-    맞추려면 사업장 단위로 잘라야 한다.
+    If robot counts differ per site (A: 4, B: 2), giving each robot the same cap still
+    leaves a 2x difference in site totals. FedAvg weights by sample count, so leaving it
+    gives sites with more robots more influence. To balance per-site contributions
+    it must be cut at the site level.
 
-    로봇마다 cap/로봇수 만큼 배정하고, 적게 가진 로봇의 몫은 남은 로봇이
-    나눠 갖는다. 한 로봇이 몰아서 채우는 일을 막는다.
-    앞에서 자르지 않고 시간 축 전체에서 고르게 뽑는다.
+    Each robot is allotted cap / number of robots, and the share of robots with fewer windows is
+    split among the rest. This keeps one robot from filling it all.
+    Instead of cutting from the front, sample evenly across the whole time axis.
     """
     n = len(got["signals"])
     if cap <= 0 or n <= cap:
@@ -155,7 +155,7 @@ def balance_across_robots(got: Dict[str, np.ndarray],
         k = quota[r]
         if k <= 0:
             continue
-        # 앞쪽만 자르면 주행 초반만 보게 되므로 균등 간격으로 뽑는다.
+        # Cutting only the front would see only the start of the run, so sample at even intervals.
         pick = np.linspace(0, len(src) - 1, k).astype(np.int64)
         keep.append(src[pick])
 
@@ -173,32 +173,32 @@ def fetch_new_windows(container_path: str,
                       since_ct: Optional[str] = None,
                       limit: int = 300) -> Dict[str, np.ndarray]:
     """
-    since_ct 이후에 들어온 윈도우만 가져온다.
+    Fetch only windows that arrived after since_ct.
 
-    라운드마다 "최근 N개"를 긁으면 라운드 간격이 짧을 때 거의 같은 데이터를
-    다시 학습하게 된다. 그러면 라운드가 지나며 좋아진 것이 데이터가 늘어서인지
-    에폭이 쌓여서인지 구분할 수 없다. 그래서 읽은 지점을 기억하고 그 뒤만 읽는다.
+    Scraping "the latest N" every round re-trains on nearly the same data when rounds are
+    close together. Then you cannot tell whether improvement over rounds came from more data
+    or from accumulated epochs. So the read position is remembered and only what comes after is read.
 
-    서버의 cra 필터를 먼저 쓰고, 그게 듣지 않으면 받아서 ct로 거른다.
+    Use the server's cra filter first; if it does not work, fetch and filter by ct.
     """
     uril = om2m.discover_cins_after(container_path, since_ct, lim=limit)
     if not uril:
         return _empty()
 
-    # 오래된 쪽부터 limit 개를 집는다.
+    # Take limit entries starting from the oldest.
     #
-    # 전에는 uril[-limit:] 로 '최신 limit 개'를 집었다. uril 은 오래된
-    # 것부터 오므로 그러면 앞쪽(오래된) 구간을 건너뛴다. 게다가 커서는
-    # 집은 것들의 max_ct 로 점프하므로, 건너뛴 구간은 영영 못 받는다.
+    # Previously it took 'the latest limit' with uril[-limit:]. uril comes oldest
+    # first, so that skipped the earlier (older) segment. On top of that, the cursor
+    # jumped to the max_ct of what was taken, so the skipped segment was never received.
     #
-    # 실측: siteA 의 telemetry 에 윈도우가 418개 있었는데 mn1 은 238개만
-    # 가져갔다. 180개가 이렇게 사라졌고, 그래서 라운드 5에서 50개를 못
-    # 채우고 멈췄다.
+    # Measured: siteA's telemetry had 418 windows but mn1 took only 238.
+    # 180 vanished this way, so at round 5 it could not reach 50
+    # and stalled.
     #
-    # 앞에서부터 집으면 커서가 조금씩만 전진하고 나머지는 다음 조회에
-    # 그대로 남는다. 버려지는 것이 없다.
+    # Taking from the front makes the cursor advance a little at a time, and the rest stays
+    # for the next query. Nothing is thrown away.
     #
-    # (fetch_latest_windows 는 '최근 N개'가 목적이라 [-limit:] 이 맞다.)
+    # (fetch_latest_windows is meant to get 'the latest N', so [-limit:] is right there.)
     cins = []
     for u in uril[:limit]:
         res = om2m.get_resource(u.lstrip("/"))
@@ -207,7 +207,7 @@ def fetch_new_windows(container_path: str,
 
     got = build_from_cins(cins)
 
-    # cra를 무시하는 CSE 대비. 받은 것 중 since_ct 이후만 남긴다.
+    # For CSEs that ignore cra. Keep only what came after since_ct.
     if since_ct and len(got["signals"]):
         keep = got["ct"] > since_ct
         if not keep.all():
@@ -224,7 +224,7 @@ ARRAY_KEYS = ("signals", "cond", "robot", "pose",
 
 
 def _reindex(got: Dict[str, np.ndarray], idx) -> Dict[str, np.ndarray]:
-    """같은 길이의 배열들을 한꺼번에 같은 순서/선택으로 다시 만든다."""
+    """Rebuild several equal-length arrays at once with the same order/selection."""
     n = len(got["signals"])
     out = dict(got)
     for k in ARRAY_KEYS:
@@ -235,18 +235,18 @@ def _reindex(got: Dict[str, np.ndarray], idx) -> Dict[str, np.ndarray]:
 
 def sort_by_time(got: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """
-    사업장 전체를 시간순으로 줄 세운다.
+    Line up the whole site in time order.
 
-    [왜 필요한가]
-    fetch_site_windows_since 는 로봇별로 받아 이어 붙이므로, 버퍼는
-    [AMR_1 전부][AMR_2 전부] 처럼 로봇 단위로 묶여 있다. 그대로 앞에서
-    자르면 로봇 하나만 몰아서 가져가게 된다.
+    [Why it is needed]
+    fetch_site_windows_since fetches per robot and concatenates, so the buffer is
+    grouped by robot like [all of AMR_1][all of AMR_2]. Cutting from the front as is
+    would take everything from just one robot.
 
-    [왜 t_wall 인가]
-    ct 는 CSE 에 '도착한' 시각이다. 한 로봇의 발행이 밀렸다 몰아서 올라오면
-    그 로봇의 오래된 데이터가 다른 로봇의 최신 데이터보다 뒤에 온다.
-    t_wall 은 로봇이 '측정한' 시각이라 밀려도 순서가 안 바뀐다.
-    t_wall 이 없는 배포를 위해 ct 로 되돌아간다.
+    [Why t_wall]
+    ct is when it 'arrived' at the CSE. If one robot's publishing lags and then catches up in a burst,
+    that robot's old data arrives after other robots' newest data.
+    t_wall is when the robot 'measured' it, so the order holds even with lag.
+    Falls back to ct for deployments without t_wall.
     """
     n = len(got["signals"])
     if n <= 1:
@@ -263,12 +263,12 @@ def sort_by_time(got: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
 
 def take_head(got: Dict[str, np.ndarray], n: int):
     """
-    앞에서 n개를 떼고 나머지를 돌려준다.
+    Take the first n and return the rest.
 
-    버리지 않는다. 남은 것은 다음 라운드가 이어서 쓴다. 그래서 라운드마다
-    정확히 n개가 되고, 한 시점에 생긴 이상이 여러 라운드로 흩어지지 않는다.
+    Nothing is discarded. The rest is used by the next round. So every round gets
+    exactly n, and an anomaly from one moment is not scattered across rounds.
 
-    반환: (앞 n개, 나머지)
+    Returns: (first n, rest)
     """
     total = len(got["signals"])
     if n <= 0:
@@ -288,7 +288,7 @@ def take_head(got: Dict[str, np.ndarray], n: int):
 
 
 def robot_counts(got: Dict[str, np.ndarray]) -> Dict[str, int]:
-    """로봇별 윈도우 수. 한 로봇이 독식하는지 로그로 보기 위한 것."""
+    """Windows per robot. For seeing in the log whether one robot is hogging."""
     robots = got.get("robot")
     if robots is None or not len(robots):
         return {}
@@ -298,11 +298,11 @@ def robot_counts(got: Dict[str, np.ndarray]) -> Dict[str, int]:
 
 def seq_gaps(got: Dict[str, np.ndarray]) -> Dict[str, int]:
     """
-    로봇별로 빠진 윈도우 수를 센다.
+    Count missing windows per robot.
 
-    seq 는 로봇이 매기는 순번이라 로봇 안에서만 의미가 있다. 연속이어야
-    하는데 뛰면 그 사이가 유실된 것이다. 지금까지는 윈도우가 조용히
-    사라져도 알 방법이 없었다.
+    seq is a sequence number assigned by the robot, meaningful only within that robot. It should be
+    contiguous; a jump means what lies between was lost. Until now windows could vanish
+    silently with no way to know.
     """
     robots, seqs = got.get("robot"), got.get("seq")
     if robots is None or seqs is None or not len(seqs):
@@ -323,20 +323,20 @@ def seq_gaps(got: Dict[str, np.ndarray]) -> Dict[str, int]:
 def merge_windows(acc: Optional[Dict[str, np.ndarray]],
                   new: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """
-    라운드 중 여러 번에 걸쳐 받은 윈도우를 이어 붙인다.
+    Concatenate windows received over several fetches during a round.
 
-    [왜 필요한가]
-    로봇의 telemetry 컨테이너에는 mni(최대 보관 수)가 걸려 있다. Isaac Sim
-    쪽이 만든 컨테이너라 우리가 정하지 않는다. 새 CIN 이 들어오면 가장
-    오래된 것이 지워진다.
+    [Why it is needed]
+    The robot telemetry container has an mni (max instances). It was created by the
+    Isaac Sim side, so we do not set it. When a new CIN arrives, the oldest
+    one is deleted.
 
-    그래서 "50개 모일 때까지 기다렸다가 한 번에 긁는다"가 성립하지 않는다.
-    같은 커서로 다시 조회하면 그 사이 지워진 만큼 빠져서, 총량이
-    로봇 수 × mni 를 절대 못 넘는다. 로봇 4대 사업장은 57개로 50을
-    넘겼는데 2대 사업장이 31/33 에서 얼어붙었던 것이 이것이다.
+    So "wait until 50 accumulate and then scrape them all at once" does not work.
+    Re-querying with the same cursor misses whatever was deleted in between, so the total
+    can never exceed robots × mni. That is why the 4-robot site got 57 and passed 50
+    while the 2-robot sites froze at 31/33.
 
-    받을 때마다 여기에 쌓고 커서를 전진시키면, 지워지기 전에 챙긴 것이
-    버퍼에 남는다.
+    Accumulating here on every fetch and advancing the cursor keeps what was grabbed
+    before deletion in the buffer.
     """
     if acc is None or not len(acc.get("signals", [])):
         return new
@@ -357,11 +357,11 @@ def fetch_site_windows_since(container_paths: List[str],
                              cursors: Dict[str, str],
                              limit_per_robot: int = 300) -> tuple:
     """
-    사업장 로봇 전체에서 각자의 커서 이후 윈도우만 모아 합친다.
+    Collect and merge only the windows after each robot's cursor across all robots at the site.
 
-    반환: (합쳐진 데이터, 갱신된 커서)
-    커서는 컨테이너 경로별 마지막 ct다. 로봇마다 발행 속도가 다르므로
-    따로 관리한다.
+    Returns: (merged data, updated cursors)
+    The cursor is the last ct per container path. Robots publish at different rates,
+    so they are tracked separately.
     """
     parts, new_cursors = [], dict(cursors)
 
@@ -396,15 +396,15 @@ def fetch_site_windows(
     limit_per_robot: int = 150,
 ) -> Dict[str, np.ndarray]:
     """
-    한 사업장의 로봇 여러 대에서 최근 윈도우를 모아 하나로 합친다.
+    Collect recent windows from several robots at one site and merge them into one.
 
-    새 데이터 배치에서는 텔레메트리가 MN-AE가 아니라 로봇 AE 아래에 쌓인다.
+    In the new data layout, telemetry accumulates under the robot AEs, not the MN-AE.
         <MN-CSE>/siteA_AMR_1/telemetry
         <MN-CSE>/siteA_AMR_2/telemetry   …
-    사업장 하나가 FL 노드 하나이므로, 로봇 대수가 몇이든 여기서 합쳐서
-    "한 공장의 데이터"로 만든다. 설계 그대로다.
+    One site is one FL node, so however many robots there are, they are merged here
+    into "one factory's data". Exactly as designed.
 
-    로봇 한 대가 죽어 있어도 나머지로 라운드를 돈다.
+    Even if one robot is dead, the round runs with the rest.
     """
     parts = []
     for path in container_paths:
@@ -434,23 +434,23 @@ def fetch_round_windows(
     limit: int = 400,
 ) -> Dict[str, np.ndarray]:
     """
-    한 라운드분 CIN을 모아 학습 입력으로 만든다.
+    Gather one round's CINs into training input.
 
-    container_path: 보통 "{MN-CSE}/{로봇 AE}/telemetry"
-    반환 dict:
+    container_path: usually "{MN-CSE}/{robot AE}/telemetry"
+    Returned dict:
         signals (N, C, T) / cond (N, D) / robot / pose / cond_name / n_raw
 
-    찾는 순서
-      1) round_N 라벨이 붙은 CIN
-      2) con 안의 round 필드가 일치하는 CIN
-      3) 둘 다 없으면 최근 limit개 (실시간 스트림으로 간주)
+    Search order
+      1) CINs labeled round_N
+      2) CINs whose round field in con matches
+      3) If neither, the latest limit entries (treated as a live stream)
     """
     cins = om2m.retrieve_cins_by_label(
         container_path,
         f"round_{round_num}",
         lim=limit,
         fallback_scan=max(limit, 200),
-        newest_first=False,          # 시간 순서를 유지한다
+        newest_first=False,          # Keep time order
     )
 
     if not cins:
@@ -467,7 +467,7 @@ def fetch_round_windows(
                 cins.append(res)
 
     if not cins:
-        # 라운드 구분이 아예 없는 배포. 최근 구간으로 학습한다.
+        # A deployment with no round separation at all. Train on the recent segment.
         print(f"    ⓘ round_{round_num} 표시가 없어 최근 {limit}개로 대체")
         return fetch_latest_windows(container_path, limit=limit)
 
@@ -475,11 +475,11 @@ def fetch_round_windows(
 
 
 def build_from_cins(cins: List[Dict]) -> Dict[str, np.ndarray]:
-    """CIN 목록 -> 학습 입력. 라벨에서 조건과 상태를 읽는다."""
+    """List of CINs -> training input. Condition and state are read from labels."""
     sigs, conds, robots, poses, names, navs = [], [], [], [], [], []
-    cts = []      # CIN 생성시각. 다음 라운드의 커서로 쓴다.
-    twalls = []   # 로봇이 측정한 시각. 정렬은 이걸로 한다.
-    seqs = []     # 로봇별 순번. 유실 확인용.
+    cts = []      # CIN creation time. Used as the cursor for the next round.
+    twalls = []   # Time measured by the robot. Sorting uses this.
+    seqs = []     # Per-robot sequence number. For checking losses.
 
     for cin in cins:
         con = _con_of(cin)
@@ -490,8 +490,8 @@ def build_from_cins(cins: List[Dict]) -> Dict[str, np.ndarray]:
             continue
         sig, meta = parsed
 
-        # 조건은 payload에서 끌어낸다. 운영 중에는 라벨이 붙지 않는다.
-        # 옛 데이터처럼 scn/spd 라벨이 있으면 그걸 우선 쓴다.
+        # The condition is derived from the payload. No labels are attached in operation.
+        # If scn/spd labels exist, as in old data, they take priority.
         lab = _labels_of(cin)
         if "scn" in lab and "spd" in lab:
             cvec = sch.cond_from_labels(lab["scn"], lab["spd"])
@@ -507,7 +507,7 @@ def build_from_cins(cins: List[Dict]) -> Dict[str, np.ndarray]:
         navs.append(meta["nav"] or "idle")
         cts.append(str(cin.get("m2m:cin", {}).get("ct", "")))
 
-        # 없으면 NaN / -1. 정렬하는 쪽에서 ct 로 되돌아간다.
+        # NaN / -1 if absent. The sorting side falls back to ct.
         try:
             twalls.append(float(meta.get("t_wall")))
         except (TypeError, ValueError):
@@ -543,11 +543,11 @@ def normalize_with(
     std: Optional[np.ndarray],
 ) -> np.ndarray:
     """
-    노드가 보관한 정규화 통계로 표준화한다.
+    Standardize with the normalization statistics kept by the node.
 
-    통계는 '그 사업장의 학습 정상'에서 뽑은 것이어야 한다. 사업장마다 로봇
-    개체차가 있어 공용 통계를 쓰면 정상도 이상으로 보인다.
-    통계가 없으면(첫 수집) 들어온 데이터로 즉석 계산한다.
+    The statistics must come from 'that site's normal training data'. Robots vary individually per site,
+    so with shared statistics even normal data looks anomalous.
+    If there are no statistics (first collection), compute them on the fly from the incoming data.
     """
     if signals.size == 0:
         return signals

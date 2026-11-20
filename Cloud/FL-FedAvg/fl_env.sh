@@ -1,17 +1,17 @@
-# fl_env.sh — 이 폴더의 실행 스크립트들이 맨 앞에서 source 하는 공용 함수.
-# 직접 실행하는 파일이 아니다. 같은 내용이 FL-FedAvg, FL-Dashboard, Local-Model
-# 세 폴더에 하나씩 있다(폴더마다 따로 배포할 수 있게 일부러 복사해 둠).
+# fl_env.sh — shared functions sourced at the top of the run scripts in this folder.
+# Not meant to be run directly. An identical copy lives in each of FL-FedAvg, FL-Dashboard and Local-Model
+# (copied on purpose so each folder can be deployed on its own).
 #
-# 스크립트는 모두 자기 폴더 기준으로만 움직인다. 저장소 어디에 두든, 어느
-# 디렉터리에서 실행하든 같다. 바깥 폴더는 .env.local 을 찾을 때만 본다.
+# All scripts work relative to their own folder only. Same result wherever they sit in the repo
+# and whichever directory they run from. Outer folders are looked at only to find .env.local.
 
 FL_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export FL_HERE
 
-# .env.local 을 읽는다. 이 폴더 → 한 단계 위 → 두 단계 위 순서로 찾는다.
-# 저장소 루트가 FL-Dashboard 에서는 한 단계 위, Cloud/FL-FedAvg 와
-# Edge-ESTIMED-VM/Local-Model 에서는 두 단계 위라서, 루트에 하나만 두면 다 찾는다.
-# 이미 셸에 있는 값은 덮어쓰지 않는다(앞에 붙인 환경변수가 이긴다).
+# Read .env.local. Looks in this folder → one level up → two levels up, in that order.
+# The repo root is one level up from FL-Dashboard and two levels up from Cloud/FL-FedAvg and
+# Edge-ESTIMED-VM/Local-Model, so a single file at the root is found by all.
+# Values already in the shell are not overwritten (env vars set in front win).
 fl_load_env() {
   local f="" d
   for d in "$FL_HERE" "$FL_HERE/.." "$FL_HERE/../.."; do
@@ -28,11 +28,11 @@ fl_load_env() {
   local line name
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
-    line="${line#"${line%%[![:space:]]*}"}"      # 앞 공백 제거
+    line="${line#"${line%%[![:space:]]*}"}"      # Strip leading whitespace
     line="${line#export }"
     case "$line" in
       [A-Za-z_]*=*) ;;
-      *) continue ;;                               # 주석, 빈 줄
+      *) continue ;;                               # Comments, blank lines
     esac
     name="${line%%=*}"
     if [ -z "${!name+x}" ]; then
@@ -51,9 +51,9 @@ fl_require_torch() {
   fi
 }
 
-# 포트와 프로세스 정리.
-#   fl_free_ports "포트1 포트2" "프로세스 패턴1" "프로세스 패턴2" ...
-# 패턴은 pkill -f 로 명령줄과 맞춘다(공백을 넣어도 된다).
+# Clean up ports and processes.
+#   fl_free_ports "port1 port2" "process pattern1" "process pattern2" ...
+# Patterns are matched against the command line with pkill -f (spaces are fine).
 fl_free_ports() {
   local ports="$1"; shift
   local killed=0 pat port pid
@@ -77,7 +77,7 @@ fl_free_ports() {
   return 0
 }
 
-# 실행별 로그 폴더. FL_LOG_DIR 이 있으면 그것을 쓴다(상위 스크립트가 넘겨줌).
+# Per-run log folder. Uses FL_LOG_DIR if set (passed down by the parent script).
 fl_log_dir() {
   if [ -n "${FL_LOG_DIR:-}" ]; then
     mkdir -p "$FL_LOG_DIR"; echo "$FL_LOG_DIR"; return
@@ -87,7 +87,7 @@ fl_log_dir() {
   echo "$d"
 }
 
-# 띄운 프로세스를 기억했다가 스크립트가 끝나거나 Ctrl+C / kill 되면 같이 내린다.
+# Remember launched processes and bring them down when the script ends or gets Ctrl+C / kill.
 FL_PIDS=()
 fl_cleanup() {
   if [ ${#FL_PIDS[@]} -gt 0 ]; then
@@ -97,17 +97,17 @@ fl_cleanup() {
 }
 trap fl_cleanup EXIT INT TERM
 
-# 명령을 백그라운드로 띄우고 출력을 화면과 로그 파일에 같이 남긴다.
-#   fl_start <로그파일> <명령...>
-# tee 를 파이프로 붙이면 $! 가 tee 의 PID 가 되어 끌 때 파이썬이 남는다.
-# 그래서 출력만 tee 로 보내고 $! 는 명령 자신의 PID 가 되게 한다.
+# Launch a command in the background and send its output to both the screen and a log file.
+#   fl_start <logfile> <command...>
+# Piping into tee makes $! the PID of tee, which leaves python running when stopping.
+# So only the output goes to tee, and $! stays the PID of the command itself.
 fl_start() {
   local log="$1"; shift
   "$@" > >(tee -a "$log") 2>&1 &
   FL_PIDS+=("$!")
 }
 
-# 사업장 이름(A/B/C, siteA, mn1, 1 …) → "A 0 mn1 5001"
+# Site name (A/B/C, siteA, mn1, 1 …) → "A 0 mn1 5001"
 fl_site() {
   local s="${1:-}"
   s="$(echo "$s" | tr '[:lower:]' '[:upper:]')"
@@ -120,7 +120,7 @@ fl_site() {
   esac
 }
 
-# MN-CSE 가 사업장 앱에 알림을 보낼 주소가 쓸 만한지
+# Whether the address the MN-CSE uses to notify the site app is usable
 fl_warn_notify_host() {
   case "${FL_NOTIFY_HOST:-127.0.0.1}" in
     127.0.0.1|localhost)

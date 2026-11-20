@@ -1,4 +1,4 @@
-# 진단: MN-CSE 라우팅 점검 — registrar(IN) 중계, IN 거쳐 다른 MN-CSE 로 가는 중계.
+# Diagnostic: MN-CSE routing check — relaying via the registrar (IN), and relaying through IN to another MN-CSE.
 #   source .env.local && python3 Edge-ESTIMED-VM/Local-Model/site_app/probe_routing.py
 import sys, json, uuid, requests, urllib3
 import config, mec_iot
@@ -30,7 +30,7 @@ def show(tag, url):
     return r, js
 
 
-# 1) 사업장 앱이 실제로 쓰는 주소(MEC033 → 규칙)와 CSE-ID
+# 1) Address the site app actually uses (MEC033 → rule) and CSE-ID
 ep, csi = {}, {}
 for node in ("mn1", "mn2"):
     base, cse = mec_iot.resolve(node)
@@ -42,7 +42,7 @@ for node in ("mn1", "mn2"):
 if not csi["mn1"]:
     sys.exit("\nmn1 CSEBase 를 못 읽었다. 시나리오가 떠 있는지, 주소가 맞는지 먼저 확인.")
 
-# 2) mn1 이 가진 remoteCSE (IN-CSE 등록)
+# 2) remoteCSE held by mn1 (IN-CSE registration)
 base_a, cse_a = ep["mn1"]
 _, js = show("mn1 remoteCSE 목록", f"{base_a}/{cse_a}?fu=1&ty=16")
 uril = js.get("m2m:uril") or []
@@ -56,13 +56,13 @@ for u in uril:
     if csr.get("cst") == 1 or in_cb is None:
         in_cb = csr.get("cb") or f"{csr.get('csi')}/{csr.get('rn')}"
 
-# 3) 테스트 1: MN-a → IN (registrar)
+# 3) Test 1: MN-a → IN (registrar)
 if in_cb:
     show("테스트1 MN-a → IN", f"{base_a}/~{in_cb}")
 else:
     print("\nremoteCSE 가 안 보여서 테스트1 생략")
 
-# 4) 테스트 2: MN-a → (IN 거쳐) MN-b
+# 4) Test 2: MN-a → (via IN) MN-b
 if csi["mn2"]:
     show("테스트2 MN-a → MN-b", f"{base_a}/~{csi['mn2']}/{ep['mn2'][1]}")
 

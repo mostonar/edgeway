@@ -1,24 +1,24 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_loc.py — ETSI GS MEC 013 (Location API) 클라이언트
+Edge-ESTIMED-VM/Local-Model/site_app/mec_loc.py — ETSI GS MEC 013 (Location API) client
 
-MEC 샌드박스의 각 MEP에 mec013-1(위치 서비스)이 떠 있다. Isaac Sim 쪽
-브리지가 로봇 pose 를 GIS engine 에 넣어 주므로(robot-a1 같은 UE 위치),
-MEC013 은 로봇이 지금 어느 Zone, 어느 AP 에 있는지 알고 있다. 여기서는
-그것을 읽기만 한다.
+Each MEP in the MEC sandbox runs mec013-1 (location service). The bridge on the Isaac Sim
+side feeds robot poses into the GIS engine (UE positions like robot-a1),
+so MEC013 knows which zone and which AP each robot is in right now. Here we
+only read that.
 
-엔드포인트 (MEP 로컬 서비스, MEC013 v3)
-  GET /{sbx}/{mep}/location/v3/queries/users?address=robot-a1   단말 위치
-  GET /{sbx}/{mep}/location/v3/queries/zones                    Zone 목록
+Endpoints (MEP-local service, MEC013 v3)
+  GET /{sbx}/{mep}/location/v3/queries/users?address=robot-a1   terminal location
+  GET /{sbx}/{mep}/location/v3/queries/zones                    zone list
 
-쓰는 필드
-  UserInfo.address          단말 이름 (샌드박스 UE 이름)
-  UserInfo.accessPointId    지금 붙어 있는 AP
-  UserInfo.zoneId           지금 있는 Zone
-  UserInfo.locationInfo     latitude[] / longitude[] (GIS 좌표)
-  UserInfo.timestamp        위치 시각
+Fields used
+  UserInfo.address          terminal name (sandbox UE name)
+  UserInfo.accessPointId    AP currently attached to
+  UserInfo.zoneId           current zone
+  UserInfo.locationInfo     latitude[] / longitude[] (GIS coordinates)
+  UserInfo.timestamp        location timestamp
 
-판정(cnt-verdict)과 링크 기록(cnt-net-status)에 "어느 Zone 에서 났나"를
-같이 남기려고 쓴다. 실패해도 FL 은 멈추지 않는다.
+Used to also record "which zone it happened in" alongside verdicts (cnt-verdict) and link records
+(cnt-net-status). FL does not stop if it fails.
 """
 
 import os
@@ -31,7 +31,7 @@ import config
 
 TIMEOUT = float(os.getenv("FL_MEC_TIMEOUT_SEC", "4"))
 
-# MEC011 서비스 발견으로 찾은 주소가 있으면 그걸 쓴다. mep -> base url
+# If an address was found via MEC011 service discovery, use it. mep -> base url
 DISCOVERED: Dict[str, str] = {}
 
 
@@ -65,7 +65,7 @@ def _get(mep: str, path: str) -> Optional[dict]:
 
 
 def _users_of(data: Optional[dict]) -> List[dict]:
-    """{"userList": {"user": [...]}} 또는 {"userInfo": {...}} 둘 다 받는다."""
+    """Accepts both {"userList": {"user": [...]}} and {"userInfo": {...}}."""
     if not data:
         return []
     ul = data.get("userList") or {}
@@ -98,8 +98,8 @@ def _summarize(u: dict) -> dict:
 
 def user_location(mep: str, ue_name: str) -> Optional[dict]:
     """
-    UE 하나의 위치. {"ue", "zone", "ap", "lat", "lon", "ts"} 또는 None.
-    address 로 바로 묻고, 못 찾으면 전체 목록에서 이름으로 고른다.
+    Location of one UE. {"ue", "zone", "ap", "lat", "lon", "ts"} or None.
+    Ask directly by address; if not found, pick by name from the full list.
     """
     users = _users_of(_get(mep, f"/queries/users?address={quote(ue_name)}"))
     for u in users:

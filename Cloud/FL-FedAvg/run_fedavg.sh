@@ -1,22 +1,22 @@
 #!/bin/bash
-# run_fedavg.sh — FL 코디네이터(IN-AE) 기동
+# run_fedavg.sh — start the FL coordinator (IN-AE)
 #
-#   bash run_fedavg.sh            (어느 디렉터리에서 실행해도 된다)
+#   bash run_fedavg.sh            (can be run from any directory)
 #
-# 순서: 지난 실행 정리 → IN-CSE 리소스 확인/생성 → IN-AE
+# Order: clean up previous run → check/create IN-CSE resources → IN-AE
 #
-# 전제
-#   - 이 폴더나 저장소 루트의 .env.local 에 FL_IN_BASE_URL / FL_IN_CSE_NAME
-#     (필요하면 FL_IN_USER / FL_IN_PASS) 가 있다.
+# Prerequisites
+#   - .env.local in this folder or the repo root has FL_IN_BASE_URL / FL_IN_CSE_NAME
+#     (and FL_IN_USER / FL_IN_PASS if needed).
 #
-# 사업장 앱(Local-Model)과 어느 쪽을 먼저 켜도 된다. IN-AE 는 첫 라운드 전에
-# 사업장 앱 3개의 cnt-fl-control 구독을 FL_COMMAND_SUBSCRIPTION_WAIT 초
-# (이 스크립트 기본 900초) 기다린다.
+# Either this or the site apps (Local-Model) can be started first. Before the first round the IN-AE
+# waits FL_COMMAND_SUBSCRIPTION_WAIT seconds (900 s by default in this script) for the
+# cnt-fl-control subscriptions of the 3 site apps.
 #
-# 자주 쓰는 설정
-#   FL_GLOBAL_ROUNDS=10     라운드 수
-#   FL_VERIFY_ACP=0         시작 때 ACP 점검을 끈다(사업장 MN-CSE 에 직접 붙는 진단)
-#   FL_RESET_ON_START=0     지난 실행의 글로벌 모델 파일(/tmp/fl_models/global)을 지우지 않는다
+# Common settings
+#   FL_GLOBAL_ROUNDS=10     number of rounds
+#   FL_VERIFY_ACP=0         turn off the ACP check at startup (a diagnostic that connects directly to the site MN-CSEs)
+#   FL_RESET_ON_START=0     do not delete the previous run's global model files (/tmp/fl_models/global)
 
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -28,8 +28,8 @@ fl_require_torch
 
 export FL_COMMAND_SUBSCRIPTION_WAIT="${FL_COMMAND_SUBSCRIPTION_WAIT:-900}"
 
-# 시작 때 ACP 점검은 사업장 MN-CSE 에 직접 붙는다. 이 호스트에 샌드박스 주소가
-# 없으면 닿을 곳이 없어 재시도만 반복하므로 끈다. (점검은 진단용이라 학습과 무관)
+# The startup ACP check connects directly to the site MN-CSEs. If this host has no sandbox address
+# there is nowhere to connect and it just keeps retrying, so turn it off. (The check is diagnostic and unrelated to training)
 if [ -z "${FL_SANDBOX_HOST:-}" ] && [ -z "${FL_VERIFY_ACP:-}" ]; then
   export FL_VERIFY_ACP=0
   echo "  · FL_SANDBOX_HOST 가 없어 시작 때 ACP 점검(FL_VERIFY_ACP)을 끈다"
@@ -40,7 +40,7 @@ echo "[1/3] 지난 실행 정리"
 fl_free_ports "6000" "in_ae_standard.py"
 if [ "${FL_RESET_ON_START:-1}" = "1" ]; then
   BASE="${FL_MODEL_BASE_DIR:-/tmp/fl_models}"
-  # IN-AE 가 라운드마다 남기는 글로벌 모델 파일. 지난 실행 것을 비운다.
+  # Global model files the IN-AE leaves every round. Clear the previous run's.
   rm -rf "$BASE/global"
   mkdir -p "$BASE/global"
   echo "  ✓ 글로벌 모델 파일 비움: $BASE/global"

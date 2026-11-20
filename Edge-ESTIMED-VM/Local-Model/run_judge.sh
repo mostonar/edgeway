@@ -1,15 +1,15 @@
 #!/bin/bash
-# run_judge.sh — 판정 앱 하나 기동 (JUDGE-AE-n)
+# run_judge.sh — start one judge app (JUDGE-AE-n)
 #
 #   bash run_judge.sh A|B|C
 #
-# 그 사업장 MN-CSE 의 ANALYSIS-AE-n/cnt-verdict 를 구독해 바닥 고장인지
-# 로봇 고장인지 가른다(judge_ae/judge_ae.py). --cse 와 --iot 주소는 사업장 앱과
-# 같은 규칙으로 .env.local 에서 만든다. 알림은 pollingChannel 로 받으므로
-# 포트를 열 필요가 없다.
+# Subscribes to ANALYSIS-AE-n/cnt-verdict on that site's MN-CSE and decides whether it is a floor fault
+# or a robot fault (judge_ae/judge_ae.py). The --cse and --iot addresses are built from .env.local by the
+# same rules as the site app. Notifications arrive via pollingChannel, so
+# no port needs to be opened.
 #
-# 사업장 앱이 MN-CSE 리소스(ANALYSIS-AE-n/cnt-verdict)를 만든 뒤에 띄운다.
-# JUDGE_AE_DIR 로 judge_ae.py 위치를 바꿀 수 있다(기본: 이 폴더의 judge_ae/).
+# Start after the site app has created the MN-CSE resources (ANALYSIS-AE-n/cnt-verdict).
+# JUDGE_AE_DIR changes where judge_ae.py lives (default: judge_ae/ in this folder).
 
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -32,7 +32,7 @@ if [ ! -f "$JUDGE_AE_DIR/judge_ae.py" ]; then
   exit 1
 fi
 
-# 사업장 앱과 같은 규칙으로 CSE 주소를 만든다 (FL_MN_BASE_URL_MNx 등 덮어쓰기 존중).
+# Build CSE addresses with the same rules as the site app (honoring overrides like FL_MN_BASE_URL_MNx).
 cd "$HERE/site_app"
 CSE_URL=""; IOT_URL=""
 read -r CSE_URL IOT_URL < <(python3 - "$NODE" <<'PY'

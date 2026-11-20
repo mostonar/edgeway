@@ -1,27 +1,27 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_topology.py — MEC 샌드박스 시나리오(edgeway)의 토폴로지 표
+Edge-ESTIMED-VM/Local-Model/site_app/mec_topology.py — topology table of the MEC sandbox scenario (edgeway)
 
-MEC028은 BSSID(MAC)로 AP를 가리키고, 샌드박스 컨트롤러의 MOBILITY 이벤트는
-요소 이름(site-c-poa-wifi-5)으로 가리킨다. 두 세계를 잇는 표가 필요하다.
-값은 edgeway.yaml에서 뽑았다. 시나리오를 다시 만들면 MAC이 바뀌므로
-아래 export_from_yaml()로 다시 뽑아 붙인다.
+MEC028 refers to APs by BSSID (MAC), while the sandbox controller's MOBILITY events
+refer to them by element name (site-c-poa-wifi-5). A table linking the two worlds is needed.
+Values were extracted from edgeway.yaml. Recreating the scenario changes the MACs, so
+re-extract them with export_from_yaml() below and paste them in.
 
-계층
+Hierarchy
   sandbox-operator
-    site-a   (mep-a)  poa-wifi 1..7    로봇 robot-a1..a4 가 1..4에 붙어 있다
-    site-b   (mep-b)  poa-wifi 1..7    로봇 robot-b1..b4
-    site-c   (mep-c)  poa-wifi 1..10   로봇 robot-c1..c4
-    spare    (mep-spare)  poa-wifi 1..13   로봇 없음 — 핸드오버 대피소
+    site-a   (mep-a)  poa-wifi 1..7    robots robot-a1..a4 attached to 1..4
+    site-b   (mep-b)  poa-wifi 1..7    robots robot-b1..b4
+    site-c   (mep-c)  poa-wifi 1..10   robots robot-c1..c4
+    spare    (mep-spare)  poa-wifi 1..13   no robots — handover refuge
 
-로봇 AE 이름(siteA_AMR_1)은 oneM2M 쪽 이름이고, UE 이름(robot-a1)은
-샌드박스 쪽 이름이다. 같은 로봇이다.
+The robot AE name (siteA_AMR_1) is the oneM2M-side name, and the UE name (robot-a1) is
+the sandbox-side name. They are the same robot.
 """
 
 import os
 from typing import Dict, List, Optional
 
 
-# ── AP 이름 -> BSSID ────────────────────────────────────
+# ── AP name -> BSSID ────────────────────────────────────
 
 POA_MAC: Dict[str, str] = {
     "site-a-poa-wifi-1": "026B5415002A",
@@ -63,12 +63,12 @@ POA_MAC: Dict[str, str] = {
     "spare-poa-wifi-13": "023F415191B3",
 }
 
-# BSSID -> AP 이름. MEC028 응답을 이름으로 되돌릴 때 쓴다.
-# MAC 대소문자가 섞여 오므로 소문자로 맞춰 둔다.
+# BSSID -> AP name. Used to map MEC028 responses back to names.
+# MAC case comes mixed, so normalize to lowercase.
 MAC_TO_POA: Dict[str, str] = {v.lower(): k for k, v in POA_MAC.items()}
 
 
-# ── 로봇 UE ─────────────────────────────────────────────
+# ── Robot UEs ───────────────────────────────────────────
 
 UE_MAC: Dict[str, str] = {
     "robot-a1": "1f45fc2c89ab",
@@ -88,21 +88,21 @@ UE_MAC: Dict[str, str] = {
 MAC_TO_UE: Dict[str, str] = {v.lower(): k for k, v in UE_MAC.items()}
 
 
-# ── 사업장 ──────────────────────────────────────────────
+# ── Sites ───────────────────────────────────────────────
 
 SITE_OF_NODE = {"mn1": "site-a", "mn2": "site-b", "mn3": "site-c"}
 MEP_OF_SITE = {"site-a": "mep-a", "site-b": "mep-b",
                "site-c": "mep-c", "spare": "mep-spare"}
 
-# 핸드오버 대피소. 자기 사업장 AP가 전부 나쁠 때 여기로 보낸다.
+# Handover refuge. Robots are sent here when all of their own site's APs are bad.
 SPARE_SITE = "spare"
 
 
 def ae_to_ue(ae_name: str) -> Optional[str]:
     """
-    oneM2M 로봇 AE 이름 -> 샌드박스 UE 이름.
+    oneM2M robot AE name -> sandbox UE name.
       siteA_AMR_1 -> robot-a1
-    AMR_UE_MAP 환경변수로 덮어쓸 수 있다("siteA_AMR_1=robot-a1,...").
+    Can be overridden with the AMR_UE_MAP environment variable ("siteA_AMR_1=robot-a1,...").
     """
     override = _parse_map(os.getenv("AMR_UE_MAP", ""))
     if ae_name in override:
@@ -128,7 +128,7 @@ def ue_to_ae(ue_name: str) -> Optional[str]:
 
 
 def poas_of_site(site: str) -> List[str]:
-    """한 사업장의 AP 이름 목록. 번호 순."""
+    """List of AP names for one site, in numeric order."""
     pre = f"{site}-poa-wifi-"
     names = [k for k in POA_MAC if k.startswith(pre)]
     return sorted(names, key=lambda n: int(n[len(pre):]))
@@ -147,12 +147,12 @@ def poa_name_of_mac(mac: str) -> Optional[str]:
 
 def handover_candidates(ue_name: str, exclude: Optional[List[str]] = None) -> List[str]:
     """
-    이 로봇이 옮겨갈 수 있는 AP 후보. 자기 사업장 AP를 먼저 보고,
-    그다음 spare 사업장의 AP를 본다. exclude에 든 것은 뺀다.
+    AP candidates this robot can move to. Its own site's APs are checked first,
+    then the spare site's APs. Anything in exclude is removed.
 
-    자기 사업장 안에서 옮기면 MN-CSE가 그대로이므로 FL 입장에서는
-    경로만 바뀐다. spare로 넘어가면 MEP가 달라지므로 MEC021(AMS)이
-    필요해진다 — 데모에서는 최후 수단이다.
+    Moving within its own site keeps the same MN-CSE, so from FL's point of view
+    only the path changes. Moving to spare changes the MEP, so MEC021 (AMS) becomes
+    necessary — a last resort in the demo.
     """
     ae = ue_to_ae(ue_name) or ""
     site = None
@@ -180,12 +180,12 @@ def _parse_map(spec: str) -> Dict[str, str]:
     return out
 
 
-# ── 표 재생성 ───────────────────────────────────────────
+# ── Regenerate tables ───────────────────────────────────
 
 def export_from_yaml(path: str) -> str:
     """
-    edgeway.yaml에서 POA_MAC / UE_MAC을 다시 뽑아 파이썬 코드로 돌려준다.
-    시나리오를 새로 만들면 MAC이 전부 바뀌므로 그때 이걸 돌려서 위를 교체한다.
+    Re-extract POA_MAC / UE_MAC from edgeway.yaml and return them as Python code.
+    Recreating the scenario changes every MAC, so run this then and replace the tables above.
 
       python3 -c "import mec_topology as t; print(t.export_from_yaml('edgeway.yaml'))"
     """

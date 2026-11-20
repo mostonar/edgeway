@@ -1,10 +1,10 @@
 """
-표준 oneM2M FL 아키텍처 - IN-AE Coordinator (Drop-box aligned)
+Standard oneM2M FL architecture - IN-AE Coordinator (drop-box aligned)
 - IN-AE/cnt-fl-control : jobState + securityMode + privacyParams publish
 - IN-AE/cnt-global-model: global model metadata publish
 - IN-AE/cnt-local-updates : Drop-box root
-- Loss Z-score 기반 이상치 탐지 (Poisoning Attack 방어)
-- ACP 접근 제어 검증 로그
+- Loss z-score based outlier detection (defense against poisoning attacks)
+- ACP access control verification log
 """
 
 import sys
@@ -20,7 +20,7 @@ from flask import Flask, request, make_response
 import config
 import valset
 
-# IN-AE 의 AE-ID. ACP의 acor 와 X-M2M-Origin 에 쓰는 값이다.
+# AE-ID of the IN-AE. The value used in ACP acor and X-M2M-Origin.
 ORIGIN_IN_AE = config.IN_AE_ID
 import model_codec
 import onem2m_utils as om2m
@@ -34,38 +34,38 @@ class INAECoordinator:
         self.max_rounds = max_rounds
         self.current_round = 0
 
-        # IN-AE는 중앙 CSE에 붙는다. 사업장 CSE는 각 MN-AE가 담당한다.
+        # The IN-AE attaches to the central CSE. Site CSEs are handled by each MN-AE.
         om2m.set_endpoint(*config.in_endpoint())
         om2m.set_in_endpoint(*config.in_endpoint())
 
-        # 켜져 있으면 IN-AE 자신의 AE-ID 로 요청한다.
+        # When on, requests are sent with the IN-AE's own AE-ID.
         if config.USE_AE_IDENTITY:
             om2m.set_originator(ORIGIN_IN_AE)
         self.in_cse_name = om2m.cse_name()
 
-        # IN-AE 의 리소스는 전부 IN-CSE 에 있다. 경로가 하나라 원격뿐이다.
+        # All IN-AE resources are on the IN-CSE. There is only one path, so remote only.
         self.notify_target = None
         self.pch_receiver = None
 
         self.fl_control_path   = f"{self.in_cse_name}/{config.IN_AE_NAME}/cnt-fl-control"
         self.global_model_path = f"{self.in_cse_name}/{config.IN_AE_NAME}/cnt-global-model"
         self.dropbox_root      = f"{self.in_cse_name}/{config.IN_AE_NAME}/cnt-local-updates"
-        # 고정 검증셋으로 잰 라운드별 성능을 여기에 남긴다.
-        # 대시보드가 이걸 읽어 로그로 띄운다.
+        # Per-round performance measured on the fixed validation set is recorded here.
+        # The dashboard reads it and shows it as a log.
         self.fl_inference_path = f"{self.in_cse_name}/{config.IN_AE_NAME}/cnt-fl-inference"
 
-        # 리소스/구독은 모든 노드에 대해 만든다.
-        # cold start 노드도 라운드 명령과 글로벌 모델은 받아야 추론을 할 수 있다.
+        # Resources/subscriptions are created for every node.
+        # Cold-start nodes also need round commands and the global model to run inference.
         self.node_names = list(
             getattr(config, "ALL_NODES", None)
             or [f"mn{i}" for i in range(1, config.NUM_CLIENTS + 1)]
         )
 
-        # 집계 대기 대상은 'FedAvg에 가중치를 올리는 노드'만이다.
-        # 관측 전용(cold start)과 로컬 전용(local only) 둘 다 빼야 한다.
-        # 예전에는 cold start만 뺐는데 그 목록이 보통 비어 있어서,
-        # 로컬 전용 mn3가 집계 대기 수에 남아 3번째 가중치를
-        # 영원히 기다리다 라운드가 멈췄다.
+        # Only 'nodes that upload weights to FedAvg' are waited on for aggregation.
+        # Both observe-only (cold start) and local-only nodes must be excluded.
+        # Previously only cold start was excluded, but that list is usually empty,
+        # so the local-only mn3 stayed in the aggregation wait count and the round
+        # stalled forever waiting for a third set of weights.
         self.non_contributing_nodes = list(
             getattr(config, "NON_CONTRIBUTING_NODES", None)
             or getattr(config, "COLD_START_NODES", [])
@@ -76,7 +76,7 @@ class INAECoordinator:
         ]
         self.expected_nodes = len(self.training_nodes)
 
-        # 미기여 노드의 추론 결과는 따로 모은다(대시보드/로그용).
+        # Inference results from non-contributing nodes are collected separately (for dashboard/logs).
         self.cold_start_results = {}
 
         if self.non_contributing_nodes:
@@ -110,7 +110,7 @@ class INAECoordinator:
         self.current_global_model_uri = None
 
         # -----------------------
-        # 추가: 글로벌 모델/평가 경로
+        # Added: global model / evaluation paths
         # -----------------------
         self.global_model_dir = os.getenv(
             "FL_GLOBAL_MODEL_DIR",
@@ -162,8 +162,8 @@ class INAECoordinator:
             raw_node = str(
                 result_data.get("node", "")
             ).strip().lower()
-            # 별칭은 cold start 노드를 포함한 '모든 노드'에 대해 만들어야 한다.
-            # (그 노드도 알림을 보내므로 이름을 해석할 수 있어야 한다)
+            # Aliases must be created for 'all nodes', including cold-start nodes.
+            # (Those nodes send notifications too, so their names must resolve)
             aliases = {
                 f"mn-ae-{i}": f"mn{i}"
                 for i in range(
@@ -233,8 +233,8 @@ class INAECoordinator:
                     resp.headers["X-M2M-RSC"] = "2000"
                     return resp
 
-                # 정상 수집 경로:
-                # NOTIFY body의 rep.m2m:cin.con을 직접 사용
+                # Normal collection path:
+                # Use rep.m2m:cin.con from the NOTIFY body directly
                 rep = nev.get("rep", {}) or {}
                 result_data = self._decode_cin_content(rep)
                 fired_node = self._map_notified_node(
@@ -251,8 +251,8 @@ class INAECoordinator:
                     resp.headers["X-M2M-RSC"] = "2000"
                     return resp
 
-                # CSE가 rep를 생략한 경우에만
-                # 해당 컨테이너의 최신 CIN을 한 번 조회
+                # Only when the CSE omitted rep,
+                # retrieve the latest CIN of that container once
                 if result_data is None:
                     cin_obj = om2m.get_latest_content_instance(
                         self.dropbox_by_node[fired_node]
@@ -276,8 +276,8 @@ class INAECoordinator:
                     .replace("_", "-")
                 )
 
-                # fl-update   : 가중치 포함, FedAvg 대상
-                # fl-inference : 지표만, 미기여 노드(관측 전용/로컬 전용)
+                # fl-update   : includes weights, FedAvg target
+                # fl-inference : metrics only, non-contributing nodes (observe-only / local-only)
                 if update_type not in ("fl-update", "fl-inference"):
                     print(
                         f"  ⚠ {fired_node}: "
@@ -309,8 +309,8 @@ class INAECoordinator:
                     if (update_type == "fl-inference"
                             or fired_node
                             in self.non_contributing_nodes):
-                        # 가중치 없는 업로드. FedAvg 대상이 아니므로
-                        # 집계 대기 수에 넣지 않는다.
+                        # Upload without weights. Not a FedAvg target, so
+                        # it is not counted in the aggregation wait.
                         self.cold_start_results[fired_node] = result_data
                         print(
                             f"  [NO-AGG/NOTIFY] "
@@ -361,22 +361,22 @@ class INAECoordinator:
 
     def _setup_notify_path(self):
         """
-        알림을 어느 경로로 받을지 정한다.
+        Decide which path notifications are received on.
 
-        IN-AE 가 구독하는 것은 전부 클라우드 IN-CSE 안에 있다(드롭박스).
-        그 CSE 는 캠퍼스 방화벽 뒤의 우리를 호출하지 못하므로 기본이 pch 다.
-        MN-AE 와 달리 IN-AE 는 그 CSE 에 정식 등록된 AE 라서
-        <pollingChannel> 을 가질 자격이 있다.
+        Everything the IN-AE subscribes to is inside the cloud IN-CSE (drop box).
+        That CSE cannot call us behind the campus firewall, so the default is pch.
+        Unlike the MN-AE, the IN-AE is an AE formally registered on that CSE,
+        so it is entitled to own a <pollingChannel>.
 
-        direct 로 두면 구독 생성이 CSE 쪽 검증 요청에서 멈췄다가
-        우리 read timeout 으로 끝난다. 복구용으로만 쓴다.
+        With direct, subscription creation stalls on the CSE-side verification request and
+        ends with our read timeout. Use only for recovery.
         """
         port = self.notification_port
         ae_path = f"{om2m.cse_name()}/{config.IN_AE_NAME}"
 
         if config.remote_notify_mode() != "pch":
-            # rr=true 만으로는 부족하다. poa 로 수신 주소를 알려야
-            # CSE가 알림 대상을 검증할 수 있다.
+            # rr=true alone is not enough. The receiving address must be announced via poa
+            # so the CSE can verify the notification target.
             poa = f"http://{config.NOTIFY_HOST}:{port}"
             om2m.set_point_of_access(ae_path, [poa], reachable=True)
             self.notify_target = f"{poa}/notify"
@@ -392,25 +392,25 @@ class INAECoordinator:
         self.notify_target = self.pch_receiver.origin
 
     # -----------------------
-    # ACP 검증
+    # ACP verification
     # -----------------------
     def _verify_acp(self):
         """
-        ACP가 의도대로 걸렸는지 점검한다.
+        Check that ACPs are applied as intended.
 
-        리소스마다 사는 CSE가 다르다. IN-AE의 제어·모델·드롭박스는 클라우드
-        IN-CSE에, MN-AE의 캐시는 각 사업장 MN-CSE에 있다. 그래서 점검할 때마다
-        해당 CSE로 바인딩을 옮긴다. 끝나면 IN-CSE로 되돌린다.
+        Each resource lives on a different CSE. The IN-AE's control, model and drop box are on the cloud
+        IN-CSE; the MN-AE caches are on each site's MN-CSE. So for each check the binding
+        is moved to that CSE, and moved back to the IN-CSE when done.
 
-        404(리소스 없음)와 403(접근 거부)은 다른 문제다. 전자는 설정이 덜 된
-        것이고 후자가 정책 문제다. 섞어서 보고하면 진단이 안 된다.
+        404 (no resource) and 403 (access denied) are different problems. The former means setup is
+        incomplete; the latter is a policy problem. Reporting them together makes diagnosis impossible.
         """
         print("\n=== ACP 접근 제어 검증 ===")
 
         in_cse = config.in_endpoint()[1]
 
         def bind(node=None):
-            """node가 None이면 IN-CSE, 아니면 그 사업장 MN-CSE로."""
+            """If node is None, the IN-CSE; otherwise that site's MN-CSE."""
             if node is None:
                 om2m.set_endpoint(*config.in_endpoint())
                 return in_cse
@@ -420,16 +420,16 @@ class INAECoordinator:
 
         def probe(path, origin, node=None):
             """
-            RETRIEVE 한 번. (status_code, 본문 일부)를 돌려준다.
+            One RETRIEVE. Returns (status_code, part of the body).
 
-            헤더는 om2m._headers()를 쓴다. 직접 만들면 Content-Type 같은 것이
-            어긋나고, 그러면 ACP가 아니라 요청 형식 때문에 실패한다.
+            Headers come from om2m._headers(). Building them by hand gets things like Content-Type
+            wrong, and then it fails because of the request format, not the ACP.
             """
             bind(node)
             h = om2m._headers()
             h["X-M2M-Origin"] = origin
-            # 이 점검은 원래 RVI 2a 로 보냈다. IN-AE 가 srv=["2a","3"] 으로
-            # 등록돼 있어 둘 다 유효하다. 바꿀 이유가 없으므로 그대로 둔다.
+            # This check was originally sent with RVI 2a. The IN-AE is registered with srv=["2a","3"],
+            # so both are valid. There is no reason to change it, so it stays.
             h["X-M2M-RVI"] = "2a"
             url = om2m._url(path)
             try:
@@ -446,7 +446,7 @@ class INAECoordinator:
                 print(f"    ⚠ 확인 못함  {short}  (Origin={origin})  {body}")
                 return
             if code == 404:
-                # 정책이 아니라 리소스가 없는 것이다. 버그로 보고하지 않는다.
+                # It is not a policy issue; the resource does not exist. Not reported as a bug.
                 print(f"    ⚠ 리소스 없음  {short}  (Origin={origin})")
                 return
 
@@ -459,7 +459,7 @@ class INAECoordinator:
                 mark = "✓ 차단" if blocked else f"✗ 허용됨(버그) HTTP {code}"
             print(f"    {mark}  {short}  (Origin={origin})")
 
-        # ── [1] acpi 연결 확인 ──────────────────────────
+        # ── [1] Check acpi links ──────────────────────────
         print("\n  [1] acpi 연결 확인")
         ae = config.IN_AE_NAME
 
@@ -485,41 +485,41 @@ class INAECoordinator:
             acpi = res.get("m2m:cnt", {}).get("acpi", [])
             print(f"    {'✓' if acpi else '⚠ acpi 없음'}  {short}  acpi={acpi}")
 
-        # ── [2] 차단돼야 하는 접근 ──────────────────────
-        # 한 사업장이 다른 사업장의 것을 들여다보려는 시도.
+        # ── [2] Access that must be blocked ───────────────
+        # An attempt by one site to look at another site's data.
         print("\n  [2] 차단돼야 하는 접근")
         mn_a = config.mn_endpoint("mn1")[1]
         mn_b = config.mn_endpoint("mn2")[1]
 
-        # 학습 앱의 이름과 AE-ID. 박아 쓰면 이름을 바꿀 때 여기만 남는다.
+        # Training app name and AE-ID. Hard-coding them means this spot gets left behind on renames.
         tr1, tr2, tr3 = (config.training_ae_name(n)
                          for n in ("mn1", "mn2", "mn3"))
         id1, id2, id3 = (config.training_ae_id(n)
                          for n in ("mn1", "mn2", "mn3"))
 
-        # 원래 학습앱2/cnt-sensor-data 를 봤는데 그 컨테이너는 없어졌다.
-        # 텔레메트리가 로봇 AE 아래로 갔고 거기엔 우리 ACP 가 없다.
-        # 같은 의도(남의 사업장 것은 못 본다)를 cnt-net-status 로 확인한다.
+        # This used to check training-app-2/cnt-sensor-data, but that container is gone.
+        # Telemetry moved under the robot AE, and there is no ACP of ours there.
+        # The same intent (cannot see another site's data) is checked with cnt-net-status.
         check("", f"{mn_b}/{tr2}/cnt-net-status", id1, False, "mn2")
         check("", f"{in_cse}/{ae}/cnt-local-updates/cnt-mn2", id1, False)
         check("", f"{mn_a}/{tr1}/cnt-local-model", id2, False, "mn1")
         check("", f"{in_cse}/{ae}/cnt-local-updates/cnt-mn1", id3, False)
         check("", f"{in_cse}/{ae}/cnt-local-updates/cnt-mn1", id1, False)
 
-        # ── [3] 허용돼야 하는 접근 ──────────────────────
+        # ── [3] Access that must be allowed ───────────────
         print("\n  [3] 허용돼야 하는 접근")
         mn_c = config.mn_endpoint("mn3")[1]
 
         check("", f"{in_cse}/{ae}/cnt-fl-control", id1, True)
         check("", f"{in_cse}/{ae}/cnt-global-model", id2, True)
-        # 원래 학습앱3/cnt-sensor-data 자리. 위와 같은 이유로 옮긴다.
+        # Formerly training-app-3/cnt-sensor-data. Moved for the same reason as above.
         check("", f"{mn_c}/{tr3}/cnt-net-status", id3, True, "mn3")
         check("", f"{mn_c}/{tr3}/cnt-local-model", id3, True, "mn3")
         check("", f"{in_cse}/{ae}/cnt-fl-control", "CIN-AE", True)
         check("", f"{in_cse}/{ae}/cnt-local-updates/cnt-mn1", "CIN-AE", True)
 
-        # 점검이 끝나면 반드시 IN-CSE로 되돌린다.
-        # 여기서 빠뜨리면 이후 라운드 명령이 엉뚱한 CSE로 간다.
+        # Always switch back to the IN-CSE after the check.
+        # If missed here, later round commands go to the wrong CSE.
         bind(None)
         print()
 
@@ -534,7 +534,7 @@ class INAECoordinator:
         print("\n  Prepare drop-box containers (delete & recreate to clear old CINs)...")
         dropbox_path = f"{om2m.cse_name()}/{config.IN_AE_NAME}/cnt-local-updates"
 
-        # 삭제 전 ACP 정보 저장
+        # Save ACP info before deletion
         root_acpi = self._read_acpi(dropbox_path)
         node_acpis = {
             node: self._read_acpi(f"{self.dropbox_root}/cnt-{node}")
@@ -556,7 +556,7 @@ class INAECoordinator:
                 om2m.update_acpi(f"{parent}/cnt-{node}", node_acpis[node])
             print(f"    ✓ {parent}/cnt-{node}")
 
-        # CSE가 컨테이너 생성을 커밋할 시간 확보
+        # Give the CSE time to commit the container creation
         time.sleep(2.0)
 
     def _subscribe_dropbox(self):
@@ -583,14 +583,14 @@ class INAECoordinator:
     @staticmethod
     def _subscription_present(sub_path: str) -> bool:
         """
-        구독이 있는지만 본다. 내용은 읽지 않는다.
+        Only check whether the subscription exists. Its content is not read.
 
-        403 도 '있다' 로 친다. 구독은 학습 앱이 자기 AE-ID 로 만들고 acpi 가
-        없어서, 만든 쪽이 아닌 CIN-AE 가 읽으면 ACME 가 403 을 돌려준다.
-        ACME 는 리소스를 먼저 찾고 권한을 나중에 보므로, 없으면 404 다.
+        403 also counts as 'exists'. The training app creates the subscription with its own AE-ID and there is
+        no acpi, so when CIN-AE (not the creator) reads it, ACME returns 403.
+        ACME looks up the resource first and checks permissions after, so a missing one is 404.
 
-        CSE 가 권한 없는 리소스를 404 로 숨길 수도 있으므로, 404 면 관리자
-        신원으로 한 번 더 본다. 존재 확인만 하고 내용은 쓰지 않는다.
+        A CSE may hide unauthorized resources as 404, so on 404 check once more with the admin
+        identity. Only existence is checked; the content is not used.
         """
         for origin in (None, config.ORIGINATOR):
             try:
@@ -605,10 +605,10 @@ class INAECoordinator:
 
     def _wait_for_mn_command_subscriptions(self) -> bool:
         """
-        Round 1 command를 발행하기 전에 모든 MN-AE의 cnt-fl-control
-        subscription이 생성됐는지 확인함.
+        Before issuing the Round 1 command, confirm that every MN-AE's cnt-fl-control
+        subscription has been created.
 
-        이 확인은 FL round polling이 아니라 시작 시점의 readiness barrier임.
+        This check is a startup readiness barrier, not FL round polling.
         """
         deadline = time.time() + self.command_subscription_wait_sec
         expected = {
@@ -627,9 +627,9 @@ class INAECoordinator:
                     ready.add(node)
                     print(f"    ✓ {node} command subscription ready")
 
-            # 구독 준비는 '모든 노드'를 기다린다.
-            # cold start 노드도 라운드 명령을 받아야 추론을 할 수 있으므로,
-            # 집계 대기 수(expected_nodes = 학습 노드 수)와는 기준이 다르다.
+            # Subscription readiness waits for 'all nodes'.
+            # Cold-start nodes also need round commands to run inference, so the criterion
+            # differs from the aggregation wait count (expected_nodes = number of training nodes).
             if len(ready) == len(self.node_names):
                 return True
 
@@ -659,7 +659,7 @@ class INAECoordinator:
                 self.current_global_model_uri
                 or f"{self.global_model_path}/la"
             ),
-            # DP 는 기본으로 끈다(config.DP_ENABLED 주석 참고).
+            # DP is off by default (see the comment on config.DP_ENABLED).
             "securityMode": "DP" if config.DP_ENABLED else "NONE",
             "privacyParams": {
                 "epsilon": config.DP_EPSILON,
@@ -704,9 +704,9 @@ class INAECoordinator:
 
     def _ensure_initial_global_model(self):
         """
-        MN-AE와 동일한 CVAE1D 구조로 Round 0 모델을 준비한다.
-        모든 노드가 같은 초기값에서 출발해야 FedAvg가 성립한다.
-        기존 파일이 현재 설정과 호환되지 않으면 자동으로 다시 생성함.
+        Prepare the Round 0 model with the same CVAE1D structure as the MN-AE.
+        FedAvg only works if every node starts from the same initial values.
+        If the existing file is incompatible with the current settings, it is regenerated automatically.
         """
         os.makedirs(self.global_model_dir, exist_ok=True)
         model_path = os.path.join(
@@ -776,9 +776,9 @@ class INAECoordinator:
             "timestamp": time.time(),
         }
 
-        # 글로벌 가중치는 con 에 실어 배포한다(내려주는 방향도 oneM2M 경유).
-        # 사업장 앱은 다른 머신이라 이것 말고는 받을 길이 없으므로,
-        # 싣지 못하면 배포하지 않는다.
+        # Global weights are distributed inside con (the downstream direction also goes through oneM2M).
+        # Site apps are on other machines and have no other way to receive them,
+        # so if they cannot be embedded, nothing is distributed.
         try:
             enc = model_codec.encode_state_dict(
                 torch.load(model_path, map_location="cpu"),
@@ -843,7 +843,7 @@ class INAECoordinator:
             f"-> {self.current_global_model_uri}"
         )
 
-        # CSE가 CIN을 반영한 뒤 command NOTIFY를 보내도록 짧게 대기
+        # Wait briefly so the CSE sends the command NOTIFY after the CIN is committed
         if self.model_publish_settle_sec > 0:
             time.sleep(self.model_publish_settle_sec)
 
@@ -872,8 +872,8 @@ class INAECoordinator:
         nodes=None
     ) -> dict:
         """
-        NOTIFY 누락 복구용 단발성 조회.
-        반복 polling에는 사용하지 않음.
+        One-shot retrieve to recover a missed NOTIFY.
+        Not used for repeated polling.
         """
         target_nodes = (
             list(nodes)
@@ -977,7 +977,7 @@ class INAECoordinator:
         return anomalies
 
     # -----------------------
-    # 가중치 조각 (CSE 페이로드 상한 대응)
+    # Weight chunks (to cope with CSE payload limits)
     # -----------------------
     def _ensure_weights_container(self, parent_path: str) -> str:
         om2m.create_container(
@@ -989,7 +989,7 @@ class INAECoordinator:
         return f"{parent_path}/cnt-weights"
 
     def _make_chunk_fetcher(self, meta: dict):
-        """매니페스트를 보고 조각을 이름으로 직접 RETRIEVE 하는 함수를 만든다."""
+        """Build a function that RETRIEVEs chunks directly by name based on the manifest."""
         cnt_path = meta.get("weights_chunk_container")
         if not cnt_path:
             return None
@@ -1016,7 +1016,7 @@ class INAECoordinator:
         return fetch
 
     def _publish_weight_chunks(self, round_num: int, enc: dict):
-        """글로벌 모델 가중치를 조각내어 자식 컨테이너에 올리고 매니페스트를 돌려준다."""
+        """Split the global model weights, upload them to a child container, and return the manifest."""
         chunks, manifest = model_codec.split_for_cin(
             enc,
             getattr(config, "FL_MAX_CIN_BYTES", 48 * 1024),
@@ -1047,7 +1047,7 @@ class INAECoordinator:
         state_dicts = {}
         num_samples = {}
         for node, data in results.items():
-            # 가중치는 con 에 실려 온다. 없으면 이번 라운드 집계에서 뺀다.
+            # Weights arrive inside con. If missing, the node is left out of this round's aggregation.
             sd = None
             src = "con(base64)"
             try:
@@ -1086,8 +1086,8 @@ class INAECoordinator:
 
         client_states = [(sd, num_samples[n]) for n, sd in state_dicts.items()]
 
-        # 어떤 가중치로 합쳤는지 남긴다. 사업장 균등인지 샘플 수 비례인지가
-        # 결과 해석을 바꾸므로 로그에 보여야 한다.
+        # Record which weights were used for merging. Whether it is per-site uniform or proportional to
+        # sample count changes how results are read, so it must show in the logs.
         print(f"    집계 가중: {self.aggregator.describe(client_states)}")
         print(f"      노드 순서: {', '.join(state_dicts.keys())}")
 
@@ -1109,18 +1109,18 @@ class INAECoordinator:
         return avg_loss, out_path
 
     # -----------------------
-    # 고정 검증셋 평가
+    # Fixed validation set evaluation
     # -----------------------
     def _evaluate_global(self, round_num: int, model_path: str):
         """
-        이번 라운드 글로벌 모델을 고정 검증셋으로 잰다.
+        Measure this round's global model on the fixed validation set.
 
-        라운드마다 같은 데이터·같은 자로 재야 "갈수록 좋아진다"를 말할 수
-        있다. 그동안의 val_auroc 는 그 라운드에 받은 윈도우로 계산해서
-        라운드 간 비교가 안 됐고, 라이브 스트림에 라벨이 없어 늘 0.5 였다.
+        Only measuring every round with the same data and the same ruler lets you claim "it keeps getting
+        better". The previous val_auroc was computed on the windows received that round, so
+        rounds could not be compared, and with no labels in the live stream it was always 0.5.
 
-        결과는 cnt-fl-inference 에 CIN 으로 남긴다. 대시보드가 읽어 띄운다.
-        평가가 실패해도 FL 은 계속한다.
+        Results are recorded as a CIN in cnt-fl-inference. The dashboard reads and shows them.
+        FL continues even if evaluation fails.
         """
         try:
             m = valset.evaluate(model_path)
@@ -1162,7 +1162,7 @@ class INAECoordinator:
         self._prepare_dropbox()
         self._subscribe_dropbox()
 
-        # ACP 검증
+        # ACP verification
         if getattr(config, "VERIFY_ACP", True):
             self._verify_acp()
         else:
@@ -1171,7 +1171,7 @@ class INAECoordinator:
             print("  IN-AE 가 중앙에서 돌면 그쪽이 방화벽 뒤라 닿지 않는다.")
             print("  연합학습 동작과는 무관하다.\n")
 
-        # Round 1 command를 놓치지 않도록 MN-AE 구독이 모두 준비될 때까지 대기
+        # Wait until all MN-AE subscriptions are ready so the Round 1 command is not missed
         if not self._wait_for_mn_command_subscriptions():
             print("  ✗ FL start aborted: MN-AE subscriptions are not ready")
             return
@@ -1199,7 +1199,7 @@ class INAECoordinator:
                 self.collected_results = {}
                 self.cold_start_results = {}
 
-            # 현재 global model URI를 포함한 round command CIN 생성
+            # Create the round command CIN including the current global model URI
             if not self._publish_job_state("FL_TRAINING", r):
                 print(f"  ✗ failed to start round {r}; abort FL")
                 return

@@ -1,10 +1,10 @@
 """
 oneM2M Utility Functions (ACME CSE, Mca/Mcc)
 - AE / CNT / CIN CRUD
-- ACP (Access Control Policy) 생성
+- Create ACPs (Access Control Policy)
 - Subscription
 - Discovery with filterCriteria-like query (label-based)
-- Retry: timeout/connection 에러 시 지수 백오프 재시도
+- Retry: exponential back-off on timeout/connection errors
 """
 
 from __future__ import annotations
@@ -19,35 +19,35 @@ import config
 
 
 # -------------------------
-# Retry 설정
+# Retry settings
 # -------------------------
 MAX_RETRY     = 4
 RETRY_DELAY   = 3.0
 RETRY_BACKOFF = 1.5
 
 # ─────────────────────────────────────────────────────────
-# 엔드포인트
+# Endpoints
 #
-# 사업장마다 MN-CSE가 따로다(mep-a/b/c). 프로세스 하나는 사업장 하나를
-# 담당하므로, 기동할 때 set_endpoint()로 자기 CSE에 바인딩한다.
-# IN-AE는 중앙 CSE로 바인딩한다.
+# Each site has its own MN-CSE (mep-a/b/c). One process handles one site,
+# so on startup it binds to its own CSE with set_endpoint().
+# The IN-AE binds to the central CSE.
 # ─────────────────────────────────────────────────────────
 
-# 이 프로세스의 '기본' CSE. MN-AE는 자기 사업장 CSE, IN-AE는 중앙 CSE다.
+# This process's 'default' CSE. The MN-AE's is its site CSE; the IN-AE's is the central CSE.
 _BASE_URL = config.BASE_URL
 _CSE_NAME = config.CSE_NAME
 
-# 중앙 CSE. MN-AE가 FL 제어·드롭박스에 접근할 때 쓴다.
+# Central CSE. Used by the MN-AE to access FL control and the drop box.
 _IN_BASE_URL = config.IN_BASE_URL
 _IN_CSE_NAME = config.IN_CSE_NAME
 
-# 경로가 이 접두사로 시작하면 중앙 CSE로 보낸다.
-# 사업장 CSE와 중앙 CSE 주소가 다르므로 어느 쪽인지 표시가 필요하다.
+# Paths starting with this prefix are sent to the central CSE.
+# Site and central CSE addresses differ, so a marker for which one is needed.
 IN_PREFIX = "@in/"
 
-# 바인딩할 때마다 엔드포인트를 찍을지.
-# 사업장을 오가며 수십 번 바인딩하므로 기본은 끔이다. 매번 찍으면
-# 정작 봐야 할 ✓/✗ 가 묻힌다. 디버깅할 때만 FL_VERBOSE_BIND=1 로 켠다.
+# Whether to print the endpoint on every bind.
+# Binding happens dozens of times while moving between sites, so off by default. Printing every time
+# buries the ✓/✗ you actually need to see. Turn on with FL_VERBOSE_BIND=1 only when debugging.
 _VERBOSE_BIND = os.getenv("FL_VERBOSE_BIND", "0") == "1"
 
 
@@ -56,15 +56,15 @@ _ORIGINATOR = None
 
 def set_originator(aeid: Optional[str]) -> None:
     """
-    이 프로세스가 CSE에 보낼 X-M2M-Origin 을 정한다.
+    Decide the X-M2M-Origin this process sends to the CSE.
 
-    지금까지는 모든 요청이 config.ORIGINATOR(기본 CAdmin)로 나갔다.
-    관리자 신원은 ACP를 전부 통과하므로, 정책을 걸어 두어도 실제로는
-    아무것도 막히지 않았다. 사업장 간 격리가 설정만 돼 있고 발동하지
-    않는 상태였다.
+    Until now every request went out as config.ORIGINATOR (default CAdmin).
+    The admin identity passes every ACP, so even with policies in place
+    nothing was actually blocked. Site-to-site isolation was configured but never
+    took effect.
 
-    각 AE가 자기 AE-ID(CTRAINING-AE-1, CIN-AE …)로 요청해야 ACP가 의미를 갖는다.
-    None 을 주면 기본값으로 돌아간다.
+    ACPs only mean something if each AE requests with its own AE-ID (CTRAINING-AE-1, CIN-AE …).
+    Passing None reverts to the default.
     """
     global _ORIGINATOR
     _ORIGINATOR = aeid
@@ -77,7 +77,7 @@ def originator() -> str:
 
 
 def set_endpoint(base_url: str, cse_name: str) -> None:
-    """이 프로세스의 기본 CSE를 지정한다."""
+    """Set this process's default CSE."""
     global _BASE_URL, _CSE_NAME
     _BASE_URL = base_url.rstrip("/")
     _CSE_NAME = cse_name
@@ -86,7 +86,7 @@ def set_endpoint(base_url: str, cse_name: str) -> None:
 
 
 def set_in_endpoint(base_url: str, cse_name: str) -> None:
-    """중앙 CSE를 지정한다. @in/ 으로 시작하는 경로가 이쪽으로 간다."""
+    """Set the central CSE. Paths starting with @in/ go here."""
     global _IN_BASE_URL, _IN_CSE_NAME
     _IN_BASE_URL = base_url.rstrip("/")
     _IN_CSE_NAME = cse_name
@@ -107,12 +107,12 @@ def in_cse_name() -> str:
 
 
 def in_path(relative: str) -> str:
-    """중앙 CSE 안의 경로를 만든다. 예: in_path("IN-AE/cnt-fl-control")"""
+    """Build a path inside the central CSE. e.g. in_path("IN-AE/cnt-fl-control")"""
     return f"{IN_PREFIX}{_IN_CSE_NAME}/{relative.lstrip('/')}"
 
 
 def _url(path: str) -> str:
-    """리소스 경로 -> 전체 URL. @in/ 접두사면 중앙 CSE로 보낸다."""
+    """Resource path -> full URL. With the @in/ prefix it goes to the central CSE."""
     p = str(path).lstrip("/")
     if p.startswith(IN_PREFIX):
         return f"{_IN_BASE_URL}/{p[len(IN_PREFIX):]}"
@@ -120,7 +120,7 @@ def _url(path: str) -> str:
 
 
 def strip_prefix(path: str) -> str:
-    """로그 출력용. @in/ 표시를 떼어낸다."""
+    """For log output. Strips the @in/ marker."""
     p = str(path).lstrip("/")
     return p[len(IN_PREFIX):] if p.startswith(IN_PREFIX) else p
 
@@ -130,8 +130,8 @@ _WARNED_INSECURE = False
 
 def _verify():
     """
-    TLS 검증 여부. 끄면 urllib3가 요청마다 경고를 찍어 로그를 덮으므로
-    한 번만 알리고 이후 경고는 끈다. 끈 사실 자체는 반드시 보이게 둔다.
+    Whether to verify TLS. When off, urllib3 prints a warning on every request and floods the log,
+    so announce it once and silence later warnings. The fact that it is off is always kept visible.
     """
     global _WARNED_INSECURE
     v = getattr(config, "TLS_VERIFY", True)
@@ -149,11 +149,11 @@ def _verify():
 
 def _auth_for(url: str):
     """
-    이 URL이 어느 CSE로 가는지 보고 HTTP 기본 인증 정보를 고른다.
+    Pick HTTP basic auth credentials based on which CSE this URL goes to.
 
-    샌드박스의 MN-CSE는 열려 있지만 클라우드 IN-CSE는 401을 돌려준다.
-    두 CSE의 자격증명이 다를 수 있으므로 URL로 구분한다.
-    설정이 없으면 None이고, requests는 auth=None을 인증 없음으로 처리한다.
+    The sandbox MN-CSEs are open but the cloud IN-CSE returns 401.
+    The two CSEs may have different credentials, so they are told apart by URL.
+    None if not configured; requests treats auth=None as no auth.
     """
     try:
         if _IN_BASE_URL and url.startswith(_IN_BASE_URL):
@@ -172,7 +172,7 @@ def _request_with_retry(method: str, url: str, **kwargs) -> requests.Response:
         try:
             return requests.request(method, url, **kwargs)
         except requests.exceptions.SSLError as e:
-            # 샌드박스가 IP 기반 자체 서명 인증서를 쓰면 여기서 막힌다.
+            # If the sandbox uses an IP-based self-signed certificate, it gets blocked here.
             print(f"  ✗ TLS 검증 실패: {url}")
             print("    자체 서명 인증서라면 FL_TLS_VERIFY=0 으로 실행하라.")
             raise e
@@ -196,9 +196,9 @@ def _next_request_id() -> str:
     """
     X-M2M-RI (Request Identifier).
 
-    TS-0009 HTTP 바인딩에서 모든 요청에 필수이며 요청마다 고유해야 한다.
-    기존 구현은 공통 헤더에 아예 넣지 않았다. 관대한 CSE에서는 통과하지만
-    표준 적합성을 보는 쪽에서는 가장 먼저 지적되는 항목이다.
+    Mandatory on every request in the TS-0009 HTTP binding and must be unique per request.
+    The previous implementation did not include it in the common headers at all. Lenient CSEs let it pass,
+    but it is the first thing flagged by anyone checking standard conformance.
     """
     return f"{os.getpid()}-{time.time_ns()}-{next(_RI_COUNTER)}"
 
@@ -206,17 +206,17 @@ def _next_request_id() -> str:
 def _headers(ty: Optional[int] = None, body: bool = False,
              origin: Optional[str] = None) -> Dict[str, str]:
     """
-    요청 헤더를 만든다.
+    Build request headers.
 
-    ty를 주면 CREATE용 Content-Type(application/json;ty=N)을 붙인다.
-    body=True면 ty 없는 본문 요청(UPDATE)이므로 Content-Type만 붙인다.
-    둘 다 아니면 Content-Type을 넣지 않는다. RETRIEVE나 DELETE에
-    Content-Type을 실으면 CSE가 요청을 거부한다.
+    If ty is given, add the CREATE Content-Type (application/json;ty=N).
+    If body=True, it is a body request without ty (UPDATE), so only Content-Type is added.
+    Otherwise Content-Type is not included. Putting Content-Type on RETRIEVE or DELETE
+    makes the CSE reject the request.
 
-    origin을 주면 이 요청에만 그 신원을 쓴다. 평소에는 프로세스 전역
-    originator()로 충분하지만, 전역 신원으로는 아예 불가능한 요청이 있다.
-    <pollingChannel> 생성이 그렇다. ACME는 부모 AE 본인만 허용하고
-    관리자(CAdmin)조차 거부한다.
+    If origin is given, that identity is used for this request only. Normally the process-wide
+    originator() is enough, but some requests are impossible with the global identity.
+    <pollingChannel> creation is one. ACME allows only the parent AE itself and
+    rejects even the admin (CAdmin).
 
         acme/resources/AE.py:103-106
         if childResource.ty == ResourceTypes.PCH:
@@ -245,8 +245,8 @@ def create_acp(
     pvs_rules: List[Dict],
 ) -> Optional[str]:
     """
-    ACP 생성 후 ri 반환.
-    pv_rules/pvs_rules 예시:
+    Create an ACP and return its ri.
+    pv_rules/pvs_rules example:
       [{"acor": ["CAdmin", "CIN-AE"], "acop": 63}]
     """
     url = _url(parent_path)
@@ -263,7 +263,7 @@ def create_acp(
             ri = r.json().get("m2m:acp", {}).get("ri")
             return ri
         elif r.status_code == 409:
-            # 이미 존재 → ri 조회
+            # Already exists → look up ri
             get_url = _url(f"{parent_path}/{acp_name}")
             rg = _request_with_retry("get", get_url, headers=_headers(), timeout=10)
             if rg.status_code == 200:
@@ -277,8 +277,8 @@ def create_acp(
 
 def update_acpi(resource_path: str, acpi: List[str]) -> bool:
     """
-    기존 컨테이너에 acpi 연결 (PUT/UPDATE).
-    acpi: ACP ri 목록 e.g. ["1-20260309T221953xxxx"]
+    Attach acpi to an existing container (PUT/UPDATE).
+    acpi: list of ACP ri, e.g. ["1-20260309T221953xxxx"]
     """
     url = _url(resource_path)
     payload = {"m2m:cnt": {"acpi": acpi}}
@@ -319,13 +319,13 @@ def create_application(ae_name: str) -> Optional[Dict]:
 def set_point_of_access(ae_path: str, poa: List[str],
                         reachable: bool = True) -> bool:
     """
-    AE의 pointOfAccess(poa)와 requestReachability(rr)를 갱신한다.
+    Update the AE's pointOfAccess (poa) and requestReachability (rr).
 
-    rr=true 는 "CSE가 나를 직접 호출해도 된다"는 선언인데, poa 가 비어 있으면
-    CSE는 어디로 가야 할지 모른다. 그 상태로 구독을 만들면 CSE가 알림 대상을
-    검증하지 못해 "Verification request failed" 로 거부한다.
+    rr=true declares "the CSE may call me directly", but if poa is empty
+    the CSE does not know where to go. Creating a subscription in that state makes the CSE
+    unable to verify the notification target, and it rejects with "Verification request failed".
 
-    AE 자신이 자기 수신 주소를 알고 있으므로, 기동 시점에 스스로 등록한다.
+    The AE knows its own receiving address, so it registers it itself at startup.
     """
     payload = {"m2m:ae": {"poa": poa, "rr": reachable}}
     try:
@@ -343,7 +343,7 @@ def set_point_of_access(ae_path: str, poa: List[str],
 
 
 def delete_resource(resource_path: str) -> bool:
-    """리소스 삭제 (존재하지 않으면 True 반환)."""
+    """Delete a resource (returns True if it does not exist)."""
     url = _url(resource_path)
     try:
         r = _request_with_retry("delete", url, headers=_headers(), timeout=10)
@@ -362,12 +362,12 @@ def create_container(
     labels: Optional[List[str]] = None,
 ) -> Optional[Dict]:
     """
-    Container 생성.
-    mbs: max byte size (기본 10MB — 가중치 CIN이 들어갈 여유)
-    acpi: ACP ri 목록. 지정 시 생성과 동시에 acpi 연결 시도,
-          실패하면 생성 후 UPDATE로 재시도.
-    labels: 리소스 라벨(lbl). 경로를 박아 두는 대신 디스커버리로 찾게
-          해 주는 열쇠다. 예: ["site:siteC", "type:local-model"].
+    Create a container.
+    mbs: max byte size (default 10 MB — room for weight CINs)
+    acpi: list of ACP ri. If given, try attaching acpi at creation time,
+          and if that fails, retry with UPDATE after creation.
+    labels: resource labels (lbl). The key that lets things be found via discovery
+          instead of hard-coded paths. e.g. ["site:siteC", "type:local-model"].
     """
     url = _url(parent_path)
     cnt_obj: Dict[str, Any] = {"rn": container_name, "mni": mni, "mbs": mbs}
@@ -382,7 +382,7 @@ def create_container(
         if r.status_code in (201, 409):
             result = r.json() if r.status_code == 201 else {"exists": True}
 
-            # acpi가 있는데 생성 응답에 acpi가 없으면 UPDATE로 재시도
+            # If acpi was given but the creation response has no acpi, retry with UPDATE
             if acpi:
                 created_acpi = (r.json().get("m2m:cnt", {}).get("acpi", [])
                                 if r.status_code == 201 else [])
@@ -408,9 +408,9 @@ def create_content_instance(
     origin: Optional[str] = None,
 ) -> Optional[Dict]:
     """
-    resource_name을 주면 CIN의 rn을 직접 지정한다.
-    가중치 조각처럼 수신측이 discovery 없이 이름으로 바로 RETRIEVE 해야 하는
-    경우에 쓴다.
+    If resource_name is given, the CIN's rn is set explicitly.
+    Used when the receiver must RETRIEVE directly by name without discovery,
+    as with weight chunks.
     """
     url = _url(container_path)
     con_str = (json.dumps(content, separators=(",", ":"), ensure_ascii=False)
@@ -418,8 +418,8 @@ def create_content_instance(
 
     cin_obj: Dict[str, Any] = {"con": con_str}
 
-    # contentInfo. con에 무엇이 들어 있는지 리소스만 보고 알 수 있게 한다.
-    # dict/list를 JSON 문자열로 직렬화해 넣으므로 application/json:0 이다.
+    # contentInfo. Lets you tell what is in con just by looking at the resource.
+    # dict/list is serialized into a JSON string, so it is application/json:0.
     cnf = getattr(config, "CIN_CONTENT_INFO", None)
     if cnf and isinstance(content, (dict, list)):
         cin_obj["cnf"] = cnf
@@ -457,10 +457,10 @@ def get_latest_content_instance(container_path: str) -> Optional[Dict]:
 
 def probe_resource(resource_path: str):
     """
-    RETRIEVE를 보내고 (status_code, 본문 일부)를 돌려준다.
+    Send a RETRIEVE and return (status_code, part of the body).
 
-    get_resource는 200이 아니면 조용히 None을 준다. 그래서 401(인증)과
-    400(헤더 문제)과 404(경로 없음)를 구분할 수 없었다. 진단용으로 쓴다.
+    get_resource quietly returns None on anything other than 200, so 401 (auth),
+    400 (header problem) and 404 (no path) could not be told apart. Used for diagnostics.
     """
     url = _url(resource_path)
     try:
@@ -555,20 +555,20 @@ def discover_by_labels(
     match_all: bool = True,
 ) -> List[str]:
     """
-    라벨로 리소스를 찾는다 (?fu=1&lbl=...). 경로 문자열 목록을 돌려준다.
+    Find resources by label (?fu=1&lbl=...). Returns a list of path strings.
 
-    왜 쓰나
-      리소스 경로를 코드에 박아 두면, 로봇이 늘거나 이름 규칙이 바뀌면
-      코드를 고쳐야 한다. 라벨로 찾으면 Isaac Sim 이 올린 그대로를
-      그때그때 읽는다. 늦게 올라온 로봇도 다음 조회에서 잡힌다.
+    Why use it
+      With resource paths hard-coded, the code must change whenever robots are added or
+      the naming rule changes. Finding by label reads whatever Isaac Sim uploaded
+      at that moment. Robots that come up late are picked up on the next lookup.
 
-    labels    : ["site:siteC", "type:telemetry"] 처럼 여러 개
-    ty        : 2 AE / 3 container / 4 contentInstance. None 이면 전부
-    match_all : True 면 모든 라벨을 만족해야 한다(fo=1 AND).
-                False 면 하나만 맞아도 된다(fo=2 OR).
+    labels    : several, like ["site:siteC", "type:telemetry"]
+    ty        : 2 AE / 3 container / 4 contentInstance. None means all
+    match_all : if True, all labels must match (fo=1 AND).
+                If False, one match is enough (fo=2 OR).
 
-    CSE 마다 fo 와 라벨 인코딩 처리가 조금씩 달라서 몇 가지 형태를
-    차례로 시도하고, 처음 성공한 것을 쓴다.
+    CSEs differ slightly in how they handle fo and label encoding, so several forms
+    are tried in turn and the first that succeeds is used.
     """
     if not labels:
         return []
@@ -584,8 +584,8 @@ def discover_by_labels(
         f"{base}?fu=1&lim={lim}{ty_q}{raw}",
         f"{base}?fu=1&lim={lim}{ty_q}{enc}",
     ]
-    # 다 실패했을 때 왜 실패했는지 남긴다. 403 이면 DISCOVERY 권한,
-    # 200 인데 비었으면 라벨이 안 붙은 것이다. 둘은 고칠 곳이 다르다.
+    # When everything fails, record why. 403 means DISCOVERY permission;
+    # 200 but empty means the labels were not attached. The fixes are in different places.
     LAST_DISCOVERY_STATUS.clear()
     for url in candidates:
         try:
@@ -602,15 +602,15 @@ def discover_by_labels(
     return []
 
 
-# discover_by_labels 가 마지막에 시도한 요청들의 응답 코드.
+# Response codes of the requests discover_by_labels tried last.
 LAST_DISCOVERY_STATUS: List[Any] = []
 
 
 def _relative_to_cse(raw: str, cse: str) -> List[str]:
-    """디스커버리 결과 한 줄 -> cse 이름부터 시작하는 경로 조각들.
+    """One discovery result line -> path segments starting from the CSE name.
 
-    CSE 마다 '/<cse-id>/<cse-rn>/...' 처럼 앞에 더 붙여 줄 수 있어서
-    cse 이름 위치를 찾아 거기서부터 쓴다. 못 찾으면 그대로 둔다.
+    Some CSEs prepend things like '/<cse-id>/<cse-rn>/...', so the position of the
+    CSE name is found and used from there. If not found, it is left as is.
     """
     parts = [x for x in strip_prefix(raw).split("/") if x]
     if cse in parts:
@@ -627,24 +627,24 @@ def discover_telemetry(
     lim: int = 200,
 ) -> Dict[str, str]:
     """
-    한 사업장의 로봇 telemetry 컨테이너를 라벨로 찾는다. {로봇 AE 이름: 경로}
+    Find a site's robot telemetry containers by label. {robot AE name: path}
 
-    Isaac Sim 이 다는 라벨 (합의한 형태):
+    Labels attached by Isaac Sim (agreed format):
       ["site:siteC", "robot:AMR_2", "ae:siteC_AMR_2",
        "type:telemetry", "siteC:telemetry"]
 
-    [왜 'siteC:telemetry' 한 개로 먼저 찾나]
-    lbl 을 여러 개 주면 CSE 구현에 따라 AND 가 아니라 OR 로 해석될 수
-    있다(같은 조건 태그의 여러 값). OR 이면 site:siteC 만 붙은 것이 다
-    걸린다. 우리 학습/분석 AE 의 cnt-local-model, cnt-net-status,
-    cnt-verdict 에도 site:siteC 를 달았기 때문에 그것들이 '로봇' 으로
-    잡혔다. 사업장과 종류를 한 라벨에 묶은 siteC:telemetry 는 해석이
-    갈릴 여지가 없다. 그것으로 못 찾을 때만 두 라벨 조합을 쓴다.
+    [Why search with the single 'siteC:telemetry' first]
+    Given multiple lbl values, some CSE implementations interpret them as OR rather than AND
+    (several values of the same condition tag). With OR, anything tagged only site:siteC
+    matches. We had also put site:siteC on our training/analysis AEs' cnt-local-model, cnt-net-status
+    and cnt-verdict, so those got picked up as 'robots'. siteC:telemetry, which binds site and type
+    into one label, leaves no room for misreading.
+    The two-label combination is used only when it finds nothing.
 
-    [왜 결과를 다시 확인하나]
-    어느 쪽으로 찾았든 컨테이너를 한 번씩 읽어 lbl 을 직접 본다.
-    site 와 type 이 둘 다 맞는 것만 남긴다. 로봇 이름은 'ae:' 라벨을
-    우선 쓰고, 없으면 경로에서 부모 이름을 쓴다.
+    [Why double-check the results]
+    Whichever way they were found, each container is read once to check lbl directly.
+    Only those where both site and type match are kept. The robot name comes from the 'ae:' label
+    first, and if absent, from the parent name in the path.
     """
     site_label = f"site:{site}"
     combined_label = combined_label or f"{site}:telemetry"
@@ -672,7 +672,7 @@ def discover_telemetry(
             continue
 
         robot = next((x[3:] for x in lbl if x.startswith("ae:")), parts[-2])
-        # 한 로봇에 후보가 둘이면 이름이 telemetry 인 쪽을 쓴다.
+        # If a robot has two candidates, the one named telemetry is used.
         if robot in found and parts[-1] != cnt_name:
             continue
         found[robot] = path
@@ -694,12 +694,12 @@ def list_uril(container_path: str, lim: int = 50) -> List[str]:
 
 def discover(parent_path: str, ty: int, lim: int = 100) -> List[str]:
     """
-    자손 리소스 디스커버리 (fu=1). ty로 종류를 고른다.
+    Descendant resource discovery (fu=1). ty selects the type.
       ty=2 AE, ty=3 container, ty=4 contentInstance
 
-    반환은 구조화된 리소스가 아니라 경로 문자열 목록(m2m:uril)이다.
-    Isaac Sim이 만들어 둔 로봇 AE와 그 telemetry 컨테이너가
-    실제로 있는지 확인하는 데 쓴다.
+    Returns a list of path strings (m2m:uril), not structured resources.
+    Used to check that the robot AEs Isaac Sim created and their telemetry containers
+    actually exist.
     """
     url = _url(f"{parent_path}?fu=1&ty={ty}&lim={lim}")
     try:
@@ -717,33 +717,33 @@ def discover_cins_after(container_path: str,
                         since_ct: Optional[str] = None,
                         lim: int = 300) -> List[str]:
     """
-    컨테이너에서 since_ct 이후에 만들어진 contentInstance 경로만 가져온다.
+    Get only the contentInstance paths created after since_ct in a container.
 
-    oneM2M TS-0001의 filterCriteria에 createdAfter(cra)가 있다. 표준이
-    제공하는 필터이므로 전부 받아서 클라이언트가 거르는 것보다 낫다.
-    받는 양도 줄고, "이번 라운드에 새로 들어온 것"이 서버 기준으로 정해진다.
+    oneM2M TS-0001 filterCriteria includes createdAfter (cra). It is a filter the standard
+    provides, so it beats fetching everything and filtering on the client.
+    Less is received, and "what newly arrived this round" is decided by the server.
 
-    since_ct가 없으면 최근 lim개를 준다(첫 라운드).
-    cra를 지원하지 않는 CSE면 빈 결과가 오므로, 호출하는 쪽에서
-    전체를 받아 ct로 거르는 방식으로 되돌아간다.
+    Without since_ct, returns the latest lim (first round).
+    A CSE that does not support cra returns an empty result, so the caller
+    falls back to fetching everything and filtering by ct.
 
-    ct 형식은 oneM2M 절대시각이다. 예: 20261115T060913,588453
+    ct format is oneM2M absolute time. e.g. 20261115T060913,588453
     """
     if not since_ct:
         return list_uril(container_path, lim=lim)
 
-    # ct의 쉼표 뒤(마이크로초)는 cra가 받지 않는 구현이 있어 떼어낸다.
+    # Some implementations do not accept the part after the comma (microseconds) in cra, so it is stripped.
     stamp = str(since_ct).split(",")[0]
 
-    # ACME 는 lim 을 cra 보다 '먼저', 그것도 오래된 것부터 적용한다.
-    # 그래서 lim 이 컨테이너의 cni 보다 작으면 앞쪽(오래된) lim 개만
-    # 후보가 되고, cra 로 거르면 하나도 안 남는다.
+    # ACME applies lim 'before' cra, and from the oldest.
+    # So if lim is smaller than the container's cni, only the first (oldest) lim entries
+    # are candidates, and filtering by cra leaves nothing.
     #
-    #   cni=71 일 때  lim=50  -> 0건
-    #                 lim=100 -> 4건   (실측)
+    #   With cni=71:  lim=50  -> 0 results
+    #                 lim=100 -> 4 results   (measured)
     #
-    # lim 을 크게 고정하면 응답이 쓸데없이 커지므로, 컨테이너의 cni 를
-    # 읽어 그만큼만 넉넉히 잡는다. GET 한 번이 늘지만 응답은 작다.
+    # Fixing lim large makes responses needlessly big, so the container's cni is read
+    # and lim is set just above it. One extra GET, but the response stays small.
     cnt = get_resource(container_path)
     cni = ((cnt or {}).get("m2m:cnt") or {}).get("cni")
     try:
@@ -765,7 +765,7 @@ def discover_cins_after(container_path: str,
 
 
 def resource_exists(resource_path: str) -> bool:
-    """단건 RETRIEVE로 존재 여부만 확인한다."""
+    """Check existence only, with a single RETRIEVE."""
     return get_resource(resource_path) is not None
 
 

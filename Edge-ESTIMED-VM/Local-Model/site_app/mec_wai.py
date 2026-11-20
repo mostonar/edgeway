@@ -1,23 +1,23 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_wai.py — ETSI GS MEC 028 (WLAN Information API, WAI) 클라이언트
+Edge-ESTIMED-VM/Local-Model/site_app/mec_wai.py — ETSI GS MEC 028 (WLAN Information API, WAI) client
 
-MEC 샌드박스의 각 MEP에 mec028-1(meep-wais)이 떠 있다. 로봇이 어느 AP에
-붙어 있고 신호와 전송률이 어떤지는 여기서 받는다. 우리가 추측하지 않는다.
+Each MEP in the MEC sandbox runs mec028-1 (meep-wais). Which AP a robot is attached to
+and what its signal and data rate are come from here. We do not guess.
 
-엔드포인트 (MEP 로컬 서비스)
-  GET /{sbx}/{mep}/wai/v2/queries/ap/ap_information    AP 상태
-  GET /{sbx}/{mep}/wai/v2/queries/sta/sta_information  단말 상태
+Endpoints (MEP-local service)
+  GET /{sbx}/{mep}/wai/v2/queries/ap/ap_information    AP state
+  GET /{sbx}/{mep}/wai/v2/queries/sta/sta_information  terminal state
   POST /{sbx}/{mep}/wai/v2/subscriptions               AssocSta / StaDataRate
 
-쓰는 필드 (MEC028 v2.3.1)
-  StaInfo.apAssociated.bssid       지금 붙어 있는 AP
-  StaInfo.rssi.rssi                수신 신호 (dBm, 음수)
-  StaInfo.staDataRate.staLastDataUplinkRate    상향 전송률 (kbps)
-  ApInfo.bssLoad.channelUtilization            채널 점유 (0~255 = 0~100%)
-  ApInfo.bssLoad.staCount                      붙어 있는 단말 수
+Fields used (MEC028 v2.3.1)
+  StaInfo.apAssociated.bssid       AP currently attached to
+  StaInfo.rssi.rssi                received signal (dBm, negative)
+  StaInfo.staDataRate.staLastDataUplinkRate    uplink data rate (kbps)
+  ApInfo.bssLoad.channelUtilization            channel utilization (0~255 = 0~100%)
+  ApInfo.bssLoad.staCount                      number of attached terminals
 
-네트워크 장애를 '만드는' 쪽은 이 파일이 아니다. 샌드박스 컨트롤러의
-이벤트 API(net_scenarios.py)가 한다. 여기는 보는 쪽만 담당한다.
+This file is not the side that 'creates' network faults. That is done by the sandbox controller's
+event API (net_scenarios.py). This file only observes.
 """
 
 import os
@@ -29,18 +29,18 @@ import config
 import mec_topology as topo
 
 
-# MEC028이 주는 channelUtilization은 255가 100%다 (IEEE 802.11 BSS Load).
+# channelUtilization from MEC028 uses 255 as 100% (IEEE 802.11 BSS Load).
 CHU_FULL = 255.0
 
-# 판정 문턱. 샌드박스 기본 Wi-Fi 모델 기준으로 잡았고 환경변수로 바꾼다.
-RSSI_WARN = float(os.getenv("FL_RSSI_WARN_DBM", "-75"))   # 이하면 주의
-RSSI_BAD = float(os.getenv("FL_RSSI_BAD_DBM", "-85"))     # 이하면 불량
-CHU_WARN = float(os.getenv("FL_CHU_WARN_PCT", "70"))      # 채널 점유 %
-UL_MIN_KBPS = float(os.getenv("FL_UL_MIN_KBPS", "500"))   # 상향 최소 전송률
+# Decision thresholds. Set against the sandbox's default Wi-Fi model; change via environment variables.
+RSSI_WARN = float(os.getenv("FL_RSSI_WARN_DBM", "-75"))   # At or below: warning
+RSSI_BAD = float(os.getenv("FL_RSSI_BAD_DBM", "-85"))     # At or below: bad
+CHU_WARN = float(os.getenv("FL_CHU_WARN_PCT", "70"))      # Channel utilization %
+UL_MIN_KBPS = float(os.getenv("FL_UL_MIN_KBPS", "500"))   # Minimum uplink data rate
 
 TIMEOUT = float(os.getenv("FL_MEC_TIMEOUT_SEC", "8"))
 
-# MEC011 서비스 발견으로 찾은 주소가 있으면 그걸 쓴다. mep -> base url
+# If an address was found via MEC011 service discovery, use it. mep -> base url
 DISCOVERED: Dict[str, str] = {}
 
 
@@ -50,8 +50,8 @@ def _verify():
 
 def wai_base(mep: str) -> str:
     """
-    MEP 로컬 WAI 서비스의 베이스 URL.
-    AdvantEDGE 인그레스가 /{sbx}/{mep}/wai 를 /wai 로 리라이트한다.
+    Base URL of the MEP-local WAI service.
+    The AdvantEDGE ingress rewrites /{sbx}/{mep}/wai to /wai.
     """
     override = os.getenv(f"FL_WAI_BASE_{mep.replace('-', '_').upper()}")
     if override:
@@ -81,14 +81,14 @@ def _get(mep: str, path: str) -> Optional[dict]:
         return None
 
 
-# ── 조회 ────────────────────────────────────────────────
+# ── Queries ─────────────────────────────────────────────
 
 def ap_information(mep: str) -> List[dict]:
-    """이 MEP가 보는 AP 목록. ApInfo 배열."""
+    """List of APs this MEP sees. ApInfo array."""
     data = _get(mep, "/queries/ap/ap_information")
     if not data:
         return []
-    # 구현에 따라 {"apInfo": [...]} 또는 바로 배열로 온다.
+    # Depending on the implementation it comes as {"apInfo": [...]} or as a bare array.
     if isinstance(data, list):
         return data
     for k in ("apInfo", "ApInfo", "apInfoList"):
@@ -98,7 +98,7 @@ def ap_information(mep: str) -> List[dict]:
 
 
 def sta_information(mep: str) -> List[dict]:
-    """이 MEP가 보는 단말 목록. StaInfo 배열."""
+    """List of terminals this MEP sees. StaInfo array."""
     data = _get(mep, "/queries/sta/sta_information")
     if not data:
         return []
@@ -110,13 +110,13 @@ def sta_information(mep: str) -> List[dict]:
     return []
 
 
-# ── 해석 ────────────────────────────────────────────────
+# ── Interpretation ──────────────────────────────────────
 
 def ap_load_by_mac(mep: str) -> Dict[str, dict]:
     """
     BSSID -> {"name", "channel_util_pct", "sta_count"}
-    channelUtilization을 퍼센트로 바꿔 둔다. 255 척도를 그대로 쓰면
-    문턱값을 읽을 수 없다.
+    Convert channelUtilization to a percentage. Using the 255 scale as is
+    makes thresholds unreadable.
     """
     out: Dict[str, dict] = {}
     for ap in ap_information(mep):
@@ -138,10 +138,10 @@ def ap_load_by_mac(mep: str) -> Dict[str, dict]:
 def station(mep: str, ue_name: str,
             stas: Optional[List[dict]] = None) -> Optional[dict]:
     """
-    UE 이름(robot-c2)으로 StaInfo 하나를 찾는다.
-    MEC028은 MAC으로만 가리키므로 토폴로지 표로 변환한다.
+    Find one StaInfo by UE name (robot-c2).
+    MEC028 refers only by MAC, so convert using the topology table.
 
-    stas를 주면 그걸 쓴다. 로봇 여러 대를 볼 때 매번 조회하지 않기 위함이다.
+    If stas is given, use it. Avoids querying every time when looking at several robots.
     """
     mac = topo.UE_MAC.get(ue_name, "").lower()
     if not mac:
@@ -156,16 +156,16 @@ def link_state(mep: str, ue_name: str,
                stas: Optional[List[dict]] = None,
                loads: Optional[Dict[str, dict]] = None) -> dict:
     """
-    로봇 하나의 링크 상태를 한 눈에 보이게 정리한다.
+    Summarize one robot's link state at a glance.
 
-    반환
+    Returns
       verdict  "GOOD" | "DEGRADED" | "LOST"
-      reasons  판정 근거 문장들 (데모 화면에 그대로 띄울 수 있게)
-      ap       지금 붙어 있는 AP 이름
+      reasons  sentences explaining the decision (so they can be shown as is on the demo screen)
+      ap       name of the AP currently attached to
       rssi, ul_kbps, dl_kbps, channel_util_pct
 
-    LOST는 AP 연결이 없거나 MEC028이 단말을 아예 못 보는 경우다.
-    DEGRADED는 붙어 있지만 신호·전송률·채널 점유가 문턱을 넘은 경우다.
+    LOST means there is no AP association or MEC028 cannot see the terminal at all.
+    DEGRADED means attached, but signal, data rate or channel utilization crossed a threshold.
     """
     sta = station(mep, ue_name, stas=stas)
     if sta is None:
@@ -201,8 +201,8 @@ def link_state(mep: str, ue_name: str,
     if chu is not None and chu >= CHU_WARN:
         reasons.append(f"채널 점유 {chu:.0f}% (기준 {CHU_WARN:.0f}%)")
 
-    # 붙어 있는 AP가 없으면 LOST, 문턱을 하나라도 넘었으면 DEGRADED.
-    # 신호가 불량 기준 이하인 경우는 위에서 이미 reasons에 들어간다.
+    # No attached AP means LOST; crossing even one threshold means DEGRADED.
+    # A signal below the bad threshold is already added to reasons above.
     if not bssid:
         verdict = "LOST"
     elif reasons:
@@ -216,11 +216,11 @@ def link_state(mep: str, ue_name: str,
 
 
 def site_link_states(node: str) -> List[dict]:
-    """한 사업장 로봇 전체의 링크 상태."""
+    """Link state of all robots at one site."""
     mep = config.MEP_OF_NODE.get(node)
     if not mep:
         return []
-    # 로봇마다 조회하면 대수만큼 왕복이 생긴다. 한 번 받아서 돌려 쓴다.
+    # Querying per robot means one round trip per robot. Fetch once and reuse.
     stas = sta_information(mep)
     loads = ap_load_by_mac(mep)
 
@@ -238,12 +238,12 @@ def site_link_states(node: str) -> List[dict]:
 def best_target_ap(mep: str, ue_name: str,
                    exclude: Optional[List[str]] = None) -> Optional[str]:
     """
-    핸드오버 목표 AP를 고른다.
+    Pick the handover target AP.
 
-    1순위는 단말이 직접 본 이웃 AP 보고(neighborReport)다. 단말이 실제로
-    들을 수 있다는 증거이므로 추측보다 낫다.
-    2순위는 같은 사업장 AP 중 채널 점유가 가장 낮은 것.
-    3순위는 spare 사업장 AP (MEP가 바뀌므로 최후 수단).
+    First priority is the neighbor AP report (neighborReport) seen by the terminal itself. It is evidence
+    the terminal can actually hear it, so it beats guessing.
+    Second priority is the AP at the same site with the lowest channel utilization.
+    Third priority is a spare-site AP (the MEP changes, so last resort).
     """
     skip = {s.lower() for s in (exclude or [])}
     skip |= {(topo.POA_MAC.get(s, "") or "").lower() for s in (exclude or [])}
@@ -251,7 +251,7 @@ def best_target_ap(mep: str, ue_name: str,
     loads = ap_load_by_mac(mep)
     sta = station(mep, ue_name)
 
-    # 1) 이웃 보고
+    # 1) Neighbor report
     if sta:
         cur = ((sta.get("apAssociated") or {}).get("bssid") or "").lower()
         neigh = []
@@ -268,13 +268,13 @@ def best_target_ap(mep: str, ue_name: str,
             neigh.sort()
             return neigh[0][1]
 
-    # 2) 3) 토폴로지 후보에서 채널 점유가 낮은 쪽
+    # 2) 3) Topology candidates with lower channel utilization
     cands = topo.handover_candidates(ue_name, exclude=list(skip))
     scored = []
     for name in cands:
         mac = (topo.POA_MAC.get(name) or "").lower()
         chu = (loads.get(mac) or {}).get("channel_util_pct")
-        # 이 MEP에서 안 보이는 AP(=spare)는 뒤로 밀되 후보로는 남긴다.
+        # APs not visible from this MEP (= spare) are pushed back but kept as candidates.
         scored.append((0 if mac in loads else 1,
                        chu if chu is not None else 50.0, name))
     if not scored:
@@ -283,7 +283,7 @@ def best_target_ap(mep: str, ue_name: str,
     return scored[0][2]
 
 
-# ── 단독 실행: 현재 링크 상태 덤프 ──────────────────────
+# ── Standalone run: dump current link state ─────────────
 
 def main() -> None:
     import argparse

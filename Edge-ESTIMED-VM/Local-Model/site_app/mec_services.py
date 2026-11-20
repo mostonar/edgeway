@@ -1,20 +1,20 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_services.py — 사업장 학습 앱이 쓰는 MEC 서비스 묶음
+Edge-ESTIMED-VM/Local-Model/site_app/mec_services.py — bundle of MEC services used by the site training app
 
-  MEC011  학습 앱을 사업장 MEP 의 MEC 앱으로 등록하고(confirm_ready →
-          registrations), MEC013·MEC028 주소를 서비스
-          레지스트리에서 찾는다.                          FL_MEC_APP
-  MEC028  라운드마다 로봇 링크 상태(AP·RSSI·전송률)를 읽어
-          TRAINING-AE-i/cnt-net-status 에 남긴다.        FL_MEC_LINK
-  MEC013  로봇이 있는 Zone·AP·좌표를 읽어 링크 기록과
-          판정(cnt-verdict)에 같이 남긴다.               FL_MEC_LOCATION
+  MEC011  registers the training app as a MEC app of the site MEP (confirm_ready →
+          registrations) and looks up MEC013/MEC028 addresses in the service
+          registry.                                           FL_MEC_APP
+  MEC028  every round, reads robot link state (AP, RSSI, data rate) and
+          records it in TRAINING-AE-i/cnt-net-status.         FL_MEC_LINK
+  MEC013  reads the zone, AP and coordinates of each robot and records them with link records
+          and verdicts (cnt-verdict).                         FL_MEC_LOCATION
 
-  (MEC033 은 여기가 아니라 기동 맨 앞, MN-CSE 주소를 정할 때 쓴다.
+  (MEC033 is not used here but at the very start of startup, when deciding the MN-CSE address.
    mec_iot.py, FL_MEC_IOT)
 
-셋 다 "보조" 다. 실패해도 FL 라운드는 그대로 간다. 같은 서비스가 연달아
-실패하면(FL_MEC_MAX_FAIL, 기본 3) 그 실행 동안은 더 부르지 않는다.
-학습 시간을 MEC 응답 대기로 잃지 않기 위해서다.
+All three are "auxiliary". The FL round goes on even if they fail. If the same service fails
+repeatedly (FL_MEC_MAX_FAIL, default 3), it is not called again for the rest of the run.
+This keeps training time from being lost waiting on MEC responses.
 """
 
 import atexit
@@ -37,7 +37,7 @@ MAX_FAIL = int(os.getenv("FL_MEC_MAX_FAIL", "3"))
 
 
 class _Breaker:
-    """연속 실패가 MAX_FAIL 에 닿으면 끈다. 한 번 끄면 그 실행 동안 꺼져 있다."""
+    """Turn it off when consecutive failures reach MAX_FAIL. Once off, it stays off for the run."""
 
     def __init__(self, label: str, enabled: bool):
         self.label = label
@@ -58,7 +58,7 @@ class _Breaker:
 class SiteMec:
     def __init__(self, node: str, endpoint: Optional[str] = None):
         self.node = node
-        # MEC011 등록에 넣는 앱 주소. 학습 앱의 알림 서버 주소를 쓴다.
+        # App address put into the MEC011 registration. Uses the training app's notification server address.
         self.endpoint = endpoint
         self.mep = config.MEP_OF_NODE.get(node, "")
         self.app = _Breaker("MEC011", _on("FL_MEC_APP"))
@@ -73,7 +73,7 @@ class SiteMec:
     def any_enabled(self) -> bool:
         return self.app.enabled or self.link.enabled or self.loc.enabled
 
-    # ── 기동 ────────────────────────────────────────────
+    # ── Startup ─────────────────────────────────────────
     def start(self) -> None:
         if not self.mep:
             return
@@ -87,14 +87,14 @@ class SiteMec:
             self.app.enabled = False
             return
         print(f"    ✓ 앱 인스턴스 {self.app_id}")
-        # 정상 종료(Ctrl+C 포함) 때 등록만 지운다. 앱 인스턴스는 시나리오 것이다.
-        # kill 로 끝나 등록이 남아도 다음 기동에서 그대로 확인·재사용한다.
+        # On normal shutdown (including Ctrl+C) only the registration is deleted. The app instance belongs to the scenario.
+        # If it ended with kill and the registration remains, the next startup checks and reuses it as is.
         atexit.register(self.stop)
         self.ready = mec_app.confirm_ready(self.mep, self.app_id)
         print(f"    {'✓' if self.ready else '⚠'} confirm_ready "
               f"{'READY' if self.ready else '실패'}")
-        # 등록은 READY 다음이어야 한다(먼저 보내면 403). 이전 실행의 등록이
-        # 남아 있을 수 있어서 confirm_ready 결과와 상관없이 확인한다.
+        # Registration must come after READY (sending it first gives 403). A registration from a previous run
+        # may remain, so it is checked regardless of the confirm_ready result.
         if self.endpoint:
             self.registered = mec_app.register(
                 self.mep, self.app_id, name, self.endpoint)
@@ -127,19 +127,19 @@ class SiteMec:
             return None
         return mec_loc.user_location(self.mep, ue)
 
-    # ── 라운드마다 ──────────────────────────────────────
+    # ── Every round ─────────────────────────────────────
     def link_snapshot(self, round_num: int) -> Optional[dict]:
         """
-        이 사업장 로봇들의 링크 상태(MEC028)와 위치(MEC013).
-        cnt-net-status 에 그대로 올릴 수 있는 dict. 둘 다 꺼져 있으면 None.
+        Link state (MEC028) and location (MEC013) of this site's robots.
+        A dict that can be uploaded to cnt-net-status as is. None if both are off.
         """
         if not (self.link.enabled or self.loc.enabled):
             return None
         robots: List[dict] = []
         if self.link.enabled:
             states = mec_wai.site_link_states(self.node)
-            # 조회가 실패하면 로봇이 전부 'AP 없음(LOST)' 으로 나온다. 한 대라도
-            # AP 가 보이면 MEC028 은 살아 있는 것으로 본다.
+            # If the query fails, every robot shows up as 'no AP (LOST)'. If even one robot
+            # sees an AP, MEC028 is considered alive.
             (self.link.ok if any(r.get("ap") for r in states)
              else self.link.fail)()
             robots = states
@@ -155,7 +155,7 @@ class SiteMec:
                 r["loc_ap"] = loc.get("ap")
                 r["lat"], r["lon"] = loc.get("lat"), loc.get("lon")
         if self.loc.enabled:
-            # 로봇 한 대라도 위치가 나오면 MEC013 은 살아 있는 것으로 본다.
+            # If even one robot's location comes back, MEC013 is considered alive.
             (self.loc.ok if located else self.loc.fail)()
 
         summary: Dict[str, int] = {}
@@ -177,9 +177,9 @@ class SiteMec:
             "robots": robots,
         }
 
-    # ── 판정에 붙이기 ───────────────────────────────────
+    # ── Attach to verdicts ──────────────────────────────
     def robot_context(self, robot_ae: str) -> Optional[dict]:
-        """판정 한 건에 붙일 MEC 정보. 없으면 None."""
+        """MEC info to attach to one verdict. None if there is none."""
         ue = topo.ae_to_ue(robot_ae)
         if not ue:
             return None
@@ -197,7 +197,7 @@ class SiteMec:
 
 
 def main() -> None:
-    """학습 없이 MEC 연동만 점검한다: 등록 → 발견 → 링크·위치 한 번."""
+    """Check only the MEC integration without training: register → discover → link and location once."""
     import argparse
     import json
     ap = argparse.ArgumentParser(description="사업장 MEC 연동 점검")

@@ -1,38 +1,38 @@
 """
-Edge-ESTIMED-VM/Local-Model/site_app/mec_app.py — ETSI GS MEC 011 (Edge Platform Application Enablement) 클라이언트
+Edge-ESTIMED-VM/Local-Model/site_app/mec_app.py — ETSI GS MEC 011 (Edge Platform Application Enablement) client
 
-사업장 학습 앱(TRAINING-AE-i)을 그 사업장 MEP 의 MEC 앱으로 등록하고,
-MEP 가 제공하는 서비스(MEC013 위치, MEC028 WLAN)의 주소를 서비스
-레지스트리에서 찾는다.
+Registers the site training app (TRAINING-AE-i) as a MEC app of that site's MEP, and
+looks up the addresses of services the MEP provides (MEC013 location, MEC028 WLAN) in the service
+registry.
 
-[순서]
-  1) 앱 인스턴스 ID 찾기   샌드박스 컨트롤러 Applications API (MEC 명세 아님)
+[Order]
+  1) Find the app instance ID   sandbox controller Applications API (not a MEC spec)
        GET  /{sbx}/sandbox-ctrl/v1/applications
-     앱 인스턴스는 샌드박스 시나리오(edgeway)가 만든다. 여기서는 만들지도
-     지우지도 않고, 이름(edgeway-fl-a)과 MEP(mep-a)로 찾기만 한다.
-     없으면 시나리오가 예전 버전이라는 뜻이다. 등록을 건너뛰고 FL 은 계속한다.
-  2) 준비 알림              MEC011 Application Support
+     App instances are created by the sandbox scenario (edgeway). Here they are neither created
+     nor deleted, only looked up by name (edgeway-fl-a) and MEP (mep-a).
+     If missing, the scenario is an older version. Registration is skipped and FL continues.
+  2) Ready notification          MEC011 Application Support
        POST /{sbx}/{mep}/mec_app_support/v2/applications/{id}/confirm_ready
             {"indication": "READY"}
-  3) 앱 등록                MEC011 Application Support
+  3) App registration            MEC011 Application Support
        POST /{sbx}/{mep}/mec_app_support/v2/registrations
             {"appName", "appInstanceId", "appProvider",
              "isInsByMec": false, "endpoint": {"uris": [...]}}
-     MEP 밖에서 도는 앱이라 isInsByMec=false 이고, 그러면 endpoint 가 필수다.
-     이 구현은 2) 보다 먼저 보내면 403 "Waiting for AppReadyConfirmation" 을
-     돌려준다. 그래서 confirm_ready 다음에 보낸다.
-  4) 서비스 발견            MEC011 Service Management
+     The app runs outside the MEP, so isInsByMec=false, and then endpoint is required.
+     This implementation returns 403 "Waiting for AppReadyConfirmation" if it is sent
+     before 2). So it is sent after confirm_ready.
+  4) Service discovery           MEC011 Service Management
        GET  /{sbx}/{mep}/mec_service_mgmt/v1/services
-  5) 종료                   등록만 지운다. 앱 인스턴스는 시나리오 것이라 둔다
+  5) Shutdown                    only the registration is deleted. The app instance belongs to the scenario and is left
        DELETE /{sbx}/{mep}/mec_app_support/v2/registrations/{id}
 
-[실행 위치]
-학습 앱은 MEP 안이 아니라 사업장 서버(지금은 연구실 서버)에서 돈다.
-MEC 입장에서는 "MEP 에 등록된 외부 MEC 앱" 이다.
+[Where it runs]
+The training app runs not inside the MEP but on the site server (currently the lab server).
+From MEC's point of view it is "an external MEC app registered with the MEP".
 
-[주소 다시 쓰기]
-레지스트리가 돌려주는 URI 는 샌드박스 내부 이름일 수 있다. 경로만 받아서
-우리가 붙는 호스트(FL_SANDBOX_HOST) 위에 다시 붙인다.
+[Address rewriting]
+URIs returned by the registry may be sandbox-internal names. Only the path is taken and
+re-attached onto the host we connect to (FL_SANDBOX_HOST).
 """
 
 import os
@@ -75,7 +75,7 @@ def _req(method: str, url: str, **kw):
         return None
 
 
-# ── 1) 앱 인스턴스 ──────────────────────────────────────
+# ── 1) App instance ───────────────────────────────────
 
 def list_apps() -> List[dict]:
     r = _req("GET", f"{ctrl_base()}/applications")
@@ -91,7 +91,7 @@ def list_apps() -> List[dict]:
 
 
 def find_app(name: str, mep: str) -> Optional[str]:
-    """시나리오가 만든 앱 인스턴스 ID. 같은 이름·같은 MEP 가 없으면 None."""
+    """App instance ID created by the scenario. None if no instance with the same name and MEP exists."""
     for a in list_apps():
         if a.get("name") == name and a.get("nodeName") == mep and a.get("id"):
             return a["id"]
@@ -99,10 +99,10 @@ def find_app(name: str, mep: str) -> Optional[str]:
     return None
 
 
-# ── 2) 준비 알림 ────────────────────────────────────────
+# ── 2) Ready notification ─────────────────────────────
 
 def confirm_ready(mep: str, app_id: str) -> bool:
-    """v2 를 먼저, 404 면 v1 로. 이미 READY 면 그대로 성공으로 본다."""
+    """Try v2 first, v1 on 404. If already READY, treat it as success."""
     for ver in ("v2", "v1"):
         url = (f"{mep_base(mep)}/mec_app_support/{ver}"
                f"/applications/{app_id}/confirm_ready")
@@ -117,12 +117,12 @@ def confirm_ready(mep: str, app_id: str) -> bool:
     return False
 
 
-# ── 3) 앱 등록 ──────────────────────────────────────────
+# ── 3) App registration ───────────────────────────────
 
 APP_PROVIDER = os.getenv("FL_MEC_APP_PROVIDER", "edgeway")
 
-# MEC 앱 이름. MEP 하나에 학습 앱 하나라서 MEP 이름에서 만든다
-# (mep-a -> edgeway-fl-a). 시나리오의 앱 이름과 같아야 find_app 이 찾는다.
+# MEC app name. One training app per MEP, so it is derived from the MEP name
+# (mep-a -> edgeway-fl-a). It must match the scenario's app name for find_app to find it.
 APP_PREFIX = os.getenv("FL_MEC_APP_PREFIX", "edgeway-fl")
 
 
@@ -131,17 +131,17 @@ def app_name(mep: str) -> str:
 
 
 def endpoint_for(port: int) -> str:
-    """MEC011 등록에 넣는 앱 주소. FL_NOTIFY_HOST(oneM2M poa)와는 따로 둔다."""
+    """App address put into the MEC011 registration. Kept separate from FL_NOTIFY_HOST (oneM2M poa)."""
     host = os.getenv("FL_MEC_APP_HOST") or config.NOTIFY_HOST
     return f"http://{host}:{port}"
 
 
 def register(mep: str, app_id: str, name: str, endpoint: str) -> bool:
     """
-    confirm_ready 다음에 부른다. 여러 번 불러도 결과가 같다.
-      등록 없음            POST
-      같은 endpoint 로 있음 그대로
-      다른 endpoint 로 있음 PUT 으로 고친다
+    Called after confirm_ready. Idempotent.
+      No registration          POST
+      Exists, same endpoint    leave it
+      Exists, other endpoint   fix with PUT
     """
     base = f"{mep_base(mep)}/mec_app_support/v2/registrations"
     body = {"appName": name, "appInstanceId": app_id,
@@ -178,7 +178,7 @@ def deregister(mep: str, app_id: str) -> bool:
     return r is not None and r.status_code in (200, 204, 404)
 
 
-# ── 4) 서비스 발견 ──────────────────────────────────────
+# ── 4) Service discovery ──────────────────────────────
 
 def services(mep: str) -> List[dict]:
     r = _req("GET", f"{mep_base(mep)}/mec_service_mgmt/v1/services")
@@ -200,13 +200,13 @@ def _uri_of(svc: dict) -> Optional[str]:
 
 
 def _rebase(uri: str) -> str:
-    """레지스트리 URI 의 경로만 남기고 우리가 붙는 호스트로 다시 붙인다."""
+    """Keep only the path of the registry URI and re-attach it to the host we connect to."""
     path = urlparse(uri).path.rstrip("/")
     return f"{_scheme()}://{config.SANDBOX_HOST}{path}"
 
 
-# 서비스 이름이 구현마다 달라서(meep-loc-serv, mec013-1 ...) 이름·분류·
-# 경로에서 이 단어가 보이면 그 서비스로 본다.
+# Service names differ per implementation (meep-loc-serv, mec013-1 ...), so if this word appears in the name,
+# category or path, it is taken to be that service.
 KEYS = {
     "location": ("loc", "013", "location"),
     "wai": ("wai", "028", "wlan"),
@@ -214,7 +214,7 @@ KEYS = {
 
 
 def discover(mep: str) -> Dict[str, dict]:
-    """{"location": {"name", "uri"}, "wai": {...}} 중 찾은 것만."""
+    """Only the ones found among {"location": {"name", "uri"}, "wai": {...}}."""
     found: Dict[str, dict] = {}
     for s in services(mep):
         uri = _uri_of(s)

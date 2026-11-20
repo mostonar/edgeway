@@ -1,24 +1,24 @@
 #!/bin/bash
-# run_local_model.sh — 사업장 앱 3개 + 판정 앱을 한 번에 기동
+# run_local_model.sh — start the 3 site apps + judge apps at once
 #
-#   bash run_local_model.sh       (어느 디렉터리에서 실행해도 된다)
+#   bash run_local_model.sh       (can be run from any directory)
 #
-# 하나씩 띄우려면 run_site_app.sh A|B|C, run_judge.sh A|B|C 를 쓴다.
-# 이 스크립트는 공통 준비(정리, MN-CSE 리소스, 로봇 대기)를 한 번만 하고
-# 그 둘을 FL_STANDALONE=0 으로 부른다.
+# To start them one by one, use run_site_app.sh A|B|C and run_judge.sh A|B|C.
+# This script does the common preparation (cleanup, MN-CSE resources, waiting for robots) once
+# and then calls those two with FL_STANDALONE=0.
 #
-# 순서
-#   지난 실행 정리 → MN-CSE 리소스 확인/생성 → Isaac Sim 로봇 대기
-#   → 사업장 앱 3개 → 판정 앱 (JUDGE_SITES)
+# Order
+#   Clean up previous run → check/create MN-CSE resources → wait for Isaac Sim robots
+#   → 3 site apps → judge apps (JUDGE_SITES)
 #
-# 전제: .env.local 에 FL_SANDBOX_HOST / FL_SANDBOX_NAME, FL_IN_BASE_URL /
-#   FL_IN_CSE_NAME, FL_NOTIFY_HOST. 자세한 것은 README.md.
+# Prerequisites: .env.local has FL_SANDBOX_HOST / FL_SANDBOX_NAME, FL_IN_BASE_URL /
+#   FL_IN_CSE_NAME, FL_NOTIFY_HOST. See README.md for details.
 #
-# 자주 쓰는 설정
-#   JUDGE_SITES=A,B,C      띄울 판정 앱 (기본 A,B,C). 비우면 판정 앱 없이
-#   JUDGE_AE_DIR=…         judge_ae.py 가 있는 폴더 (기본: 이 폴더의 judge_ae/)
-#   FL_SENSOR_FROM_CSE=0   오프라인: AMR_DATA 의 telemetry 로 pkl 을 만들어 학습
-#   FL_RESET_ON_START=0    지난 실행의 로컬 모델·캐시를 지우지 않는다
+# Common settings
+#   JUDGE_SITES=A,B,C      judge apps to launch (default A,B,C). Leave empty for no judge apps
+#   JUDGE_AE_DIR=…         folder containing judge_ae.py (default: judge_ae/ in this folder)
+#   FL_SENSOR_FROM_CSE=0   offline: build pkl from the telemetry in AMR_DATA and train on it
+#   FL_RESET_ON_START=0    do not delete the previous run's local models and caches
 
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -34,8 +34,8 @@ JUDGE_SITES="${JUDGE_SITES-A,B,C}"
 
 echo
 echo "[1/5] 지난 실행 정리"
-# 판정 앱을 이 스크립트가 띄울 때만 기존 judge_ae 를 내린다.
-# (JUDGE_SITES 를 비우면 다른 사람이 따로 띄운 판정 앱은 건드리지 않는다)
+# Only stop existing judge_ae processes when this script launches the judge apps.
+# (If JUDGE_SITES is empty, judge apps someone else launched separately are left alone)
 if [ -n "$JUDGE_SITES" ]; then
   fl_free_ports "5001 5002 5003" "mn_ae_standard.py" "judge_ae.py"
 else
@@ -58,8 +58,8 @@ else
   fl_warn_notify_host
   echo
   echo "[2/5] MN-CSE 리소스 확인"
-  # 우리 리소스(TRAINING-AE-i, ANALYSIS-AE-i, 컨테이너, ACP)만 본다.
-  # 로봇 AE 는 Isaac 소유라 없어도 실패로 치지 않는다.
+  # Only our resources are checked (TRAINING-AE-i, ANALYSIS-AE-i, containers, ACPs).
+  # Robot AEs are owned by Isaac, so missing ones do not count as failures.
   if ! python3 setup_resources_standard.py --scope mn --verify; then
     echo
     echo "  리소스가 빠져 있다. 먼저 생성한다."

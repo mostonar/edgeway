@@ -1,17 +1,17 @@
 #!/bin/bash
-# run_dashboard.sh — FL 대시보드 기동 (http://<호스트>:7000)
+# run_dashboard.sh — start the FL dashboard (http://<host>:7000)
 #
-#   bash run_dashboard.sh         (어느 디렉터리에서 실행해도 된다)
+#   bash run_dashboard.sh         (can be run from any directory)
 #
-# 읽는 곳
-#   중앙 IN-CSE    라운드 상태, 사업장별 요약(손실·샘플 수), 글로벌 모델, 라운드별 평가
-#   사업장 MN-CSE  윈도우별 이상 점수 (TRAINING-AE-i/cnt-window-scores)
+# Reads from
+#   Central IN-CSE    round state, per-site summary (loss, sample count), global model, per-round evaluation
+#   Site MN-CSE       per-window anomaly scores (TRAINING-AE-i/cnt-window-scores)
 #
-# 사업장 점수는 사업장 밖(IN-CSE)으로 나가지 않으므로 MN-CSE 에서 직접 읽는다.
-# 그래서 샌드박스(사업장 MN-CSE)에 닿는 호스트에서 띄운다. 지금 배치에서는
-# Edge VM 이다. 언제 띄워도 된다.
+# Site scores do not leave the site (IN-CSE), so they are read directly from the MN-CSE.
+# So it runs on a host that can reach the sandbox (site MN-CSEs). In the current deployment
+# that is the Edge VM. It can be started at any time.
 #
-# 전제: 이 폴더나 저장소 루트의 .env.local 에 FL_SANDBOX_HOST / FL_SANDBOX_NAME,
+# Prerequisite: .env.local in this folder or the repo root has FL_SANDBOX_HOST / FL_SANDBOX_NAME,
 #   FL_IN_BASE_URL / FL_IN_CSE_NAME (+ FL_IN_USER / FL_IN_PASS).
 
 set -euo pipefail

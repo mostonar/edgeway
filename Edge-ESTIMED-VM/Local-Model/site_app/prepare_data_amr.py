@@ -1,37 +1,37 @@
 """
-prepare_data_amr.py — AMR 주행 데이터를 FL 노드(사업장)별 PKL로 변환
+prepare_data_amr.py — converts AMR driving data into PKL per FL node (site)
 
-입력 형식 두 가지를 모두 받는다.
+Accepts both input formats.
 
-  1) CIN 덤프 (새 형식, 권장)
-     <robot>/telemetry.json  — JSON Lines. 한 줄이 contentInstance 하나.
+  1) CIN dump (new format, recommended)
+     <robot>/telemetry.json  — JSON Lines. One line is one contentInstance.
        {"ri":…, "rn":…, "ct":…, "lbl":null, "con":{…}}
-     디렉터리를 주면 그 아래 */telemetry.json 을 모두 읽는다.
+     Given a directory, reads every */telemetry.json under it.
 
-  2) merged.json (옛 형식)
-     run 목록이고 run 하나가 CIN 여러 개를 갖는다. lbl에 scn/spd/load가 있다.
+  2) merged.json (old format)
+     A list of runs, each run holding several CINs. lbl has scn/spd/load.
 
-출력: /tmp/fl_data/amr/{mn1,mn2,mn3}.pkl
+Output: /tmp/fl_data/amr/{mn1,mn2,mn3}.pkl
 
-[라벨에 대하여]
-운영 중에는 cond:normal 같은 라벨이 붙지 않는다. 로봇은 그냥 주행하고
-데이터를 올릴 뿐이고, 이상 탐지는 정상 주행만 학습하는 비지도 방식이다.
-그래서 이 스크립트도 라벨을 요구하지 않는다.
+[About labels]
+In operation there are no labels like cond:normal. The robots just drive and
+upload data, and anomaly detection is unsupervised, trained only on normal driving.
+So this script does not require labels either.
 
-평가용 정답(over_bump 등)은 학습에 쓰지 않고 AUROC를 재는 데만 쓴다.
-시뮬레이터가 아는 결함 위치를 결과 확인용으로만 쓰는 것과 같다.
+Evaluation ground truth (over_bump etc.) is not used for training, only for measuring AUROC.
+It is like using the defect locations the simulator knows only to check results.
 
-[정지 구간]
-nav 라벨이 아니라 실제 주행 속도로 가려낸다. 그래야 주행 중 잠깐 멈춘
-구간은 살아남고 진짜 정지만 빠진다. 기준은 AMR_MIN_SPEED.
+[Stopped segments]
+Filtered by actual driving speed, not the nav label. That way brief stops while driving
+survive and only real stops are dropped. The threshold is AMR_MIN_SPEED.
 
-[중단된 주행]
-nav=aborted 는 중단된 주행이라 정상 주행으로 보기 어렵다. 학습에서는 빼고
-평가에는 남긴다. AMR_EXCLUDE_NAV 로 조정한다.
+[Aborted runs]
+nav=aborted is an aborted run and hard to treat as normal driving. It is excluded from training
+and kept for evaluation. Adjust with AMR_EXCLUDE_NAV.
 
-[사업장 분할]
-로봇 식별자로 나눈다. A 4대 / B 2대 / C 4대.
-siteA_* / siteB_* / siteC_* 규칙을 따르거나 AMR_ROBOT_MAP으로 지정한다.
+[Site split]
+Split by robot identifier. A: 4 / B: 2 / C: 4.
+Follows the siteA_* / siteB_* / siteC_* rule, or set via AMR_ROBOT_MAP.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ import numpy as np
 
 import amr_schema as sch
 
-# 하위 호환: 기존 코드가 prepare_data_amr.CH_SPEC 등을 참조한다.
+# Backward compatibility: existing code references prepare_data_amr.CH_SPEC etc.
 CH_SPEC = sch.CH_SPEC
 CH_NAMES = sch.CH_NAMES
 IS_POS = sch.IS_POS
@@ -63,7 +63,7 @@ SRC = os.getenv(
 OUT_DIR = os.getenv("AMR_OUT_DIR", "/tmp/fl_data/amr")
 
 NORMAL = "normal"
-ANOMALY_NAV = {"over_bump"}          # 평가 정답으로 쓸 nav
+ANOMALY_NAV = {"over_bump"}          # nav values used as evaluation ground truth
 
 NODES = ["mn1", "mn2", "mn3"]
 SITE_OF_NODE = {"mn1": "siteA", "mn2": "siteB", "mn3": "siteC"}
@@ -72,38 +72,38 @@ EXPECTED_ROBOTS = {"mn1": 4, "mn2": 2, "mn3": 2}
 
 VAL_RATIO = float(os.getenv("AMR_VAL_RATIO", "0.2"))
 
-# 정상 구간 중 시험 전용으로 떼어 둘 비율.
-# 검증(임계값 보정)과 시험(평가)이 겹치면 평가가 독립적이지 않다.
+# Fraction of normal segments set aside for testing only.
+# If validation (threshold calibration) and test (evaluation) overlap, the evaluation is not independent.
 TEST_NORMAL_RATIO = float(os.getenv("AMR_TEST_NORMAL_RATIO", "0.2"))
 
-# 블록 경계에서 버릴 윈도우 수.
-# 1초 윈도우가 연속이라 경계를 맞댄 두 윈도우는 사실상 같은 장면이다.
+# Number of windows to drop at block boundaries.
+# 1 s windows are contiguous, so two windows touching at a boundary are effectively the same scene.
 EMBARGO = int(os.getenv("AMR_EMBARGO", "2"))
 
-# run 단위로 나누려면 run이 최소 몇 개 있어야 하는가.
-# 4개면 학습 2 / 검증 1 / 시험 1 이 된다. 그보다 적으면 run 안에서 자른다.
+# Minimum number of runs needed to split by run.
+# With 4 it becomes train 2 / val 1 / test 1. With fewer, it splits within a run.
 MIN_RUNS_FOR_RUN_SPLIT = int(os.getenv("AMR_MIN_RUNS", "4"))
 
-# 사업장당 정상 윈도우 상한.
+# Cap on normal windows per site.
 #
-# 사업장마다 로봇 수와 주행량이 달라 총량이 어긋난다. FedAvg가 샘플 수로
-# 가중하므로 많이 가진 사업장이 더 큰 영향력을 갖는다. 사업장별 기여를
-# 맞추려면 여기서 잘라야 한다.
+# Robot count and driving volume differ per site, so totals are uneven. FedAvg weights by sample count,
+# so the site with more data gets more influence. To balance per-site contributions
+# it must be cut here.
 #
-#   "0"    자르지 않는다 (기본)
-#   "min"  가장 적은 사업장에 맞춘다
-#   숫자   그 값으로 맞춘다
+#   "0"    no cutting (default)
+#   "min"  match the smallest site
+#   number match to that value
 #
-# 기본이 끔인 이유는, 한 사업장의 수집이 덜 됐을 때 "min"이 나머지를
-# 거기에 맞춰 조용히 날려버리기 때문이다. 사업장이 고르게 모인 것을
-# 확인한 뒤에 켜는 편이 안전하다.
+# The default is off because when one site's collection is incomplete, "min" silently cuts
+# the others down to it. It is safer to turn it on after confirming the sites
+# collected evenly.
 #
-# 이상 구간은 절대 자르지 않는다. 단차가 수십 개뿐이라 건드리면 평가가
-# 불가능해진다. 상한은 정상 윈도우에만 적용한다.
+# Anomalous segments are never cut. There are only a few dozen bumps, so touching them makes
+# evaluation impossible. The cap applies only to normal windows.
 MAX_NORMAL_PER_SITE = os.getenv("AMR_MAX_NORMAL_PER_SITE", "0").strip()
 
-# "min"이 안전한지 판단하는 기준. 가장 적은 사업장이 가장 많은 사업장의
-# 이 비율보다 작으면, 맞추는 것이 득보다 실이 크다고 보고 경고한다.
+# Criterion for whether "min" is safe. If the smallest site is below this fraction of the
+# largest site, matching is judged to do more harm than good and a warning is issued.
 MIN_BALANCE_RATIO = float(os.getenv("AMR_MIN_BALANCE_RATIO", "0.5"))
 SEED = int(os.getenv("AMR_SEED", "42"))
 
@@ -139,9 +139,9 @@ def site_of_robot(robot: str) -> str:
     return "mn1"
 
 
-# ── 입력 읽기 ─────────────────────────────────────────────
+# ── Read input ────────────────────────────────────────────
 def _iter_cin_dump(path: str):
-    """JSON Lines CIN 덤프에서 (con, lbl)을 흘려준다."""
+    """Stream (con, lbl) from a JSON Lines CIN dump."""
     with open(path, encoding="utf-8") as fp:
         for line in fp:
             line = line.strip()
@@ -162,7 +162,7 @@ def _iter_cin_dump(path: str):
 
 
 def _iter_merged(path: str):
-    """옛 merged.json에서 (con, lbl)을 흘려준다. run 라벨을 CIN에 얹는다."""
+    """Stream (con, lbl) from the old merged.json. The run label is attached to each CIN."""
     with open(path, encoding="utf-8") as fp:
         data = json.load(fp)
     runs = data if isinstance(data, list) else data.get("runs", [])
@@ -180,7 +180,7 @@ def _iter_merged(path: str):
 
 
 def iter_records(src: str):
-    """파일/디렉터리 어느 쪽이든 (con, lbl)을 흘려준다."""
+    """Stream (con, lbl) from either a file or a directory."""
     if os.path.isdir(src):
         files = sorted(glob.glob(os.path.join(src, "**", "telemetry.json"),
                                  recursive=True))
@@ -201,10 +201,10 @@ def iter_records(src: str):
         yield from _iter_cin_dump(src)
 
 
-# ── 파싱 ──────────────────────────────────────────────────
+# ── Parse ─────────────────────────────────────────────────
 def parse(src: str) -> dict:
     X, C, NAV, ROBOT, POSE, NODE, LABEL = [], [], [], [], [], [], []
-    # run 경계를 찾고 시간순으로 정렬하려면 순서 정보가 필요하다.
+    # Ordering info is needed to find run boundaries and sort by time.
     SEQ, TSIM = [], []
     skipped = 0
 
@@ -220,13 +220,13 @@ def parse(src: str) -> dict:
         nav = con.get("nav") or labels.get("scn") or "idle"
         speed = sch.speed_of(sig)
 
-        # 조건 벡터: 라벨이 있으면 쓰고, 없으면 payload에서 끌어낸다.
+        # Condition vector: use labels if present, otherwise derive from the payload.
         if "scn" in labels and "spd" in labels:
             cvec = sch.cond_from_labels(labels["scn"], labels["spd"])
         else:
             cvec = sch.cond_vector(nav, speed, sig)
 
-        # 평가용 정답. 라벨이 있으면 라벨 우선, 없으면 nav로 판단.
+        # Evaluation ground truth. Labels take priority if present; otherwise decided from nav.
         cond_name = labels.get(
             "cond",
             "floor_bump" if nav in ANOMALY_NAV else NORMAL,
@@ -240,8 +240,8 @@ def parse(src: str) -> dict:
         NODE.append(site_of_robot(con.get("robot", "unknown")))
         LABEL.append(cond_name)
 
-        # seq는 로봇별 CIN 순번, t_sim은 시뮬레이션 시각.
-        # 둘 다 주행이 다시 시작되면 되돌아간다.
+        # seq is the per-robot CIN sequence number, t_sim is simulation time.
+        # Both reset when driving restarts.
         SEQ.append(_as_int(con.get("seq")))
         ts = con.get("t_sim")
         TSIM.append(float(ts[0]) if isinstance(ts, list) and ts
@@ -261,7 +261,7 @@ def parse(src: str) -> dict:
     }
 
 
-# ── run 식별과 분할 ───────────────────────────────────────
+# ── Run identification and split ──────────────────────────
 
 def _as_int(v) -> int:
     try:
@@ -280,15 +280,15 @@ def _as_float(v) -> float:
 def derive_run_ids(robot: np.ndarray, seq: np.ndarray,
                    t_sim: np.ndarray) -> np.ndarray:
     """
-    윈도우마다 run(주행) 식별자를 붙인다.
+    Attach a run (driving session) identifier to each window.
 
-    새 run으로 보는 경우
-      - 로봇이 바뀐다
-      - seq가 줄거나 같다 (주행이 다시 시작돼 순번이 리셋됨)
-      - t_sim이 뒤로 간다 (시뮬레이션 시각이 되감김)
+    Treated as a new run when
+      - the robot changes
+      - seq decreases or stays the same (driving restarted and the counter reset)
+      - t_sim goes backward (simulation time rewound)
 
-    지금 데이터는 로봇 하나가 연속 주행 하나라 run = 로봇이 된다.
-    나중에 한 로봇이 여러 번 주행한 덤프가 와도 그대로 동작한다.
+    In the current data each robot does one continuous run, so run = robot.
+    It still works if a later dump has several runs per robot.
     """
     n = len(robot)
     if n == 0:
@@ -310,12 +310,12 @@ def derive_run_ids(robot: np.ndarray, seq: np.ndarray,
 
 def _blocks_in_run(order: np.ndarray) -> tuple:
     """
-    한 run 안을 시간순 연속 블록 셋으로 자른다.
-      [학습][embargo][검증][embargo][시험]
+    Cut one run into three contiguous blocks in time order.
+      [train][embargo][val][embargo][test]
 
-    무작위로 섞지 않는 이유는, 이웃한 1초 윈도우가 사실상 같은 장면이라
-    섞으면 학습과 검증이 같은 장면을 나눠 갖기 때문이다.
-    embargo는 블록이 맞닿는 지점의 윈도우를 버려서 그 누수를 막는다.
+    They are not shuffled because neighboring 1 s windows are effectively the same scene,
+    and shuffling would let training and validation share the same scenes.
+    The embargo drops windows where blocks meet to prevent that leakage.
     """
     n = len(order)
     if n == 0:
@@ -324,7 +324,7 @@ def _blocks_in_run(order: np.ndarray) -> tuple:
     n_test = int(n * TEST_NORMAL_RATIO)
     n_val = int(n * VAL_RATIO)
 
-    # 너무 짧으면 나누지 않고 전부 학습으로 둔다.
+    # If too short, it is not split and everything goes to training.
     if n < 3 * (EMBARGO + 1) or n_val < 1 or n_test < 1:
         return order, order[:0], order[:0]
 
@@ -342,11 +342,11 @@ def _blocks_in_run(order: np.ndarray) -> tuple:
 def balance_indices(idx: np.ndarray, robot: np.ndarray,
                     cap: int) -> np.ndarray:
     """
-    인덱스를 cap개로 줄이되 로봇별로 고르게 남긴다.
+    Reduce the indices to cap, keeping them even across robots.
 
-    로봇마다 cap/로봇수 만큼 배정하고, 적게 가진 로봇의 몫은 나머지가
-    나눠 갖는다. 앞에서 자르면 주행 초반만 남으므로 시간 축 전체에서
-    균등 간격으로 뽑는다.
+    Each robot is allotted cap / number of robots, and the share of robots with fewer is split among
+    the rest. Cutting from the front would keep only the start of the run, so sample at even intervals
+    across the whole time axis.
     """
     if cap <= 0 or len(idx) <= cap:
         return idx
@@ -379,11 +379,11 @@ def balance_indices(idx: np.ndarray, robot: np.ndarray,
 def split_normals(idx: np.ndarray, run: np.ndarray,
                   rng: np.random.Generator) -> tuple:
     """
-    정상 윈도우 인덱스를 학습 / 검증 / 시험으로 나눈다.
+    Split normal window indices into train / val / test.
 
-    run이 넉넉하면 run 통째로 배정한다. 서로 다른 주행이므로 누수가 없다.
-    부족하면 run 안에서 시간순 블록으로 자른다.
-    반환에 어느 방식을 썼는지도 같이 준다.
+    With enough runs, assign whole runs. They are different sessions, so there is no leakage.
+    If not enough, cut within each run into time-ordered blocks.
+    Also returns which method was used.
     """
     if len(idx) == 0:
         e = idx[:0]
@@ -395,7 +395,7 @@ def split_normals(idx: np.ndarray, run: np.ndarray,
         order = rng.permutation(runs)
         n_val = max(1, int(round(len(runs) * VAL_RATIO)))
         n_test = max(1, int(round(len(runs) * TEST_NORMAL_RATIO)))
-        # 학습 run이 최소 하나는 남아야 한다.
+        # At least one training run must remain.
         while n_val + n_test >= len(runs) and n_val + n_test > 2:
             if n_val >= n_test:
                 n_val -= 1
@@ -414,7 +414,7 @@ def split_normals(idx: np.ndarray, run: np.ndarray,
     tr, va, te = [], [], []
     for r in runs:
         order = idx[run[idx] == r]
-        order = order[np.argsort(order)]      # 시간순
+        order = order[np.argsort(order)]      # Time order
         a, b, c = _blocks_in_run(order)
         tr.append(a); va.append(b); te.append(c)
 
@@ -423,7 +423,7 @@ def split_normals(idx: np.ndarray, run: np.ndarray,
             f"run 내 시간순 블록 ({len(runs)}개 run, embargo {EMBARGO})")
 
 
-# ── 노드별 PKL ────────────────────────────────────────────
+# ── Per-node PKL ──────────────────────────────────────────
 def build_node_pkl(d: dict, node: str, rng: np.random.Generator,
                    normal_cap: int = 0) -> dict:
     sel = d["node"] == node
@@ -435,16 +435,16 @@ def build_node_pkl(d: dict, node: str, rng: np.random.Generator,
     pose, label = d["pose"][sel], d["label"][sel]
     seq, t_sim = d["seq"][sel], d["t_sim"][sel]
 
-    # 주행 단위. 누수 없이 나누려면 구간이 아니라 주행으로 갈라야 한다.
+    # Run units. To split without leakage, split by run, not by segment.
     run = derive_run_ids(robot, seq, t_sim)
 
-    # 학습 후보: 움직이는 구간 + 이상 아님 + 제외 nav 아님
+    # Training candidates: moving segments + not anomalous + not an excluded nav
     moving = sch.moving_mask(X)
     is_normal = label == NORMAL
     not_excluded = ~np.isin(nav, list(sch.EXCLUDE_NAV_TRAIN))
     trainable = moving & is_normal & not_excluded
 
-    # 사업장별 총량을 맞춘다. 이상 구간은 건드리지 않는다.
+    # Balance per-site totals. Anomalous segments are not touched.
     train_pool = np.where(trainable)[0]
     if normal_cap > 0 and len(train_pool) > normal_cap:
         before = len(train_pool)
@@ -452,16 +452,16 @@ def build_node_pkl(d: dict, node: str, rng: np.random.Generator,
         print(f"    [{node}] 사업장 상한: 정상 {before} -> "
               f"{len(train_pool)}개 (로봇별 균등)")
 
-    # 정상을 셋으로 나눈다. 검증은 임계값 보정, 시험은 평가 전용이다.
+    # Split normal data into three. Validation is for threshold calibration; test is for evaluation only.
     tr_idx, val_idx, te_norm_idx, how = split_normals(train_pool, run, rng)
 
     tr = np.zeros(len(X), bool); tr[tr_idx] = True
     va = np.zeros(len(X), bool); va[val_idx] = True
     te_norm = np.zeros(len(X), bool); te_norm[te_norm_idx] = True
 
-    # 평가 = 시험 전용 정상 + 이상 + 중단.
-    # 검증 구간(va)은 넣지 않는다. 임계값을 맞춘 데이터로 점수를 매기면
-    # 독립적인 평가가 아니다.
+    # Evaluation = test-only normal + anomalies + aborted.
+    # The validation segment (va) is not included. Scoring on the data used to tune the threshold
+    # is not an independent evaluation.
     te = moving & (te_norm | ~is_normal | ~not_excluded)
 
     print(f"    [{node}] 분할 방식: {how}")
@@ -530,8 +530,8 @@ def main() -> int:
     os.makedirs(OUT_DIR, exist_ok=True)
     rng = np.random.default_rng(SEED)
 
-    # 사업장별 정상 윈도우 수를 먼저 세고 상한을 정한다.
-    # "min"이면 가장 적은 사업장에 맞춘다.
+    # Count normal windows per site first and decide the cap.
+    # With "min", match the smallest site.
     normal_cap = 0
     counts = {}
     for node in NODES:
