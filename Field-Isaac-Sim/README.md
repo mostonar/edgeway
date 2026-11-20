@@ -1,4 +1,4 @@
-# isaac_robot
+# Field-Isaac-Sim
 
 The simulation part of EdgeWay. Eight AMRs in an Isaac Sim warehouse scene each drive with their own Nav2 stack, and per-robot IPEs upload sensor data to the oneM2M MN-CSE on MEC.
 

@@ -10,10 +10,10 @@ Run one process per site (`--site A|B|C`). Each site has its own CSE. In the nam
 | `B` | `JUDGE-AE-2` | `ANALYSIS-AE-2` | `siteB_AMR_1`, `siteB_AMR_2` |
 | `C` (default) | `JUDGE-AE-3` | `ANALYSIS-AE-3` | `siteC_AMR_1`, `siteC_AMR_2` |
 
-Robot names are the AE names created by the isaac_robot IPE. Use `--robots` to override them.
+Robot names are the AE names created by the Field-Isaac-Sim IPE. Use `--robots` to override them.
 
 ```
-detection AE ──ANALYSIS-AE-<n>/cnt-verdict──> judge_ae ──<robot>/command──> IPE ──> robot (isaac_robot)
+detection AE ──ANALYSIS-AE-<n>/cnt-verdict──> judge_ae ──<robot>/command──> IPE ──> robot (Field-Isaac-Sim)
                                                 │  ^
                      JUDGE-AE-<n>/cnt-judgement │  │ JUDGE-AE-<n>/cnt-request
                           (no-go zones)         v  │ (zone clear)
@@ -54,7 +54,7 @@ Reports whose `site` is not this site are ignored.
 The AE registers itself with originator `CJUDGE-AE-<n>` and creates `acp_judgement` (`CJUDGE-AE-<n>` + `CAdmin` only) for its own containers. The other AEs must grant it access:
 
 - Detection AE: `ANALYSIS-AE-<n>/cnt-verdict` must allow `CJUDGE-AE-<n>` to subscribe and retrieve.
-- Robot IPEs: `judge_ae: "CJUDGE-AE-<n>"` for the site in `isaac_robot/simple_ipe/fleet.yaml` (already set in `fleet.example.yaml`; telemetry RETRIEVE/DISCOVERY, command CREATE/RETRIEVE/DISCOVERY).
+- Robot IPEs: `judge_ae: "CJUDGE-AE-<n>"` for the site in `Field-Isaac-Sim/simple_ipe/fleet.yaml` (already set in `fleet.example.yaml`; telemetry RETRIEVE/DISCOVERY, command CREATE/RETRIEVE/DISCOVERY).
 - Dashboard: uses `CAdmin`, so it can read `cnt-judgement` and write `cnt-request`.
 
 ## Requirements
@@ -135,4 +135,4 @@ Needs `curl` and `python3`.
 
 ## Testing with the simulation
 
-Site C scenarios are in `isaac_robot` (see its README): `demo_c1_anno_floor.py` + `demo_c2_anno_floor.py` for a floor anomaly, `demo_c1_anno_robot.py` + `demo_c2_anno_robot.py` for a robot anomaly. Start `judge_ae.py --site C` before the demos. The detection AE must also be running, because it produces the anomaly reports.
+Site C scenarios are in `Field-Isaac-Sim` (see its README): `demo_c1_anno_floor.py` + `demo_c2_anno_floor.py` for a floor anomaly, `demo_c1_anno_robot.py` + `demo_c2_anno_robot.py` for a robot anomaly. Start `judge_ae.py --site C` before the demos. The detection AE must also be running, because it produces the anomaly reports.
