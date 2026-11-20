@@ -8,10 +8,10 @@
 # If this script itself is killed with -9, run ./run_all_demo.sh stop.
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-NAV=$ROOT/nav_ws/run_nav2.sh
-STOP=$ROOT/nav_ws/stop_all.sh
-IPE=$ROOT/ros_ipe/run_ipe.sh
-IPE_LOG=$ROOT/ros_ipe/logs
+NAV=$ROOT/Nav2/run_nav2.sh
+STOP=$ROOT/Nav2/stop_all.sh
+IPE=$ROOT/ROS-IPE/run_ipe.sh
+IPE_LOG=$ROOT/ROS-IPE/logs
 DEMO_DIR=$ROOT/demo_task_executor
 DEMO_GAP=1           # s between demo starts
 NAV_TIMEOUT=180      # s to wait for all Nav2 to become active
@@ -123,7 +123,7 @@ t0=$(date +%s)
 for d in $DOMS; do
   until ROS_DOMAIN_ID=$d bg_out timeout 10 ros2 lifecycle get /bt_navigator | grep -q '^active'; do
     kill -0 "$NAV_PID" 2>/dev/null || { echo "! run_nav2.sh exited"; cleanup; }
-    [ $(( $(date +%s) - t0 )) -gt $NAV_TIMEOUT ] && { echo "! Domain $d: Nav2 not active within ${NAV_TIMEOUT}s (see $ROOT/nav_ws/logs/nav2_$d.log)"; cleanup; }
+    [ $(( $(date +%s) - t0 )) -gt $NAV_TIMEOUT ] && { echo "! Domain $d: Nav2 not active within ${NAV_TIMEOUT}s (see $ROOT/Nav2/logs/nav2_$d.log)"; cleanup; }
     nap 2
   done
   echo "  Domain $d: Nav2 active"

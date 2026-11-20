@@ -4,7 +4,7 @@
 # Run after reset (Isaac Stop -> Play, restart Nav2), together with demo_c1_anno_floor.py:
 #   ROS_DOMAIN_ID=8 python -u demo_c2_anno_floor.py
 # Prerequisites: Isaac Sim playing with sim_watcher, floor bump created (isaac_script/create_floor_bump.py, REMOVE = False),
-#   Nav2 (nav_ws/run_nav2.sh 7 8), IPE (ros_ipe/run_ipe.sh 7 8).
+#   Nav2 (Nav2/run_nav2.sh 7 8), IPE (ROS-IPE/run_ipe.sh 7 8).
 # Verdicts arrive as oneM2M commands (judgment AE -> command CIN -> IPE -> AMR/cmd).
 # Status: normal states until the suspect verdict, anomaly_detected until the final verdict, then normal states again.
 import fcntl, json, math, os, time

@@ -5,7 +5,7 @@
 #
 # Run:   ROS_DOMAIN_ID=2 python -u demo_a2_fl.py
 # Needs: Isaac Sim playing with isaac_script/sim_watcher.py running,
-#        Nav2 for this domain (nav_ws/run_nav2.sh 2), IPE for this domain (ros_ipe/run_ipe.sh 2).
+#        Nav2 for this domain (Nav2/run_nav2.sh 2), IPE for this domain (ROS-IPE/run_ipe.sh 2).
 # Knobs: CARGO_KG, SHUTTLE (cargo kg, speed m/s per trip), PAUSE_S.
 import fcntl, json, math, os, time
 import rclpy, tf2_ros

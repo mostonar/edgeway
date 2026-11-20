@@ -6,7 +6,7 @@
 #     record {robot, site, disconnect_duration_ms, buffered_count, data_loss} is posted to <AE>/log.
 #   - Optional CSE move (fleet.yaml sites.<site>.iot): while disconnected, the MEP's MEC 033 API is asked for the
 #     current CSE; if it changed, the IPE re-registers there and sends the backlog.
-# Run (normally): ros_ipe/run_ipe.sh [domains...]
+# Run (normally): ROS-IPE/run_ipe.sh [domains...]
 # Direct:  ROS_DOMAIN_ID=<n> python -u ipe_proc.py --ros-args --params-file ipe_common.yaml -p fleet_file:=fleet.yaml
 # Config:  ipe_common.yaml (joint names, IMU mounts, retention), fleet.yaml (domain -> site/robot/CSE/ACP;
 #          see fleet.example.yaml).
@@ -283,6 +283,7 @@ class IPE(Node):
         self.cmds = queue.Queue(50)
         self.seen_ri = collections.deque(maxlen=200)        # dedup commands arriving via both paths
         self.sub_ok = self.pcu_ok = False                   # both true -> fallback polling pauses
+        self.sub_gone = False                               # subscription deleted on purpose -> not re-created this run
         self.res_ready = threading.Event()                  # set once the AE and containers exist (pch/subscription wait for it)
         self.pch_wait_s = P('pch_timeout_s', 70.0)          # max wait per pcu long-poll
         buffer_s = P('buffer_s', 1800.0)                    # seconds of data kept during an outage
@@ -879,7 +880,8 @@ class IPE(Node):
                     pcu = f'{self.pch_path}/pcu'
                     ready = True
                     self.pcu_ok = True
-                    if not self.sub_ok:
+                    if not self.sub_gone:             # pch (re)found: a restarted CSE may have lost the subscription too
+                        self.sub_ok = False
                         threading.Thread(target=self.ensure_sub, daemon=True).start()
                 c, js = self.req('GET', pcu, timeout=self.pch_wait_s, http=True)
                 if c == 200 and js:
@@ -917,6 +919,7 @@ class IPE(Node):
             elif sgn.get('sud'):                     # deleted on purpose -> don't fight it by re-creating
                 self.get_logger().warn('Subscription deleted notification -> polling for the rest of this run (re-created next run)')
                 self.sub_ok = False
+                self.sub_gone = True
             else:
                 for cin in find(sgn.get('nev', {}), 'm2m:cin', []):
                     self.accept_cin(cin, 'subscription')

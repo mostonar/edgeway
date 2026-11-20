@@ -1,8 +1,8 @@
-ros_ipe/fleet.yaml
+ROS-IPE/fleet.yaml
 logs/
 __pycache__/
 *.pyc
-nav_ws/launch/
+Nav2/launch/
 script_log
 sim_cmd
 sim_ack

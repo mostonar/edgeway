@@ -5,9 +5,9 @@ The simulation part of EdgeWay. Eight AMRs in an Isaac Sim warehouse scene each 
 ```
 Isaac Sim (scene + sim_watcher)
    │  ROS 2 (one robot = one ROS_DOMAIN_ID)
-   ├─ Nav2 (per robot)               nav_ws/
+   ├─ Nav2 (per robot)               Nav2/
    ├─ Demo scripts (task execution)  demo_task_executor/
-   └─ IPE (per robot)                ros_ipe/     ──HTTP/WS──>  oneM2M MN-CSE (MEC)
+   └─ IPE (per robot)                ROS-IPE/     ──HTTP/WS──>  oneM2M MN-CSE (MEC)
 ```
 
 FL training, the dashboard and the judgment AE are not part of this folder.
@@ -18,8 +18,8 @@ FL training, the dashboard and the judgment AE are not part of this folder.
 |---|---|
 | `isaacsim/` | Scene `testIsaacScene.usd` |
 | `isaac_script/` | Scripts run in the Isaac Script Editor (`sim_watcher.py`, ...) |
-| `nav_ws/` | Per-robot Nav2 launcher, parameters, site maps |
-| `ros_ipe/` | oneM2M IPE (`ipe_proc.py`) and its config |
+| `Nav2/` | Per-robot Nav2 launcher, parameters, site maps |
+| `ROS-IPE/` | oneM2M IPE (`ipe_proc.py`) and its config |
 | `demo_task_executor/` | Per-robot task scenarios (ROS 2 nodes) |
 | `env/` | conda environment specs and environment scripts |
 | `run_all_demo.sh` | FL data collection: starts Nav2 -> IPE -> 8 demos in order |
@@ -28,11 +28,11 @@ FL training, the dashboard and the judgment AE are not part of this folder.
 
 | ROS_DOMAIN_ID | Robot (Isaac prim) | Site | Map |
 |---|---|---|---|
-| 1–4 | `site_a_AMR_1` – `site_a_AMR_4` | A | `nav_ws/maps/siteA.yaml` |
-| 5–6 | `site_b_AMR_1`, `site_b_AMR_2` | B | `nav_ws/maps/siteB.yaml` |
-| 7–8 | `site_c_AMR_1`, `site_c_AMR_2` | C | `nav_ws/maps/siteC.yaml` |
+| 1–4 | `site_a_AMR_1` – `site_a_AMR_4` | A | `Nav2/maps/siteA.yaml` |
+| 5–6 | `site_b_AMR_1`, `site_b_AMR_2` | B | `Nav2/maps/siteB.yaml` |
+| 7–8 | `site_c_AMR_1`, `site_c_AMR_2` | C | `Nav2/maps/siteC.yaml` |
 
-This mapping lives in three places: `nav_ws/run_nav2.sh` (`ROBOTS`), `ros_ipe/fleet.yaml` (`robots`) and the demo scripts (`ROBOT`). Keep them in sync when changing it.
+This mapping lives in three places: `Nav2/run_nav2.sh` (`ROBOTS`), `ROS-IPE/fleet.yaml` (`robots`) and the demo scripts (`ROBOT`). Keep them in sync when changing it.
 
 ## Requirements
 
@@ -80,7 +80,7 @@ conda env create -f env/ros_nav.yml      # ros_nav: Nav2, IPE, demo scripts
 ### 3. fleet.yaml
 
 ```bash
-cp ros_ipe/fleet.example.yaml ros_ipe/fleet.yaml
+cp ROS-IPE/fleet.example.yaml ROS-IPE/fleet.yaml
 ```
 
 Replace `<MEC_HOST>` and `<SANDBOX>` in `sites.<site>.cse_url` and `sites.<site>.ws.url` with your CSE addresses. `fleet.yaml` is git-ignored.
@@ -132,8 +132,8 @@ A single Ctrl+C shuts down in order: demos → robot stop → IPE → Nav2.
 Start Nav2 and IPE for domains 7 and 8 (one terminal each), then run the two demos in separate terminals.
 
 ```bash
-./nav_ws/run_nav2.sh 7 8
-./ros_ipe/run_ipe.sh 7 8
+./Nav2/run_nav2.sh 7 8
+./ROS-IPE/run_ipe.sh 7 8
 ROS_DOMAIN_ID=7 python -u demo_task_executor/<c1 script>
 ROS_DOMAIN_ID=8 python -u demo_task_executor/<c2 script>
 ```
@@ -150,12 +150,12 @@ ROS_DOMAIN_ID=8 python -u demo_task_executor/<c2 script>
 ### Running components individually
 
 ```bash
-./nav_ws/run_nav2.sh [domain...]     # all if omitted; creates launch/ on first run
-./ros_ipe/run_ipe.sh [domain...]  # all robots in fleet.yaml if omitted
-./nav_ws/stop_all.sh [domain...]     # cancel Nav2 goals + stop (stop the demos first)
+./Nav2/run_nav2.sh [domain...]       # all if omitted; creates launch/ on first run
+./ROS-IPE/run_ipe.sh [domain...]     # all robots in fleet.yaml if omitted
+./Nav2/stop_all.sh [domain...]       # cancel Nav2 goals + stop (stop the demos first)
 ```
 
-Logs go to `nav_ws/logs/` and `ros_ipe/logs/`. The IPE also keeps a copy of the telemetry it uploads in `~/telemetry_dump/<AE>_<time>.jsonl`. To disable this, add `dump_dir: ""` to `ros_ipe/ipe_common.yaml`.
+Logs go to `Nav2/logs/` and `ROS-IPE/logs/`. The IPE also keeps a copy of the telemetry it uploads in `~/telemetry_dump/<AE>_<time>.jsonl`. To disable this, add `dump_dir: ""` to `ROS-IPE/ipe_common.yaml`.
 
 ### CSE outage
 
@@ -179,6 +179,6 @@ The CSE is taken from `customServicesTransportInfo` entries whose `id` is a CSE-
 
 ## Notes
 
-- The driving settings in `nav_ws/nav2_drive_param.yaml` (`max_velocity`, `allow_reversing`, ...) must stay the same as during FL data collection.
+- The driving settings in `Nav2/nav2_drive_param.yaml` (`max_velocity`, `allow_reversing`, ...) must stay the same as during FL data collection.
 - `~/sim_cmd`, `~/sim_ack`, `~/sim_cmd.lock` and `~/script_log` are temporary files in the home folder, outside the repo. Isaac and the demos must run under the same user account.
 - Both bump scripts build under the same `/World/floor_bumps`. Running one removes the other's bumps.

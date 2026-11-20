@@ -4,7 +4,7 @@
 # Phase changes print ">>>>>>>>>> [c2 capture] seq N: ..." (use as label boundaries).
 #   ROS_DOMAIN_ID=8 python -u demo_c2_capture.py [bearing=60]
 #   Run together with: ROS_DOMAIN_ID=7 python -u demo_c1_capture.py
-# Prerequisites: Isaac Play + sim_watcher, Nav2 (nav_ws/run_nav2.sh), IPE (ros_ipe/run_ipe.sh),
+# Prerequisites: Isaac Play + sim_watcher, Nav2 (Nav2/run_nav2.sh), IPE (ROS-IPE/run_ipe.sh),
 #   wheel lobes created beforehand (isaac_script/make_wheel_lobe.py, MODE = "make").
 import fcntl, itertools, json, math, os, sys, time
 import rclpy, tf2_ros
