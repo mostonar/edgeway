@@ -21,11 +21,12 @@ This repository holds all the code used in the demo: the simulation, the MEC env
 ```
 [Isaac Sim PC]
   Isaac Sim ── ROS 2 ── Nav2 / demo_task_executor / ROS-IPE   (per robot)
+  Site-Dashboard
                                          │ WebSocket, HTTP(S)
                                          ▼
 [MEC Sandbox VM]  per site A, B, C
   MEP ── ACME MN-CSE, MEC 011 / 013 / 028 / 033, APs, robot terminals
-  Local-Model (site app, judge app), Site-Dashboard  ── connect to the MN-CSE
+  Local-Model (site app, judge app)  ── connect to the MN-CSE
                                          │ FL round commands, weights, global model
                                          ▼
 [Cloud]
@@ -36,8 +37,8 @@ FL-Dashboard: reads the IN-CSE and every site MN-CSE
 
 The demo uses two PCs and an external IN-CSE:
 
-- **Isaac Sim PC**: simulates three warehouses and eight robots. Each robot runs its own Nav2, task script and IPE.
-- **MEC Sandbox VM**: runs the per-site MEC environment and wireless network. The site apps and the Site-Dashboard also run here.
+- **Isaac Sim PC**: simulates three warehouses and eight robots. Each robot runs its own Nav2, task script and IPE. The Site-Dashboard also runs here and reads the site MN-CSEs over the network.
+- **MEC Sandbox VM**: runs the per-site MEC environment and wireless network. The site apps and judge apps also run here.
 - **IN-CSE**: a shared CSE outside the sandbox. Every site MN-CSE registers with it, and FL-FedAvg and the site apps exchange round commands and models through it.
 
 **Edge and cloud**
@@ -60,7 +61,7 @@ The demo uses two PCs and an external IN-CSE:
 | `Field-Isaac-Sim/` | Isaac Sim PC | Simulation, robot control, IPE |
 | `Edge-ESTIMED-VM/` | MEC Sandbox VM | ETSI MEC Sandbox and the EdgeWay network scenario |
 | `Edge-ESTIMED-VM/Local-Model/` | MEC Sandbox VM | Per-site site app and judge app |
-| `Edge-ESTIMED-VM/Site-Dashboard/` | MEC Sandbox VM | Site operations dashboard |
+| `Edge-ESTIMED-VM/Site-Dashboard/` | Isaac Sim PC | Site operations dashboard |
 | `Cloud/FL-FedAvg/` | Cloud | FL coordinator |
 | `FL-Dashboard/` | Admin host | FL dashboard |
 
@@ -176,30 +177,41 @@ Installation and running: [FL-Dashboard/README.md](FL-Dashboard/README.md)
 ## oneM2M resources
 
 ```
-Site MN-CSE (S = A, B, C; i = 1, 2, 3)
-├─ siteS_AMR_r                    IPE (one per robot)
-│  ├─ telemetry                   one-second sensor batches
-│  ├─ status                      task state and position
-│  ├─ command                     verdicts and driving commands
-│  │  └─ sub_ipe_cmd              subscription → notifications to the IPE's PCH
-│  ├─ log                         connection outage records
-│  └─ pch                         pollingChannel
-├─ TRAINING-AE-i                  site app
-│  ├─ cnt-window-scores           per-window anomaly scores
-│  └─ cnt-net-status              robot network state (MEC 013, 028)
-├─ ANALYSIS-AE-i/cnt-verdict      anomaly events
-└─ JUDGE-AE-i                     judge app
-   ├─ cnt-judgement               no-go zones
-   └─ cnt-request                 operator zone-clear requests
+Site {S} MN-CSE · CSEBase          S = A, B, C · i = 1, 2, 3 · r = 1–4 at A, 1–2 at B and C
+├─ site{S}_AMR_{r}  (AE)
+│  ├─ telemetry          Sensor batch            SUB sub-sensor-data-mn{i}
+│  ├─ status             Robot state
+│  ├─ command            Robot command           SUB sub_ipe_cmd
+│  ├─ log                Connection record
+│  ├─ pch
+│  └─ acp_telemetry, acp_command, acp_log
+├─ TRAINING-AE-{i}  (AE)
+│  ├─ cnt-window-scores  Scores, labels and threshold
+│  ├─ cnt-net-status     Network snapshot
+│  ├─ cnt-local-model    Model cache metadata
+│  └─ pch                (local polling mode)
+├─ ANALYSIS-AE-{i}  (AE)
+│  └─ cnt-verdict        Anomaly event           SUB sub_judge_{i}, edgeway-analysis-*
+├─ JUDGE-AE-{i}  (AE)
+│  ├─ cnt-judgement      Restricted areas        SUB edgeway-floor-*
+│  ├─ cnt-request        Area-release request    SUB sub_judge_req_{i}
+│  ├─ pch                (polling mode)
+│  └─ acp_judgement
+├─ acp-cache-mn{i}, acp-verdict-mn{i}
+└─ IN-CSE  (CSR, if registered)
 
-IN-CSE
-├─ IN-AE                          FL-FedAvg
-│  ├─ cnt-fl-control              round commands
-│  ├─ cnt-local-updates
-│  │  └─ cnt-mn1, cnt-mn2, cnt-mn3  per-site drop-boxes
-│  ├─ cnt-global-model
-│  └─ cnt-fl-inference            fixed validation set results
-└─ TRAINING-AE-1..3               site apps (receive round commands)
+Central IN-CSE · CSEBase
+├─ TRAINING-AE-{i}  (AE)
+│  └─ pch
+├─ IN-AE  (AE)
+│  ├─ pch
+│  ├─ cnt-fl-control     Round instruction       SUB sub_mn{i}
+│  ├─ cnt-global-model   Global model record, cnt-weights (if chunked)
+│  ├─ cnt-fl-inference   Global evaluation
+│  └─ cnt-local-updates
+│     └─ cnt-mn{i}       site updates, SUB sub_in_dropbox_mn{i}, cnt-weights (if chunked)
+├─ acp-fl-control, acp-global-model, acp-fl-inference, acp-local-updates, acp-dropbox-mn{i}
+└─ Site MN-CSE  (CSR, if registered)
 ```
 
 **Protocols**
@@ -270,8 +282,8 @@ Each container has its own accessControlPolicy (ACP) that grants access only to 
 
 | Host | Needs |
 |---|---|
-| Isaac Sim PC | Ubuntu 24.04, NVIDIA GPU, Isaac Sim 6.1, Miniforge. ROS 2 and Nav2 are installed with conda. |
-| MEC Sandbox VM | An environment that can build and run the ETSI MEC Sandbox (`Edge-ESTIMED-VM`). Python 3 for Local-Model and the Site-Dashboard. |
+| Isaac Sim PC | Ubuntu 24.04, NVIDIA GPU, Isaac Sim 6.1, Miniforge. ROS 2 and Nav2 are installed with conda. Python 3.10+ for the Site-Dashboard. |
+| MEC Sandbox VM | An environment that can build and run the ETSI MEC Sandbox (`Edge-ESTIMED-VM`). Python 3 for Local-Model. |
 | IN-CSE | A shared CSE that the site MN-CSEs register with |
 
 Addresses and credentials are kept in local settings files, not in the repository. Each folder has an example.
@@ -314,7 +326,7 @@ Addresses and credentials are kept in local settings files, not in the repositor
    bash Cloud/FL-FedAvg/run_fedavg.sh
    ```
 
-6. **Dashboards** (any time)
+6. **Dashboards** (any time; FL-Dashboard on the admin host, Site-Dashboard on the Isaac Sim PC)
    ```bash
    bash FL-Dashboard/run_dashboard.sh                                               # http://<host>:7000
    cd Edge-ESTIMED-VM/Site-Dashboard && python3 server.py --config config.json      # http://<host>:8090
