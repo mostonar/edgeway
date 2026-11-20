@@ -1,5 +1,4 @@
 # Shell for Nav2, IPE and demo scripts.  Usage:  source env/ros_env.sh
-# Same as the `ros_on` alias used on the lab PC.
 # Do NOT source the ROS 2 tarball setup.bash in this shell (libraries get mixed).
 
 CONDA_DIR="${CONDA_DIR:-$HOME/miniforge3}"

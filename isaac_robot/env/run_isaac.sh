@@ -1,6 +1,5 @@
 #!/bin/bash
 # Launch Isaac Sim (streaming) with the ROS 2 Humble bridge libraries.
-# Same as the `run_isaac_stream` alias used on the lab PC.
 # Change the three paths below (or set them as env vars) for your machine.
 
 ISAACSIM_DIR="${ISAACSIM_DIR:-$HOME/isaacsim}"

@@ -1,6 +1,6 @@
 # Minimal spec for the ros_nav env (Nav2, IPE, demo scripts).
 #   conda env create -f env/ros_nav.yml
-# Full pinned export from the lab PC: env/ros_nav.lock.yml (reference only;
+# Full pinned export from the test environment: env/ros_nav.lock.yml (reference only;
 # it pins CPU-specific packages and may not solve on other machines).
 name: ros_nav
 channels:

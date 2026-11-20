@@ -11,5 +11,5 @@ source "$CONDA_DIR/bin/activate"
 conda create -y -n ros310 --file "$HERE/ros310.txt"
 
 LIB="$CONDA_DIR/envs/ros310/lib"
-ln -sf libtinyxml2.so "$LIB/libtinyxml2.so.9"   # same as the lab PC (-> libtinyxml2.so -> .so.11)
+ln -sf libtinyxml2.so "$LIB/libtinyxml2.so.9"   # -> libtinyxml2.so -> .so.11
 ls -l "$LIB"/libtinyxml2.so* "$LIB"/libspdlog.so*
