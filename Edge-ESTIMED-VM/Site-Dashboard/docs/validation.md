@@ -11,4 +11,4 @@ The shareable tree moves site-specific CSE URLs to local settings, uses the conf
 | CSE selection | Local mode works by default. MN-CSE is available when configured. URLs with queries are rejected. |
 | Network recovery UI | Sample selection shows a recovery event. Its detail dialog displays the robot, outage duration, and lost count. The fixture does not represent an actual network outage. |
 
-For the reproducible Python checks, run `python3 -m unittest discover -s tests -v` from the `dashboard/` directory. These checks do not establish connectivity to a deployed CSE, actual robot command execution, or live network recovery delivery.
+For the reproducible Python checks, run `python3 -m unittest discover -s tests -v` from the `Edge-ESTIMED-VM/Site-Dashboard/` directory. These checks do not establish connectivity to a deployed CSE, actual robot command execution, or live network recovery delivery.

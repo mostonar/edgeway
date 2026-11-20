@@ -1,4 +1,4 @@
-"""GET latest status/telemetry for explicit Isaac robot IDs; never writes to the CSE.
+"""GET latest status/telemetry (and the IPE outage log) for explicit Isaac robot IDs; never writes to the CSE.
 
 This is latest-value polling, not a lossless event subscription. The original CIN
 and retrieval provenance are retained. Existing mock polling remains separate.
@@ -16,6 +16,7 @@ import ssl
 import threading
 import time
 import uuid
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, ProxyHandler, Request, build_opener
 
@@ -48,10 +49,13 @@ def save_cin(store, cfg, base, csi, robot_id, channel, payload, tls_verified):
     content = strict_json(cin.get('con')) if isinstance(cin.get('con'), str) else cin.get('con')
     if not isinstance(content, dict) or content.get('robot') != robot_id:
         raise ValueError('CIN robot does not match requested AE: '+robot_id)
-    if not isinstance(content.get('pose'), dict) or 't_sim' not in content:
-        raise ValueError('Expected pose and t_sim')
-    if channel not in ('status', 'telemetry'):
+    if channel not in ('status', 'telemetry', 'log'):
         raise ValueError('Unsupported channel')
+    if channel == 'log':                      # IPE outage record, posted once after the backlog is sent
+        if type(content.get('disconnect_duration_ms')) not in (int, float):
+            raise ValueError('Expected disconnect_duration_ms')
+    elif not isinstance(content.get('pose'), dict) or 't_sim' not in content:
+        raise ValueError('Expected pose and t_sim')
     source = {**cfg, 'cse_url':base, 'cse_id':csi}
     robot = {'id':robot_id, 'name':robot_id, 'ae':robot_id, 'container':channel}
     raw = {'m2m:cin':cin, '_edgeway_retrieval':{
@@ -158,6 +162,14 @@ def main():
     thread_state = threading.local()
 
     def retrieve(robot, channel):
+        try:
+            return retrieve_latest(robot, channel)
+        except HTTPError as exc:
+            if channel == 'log' and exc.code == 404:
+                return None               # no outage recorded yet (empty log container)
+            raise
+
+    def retrieve_latest(robot, channel):
         # urllib handlers are private to each worker; TLS and redirects retain
         # the same policy as the original collector.
         if not hasattr(thread_state, 'opener'):
@@ -180,6 +192,8 @@ def main():
             read(thread_state.opener, current+'/'+robot+'/'+channel+'/la', args.timeout))
 
     def consume(robot, channel, payload):
+        if payload is None:
+            return
         if args.site == 'C':
             result = factory_c_address.consume_current(cfg, store, payload,
                 lambda source, remote_csi, content: save_cin(store, cfg, source, remote_csi,
@@ -219,7 +233,7 @@ def main():
             print('Factory C uses the saved dashboard address; --base-url is not used for C.', flush=True)
         print(f'Latest polling: workers={args.workers}, target period={args.interval:g}s/CNT, '
               f'timeout={args.timeout:g}s; GET only. Ctrl+C stops only this collector.', flush=True)
-        targets = [(robot, channel) for channel in ('telemetry', 'status') for robot in args.robots]
+        targets = [(robot, channel) for channel in ('telemetry', 'status', 'log') for robot in args.robots]
         return poll_targets(targets, retrieve, consume, report_error, args.interval,
                             args.workers, stop, args.once)
     except KeyboardInterrupt:

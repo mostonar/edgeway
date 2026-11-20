@@ -74,6 +74,15 @@ def _present(content, robot_name):
     if not isinstance(content, dict):
         result['title'] = 'Array data received' if isinstance(content, list) else 'Data received'
         return result
+    if type(content.get('disconnect_duration_ms')) in (int, float):
+        # IPE outage record (<robot>/log), posted once the robot is back online and its backlog is sent.
+        seconds = content['disconnect_duration_ms'] / 1000
+        lost, held = content.get('data_loss'), content.get('buffered_count')
+        result.update(title=f'Network disconnected · {seconds:.1f} s', kind='Log',
+                      level='error' if type(lost) is int and lost > 0 else 'warning',
+                      description=f'The robot lost its connection to the CSE for {seconds:.1f} s and has reconnected '
+                                  f'(this record is from the reconnection). Buffered {held}, lost {lost}.')
+        return result
     event = content.get('event')
     event = event if isinstance(event, dict) else {'message':event}
     context = content.get('context')

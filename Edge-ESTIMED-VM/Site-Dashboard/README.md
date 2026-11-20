@@ -2,11 +2,11 @@
 
 Developed for the oneM2M MEC International Hackathon 2026.
 
-EdgeWay monitors autonomous mobile robots through oneM2M. It shows robot positions, event history, anomaly markers, and judged floor areas on factory floor plans. The Python server serves the dashboard and stores received records in SQLite. A separate collector retrieves the latest robot status and telemetry.
+EdgeWay monitors autonomous mobile robots through oneM2M. It shows robot positions, event history, anomaly markers, and judged floor areas on factory floor plans. The Python server serves the dashboard and stores received records in SQLite. A separate collector retrieves the latest robot status, telemetry and network outage records.
 
 ## Quick start
 
-Use Python 3.10 or later. Run these commands from the `dashboard/` directory:
+Use Python 3.10 or later. Run these commands from the `Edge-ESTIMED-VM/Site-Dashboard/` directory:
 
 ```bash
 cp config.example.json config.json
@@ -16,7 +16,7 @@ python3 server.py --config config.json
 
 Open [http://127.0.0.1:8090](http://127.0.0.1:8090). An ACME CSE is optional for viewing the interface and the network test screen. An empty event log is normal until a CSE or collector supplies data. The server creates the local database on the first run.
 
-For an example you can open immediately, go to **Floor Plan → Map settings → Network status test**, or open [the network status test screen](http://127.0.0.1:8090/tests/network-status). Select **Network recovered** and open the sample row in **Event Log**. Its detail dialog shows the robot name, outage duration, and lost data count. The sample stays in the test screen. Live integration is pending the reporting AE and its payload format.
+For an example you can open immediately, go to **Floor Plan → Map settings → Network status test**, or open [the network status test screen](http://127.0.0.1:8090/tests/network-status). Select **Network recovered** and open the sample row in **Event Log**. Its detail dialog shows the robot name, outage duration, and lost data count. The sample stays in the test screen. Live outages reported by the robot IPE (`<robot>/log`) appear in **Event Log** as "Network disconnected · <duration>" with the buffered and lost counts. They are not drawn on the map.
 
 ## Connect a CSE
 
@@ -30,7 +30,7 @@ python3 watch_isaac_cse.py --config config.json --site C --robots siteC_AMR_2
 
 ## Testing
 
-From the repository root, run:
+From this directory (`Edge-ESTIMED-VM/Site-Dashboard/`), run:
 
 ```bash
 python3 -m unittest discover -s tests -v

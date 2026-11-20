@@ -4,7 +4,7 @@
 | --- | --- |
 | `server.py`, `core.py` | HTTP endpoints, static assets, SQLite persistence, and client event delivery. |
 | `bindings.py`, `operations.py`, `demo_commands.py` | CSE bindings and operator actions. |
-| `watch_isaac_cse.py`, `factory_c_address.py` | Retrieve latest robot status and telemetry and record the source. |
+| `watch_isaac_cse.py`, `factory_c_address.py` | Retrieve latest robot status, telemetry and IPE outage records (`<robot>/log`) and record the source. |
 | `analysis_verdict.py` | Read detection results from `ANALYSIS-AE-3/cnt-verdict` and maintain floor-suspect markers. |
 | `floor_judgement.py` | Read rectangles from `JUDGE-AE-3/cnt-judgement` and send explicit clear requests to `JUDGE-AE-3/cnt-request`. |
 | `subscription_delivery.py` | Create or verify notification subscriptions and retry configured delivery endpoints where supported. |
@@ -17,6 +17,6 @@ An analysis report can create a floor-suspect marker. A matching judgement recta
 
 The Drop-off badge stays visible during unloading. A different robot phase replaces it immediately. The Judgement AE clear dialog uses English labels and feedback.
 
-The network status test screen keeps position freshness separate from disconnect and recovery. Its event row and outage duration are sample data. The reporting AE, payload and live event persistence for network recovery remain pending.
+The network status test screen keeps position freshness separate from disconnect and recovery. Its event row and outage duration are sample data. Live outages come from the robot IPE's `<robot>/log` container (`disconnect_duration_ms`, `buffered_count`, `data_loss`), which the collector stores as Event Log records. The map badge is not connected to them.
 
 The source package is based on the running dashboard. Site addresses were moved to local configuration, and the production map and recordings were replaced with synthetic assets. The package is verified independently of the production deployment. Pretendard is distributed with its accompanying [SIL Open Font License](../static/fonts/Pretendard-LICENSE.txt).
