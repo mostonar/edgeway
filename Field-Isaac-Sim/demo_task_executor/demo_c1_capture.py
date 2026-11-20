@@ -4,7 +4,7 @@
 # Phase changes print ">>>>>>>>>> [c1 capture] seq N: ..." (use as label boundaries).
 #   ROS_DOMAIN_ID=7 python -u demo_c1_capture.py
 #   Run together with: ROS_DOMAIN_ID=8 python -u demo_c2_capture.py
-# Prerequisites: Isaac Play + sim_watcher, Nav2 (nav_ws/run_nav2.sh), IPE (simple_ipe/run_ipe.sh),
+# Prerequisites: Isaac Play + sim_watcher, Nav2 (nav_ws/run_nav2.sh), IPE (ros_ipe/run_ipe.sh),
 #   floor bumps on c1's lane (isaac_script/make_c1_bump.py, REMOVE = False, Stop state).
 import fcntl, itertools, json, math, os, time
 import rclpy, tf2_ros

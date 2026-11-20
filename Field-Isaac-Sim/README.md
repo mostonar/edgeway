@@ -7,7 +7,7 @@ Isaac Sim (scene + sim_watcher)
    │  ROS 2 (one robot = one ROS_DOMAIN_ID)
    ├─ Nav2 (per robot)               nav_ws/
    ├─ Demo scripts (task execution)  demo_task_executor/
-   └─ IPE (per robot)                simple_ipe/  ──HTTP/WS──>  oneM2M MN-CSE (MEC)
+   └─ IPE (per robot)                ros_ipe/     ──HTTP/WS──>  oneM2M MN-CSE (MEC)
 ```
 
 FL training, the dashboard and the judgment AE are not part of this folder.
@@ -19,7 +19,7 @@ FL training, the dashboard and the judgment AE are not part of this folder.
 | `isaacsim/` | Scene `testIsaacScene.usd` |
 | `isaac_script/` | Scripts run in the Isaac Script Editor (`sim_watcher.py`, ...) |
 | `nav_ws/` | Per-robot Nav2 launcher, parameters, site maps |
-| `simple_ipe/` | oneM2M IPE (`ipe_proc.py`) and its config |
+| `ros_ipe/` | oneM2M IPE (`ipe_proc.py`) and its config |
 | `demo_task_executor/` | Per-robot task scenarios (ROS 2 nodes) |
 | `env/` | conda environment specs and environment scripts |
 | `run_all_demo.sh` | FL data collection: starts Nav2 -> IPE -> 8 demos in order |
@@ -32,7 +32,7 @@ FL training, the dashboard and the judgment AE are not part of this folder.
 | 5–6 | `site_b_AMR_1`, `site_b_AMR_2` | B | `nav_ws/maps/siteB.yaml` |
 | 7–8 | `site_c_AMR_1`, `site_c_AMR_2` | C | `nav_ws/maps/siteC.yaml` |
 
-This mapping lives in three places: `nav_ws/run_nav2.sh` (`ROBOTS`), `simple_ipe/fleet.yaml` (`robots`) and the demo scripts (`ROBOT`). Keep them in sync when changing it.
+This mapping lives in three places: `nav_ws/run_nav2.sh` (`ROBOTS`), `ros_ipe/fleet.yaml` (`robots`) and the demo scripts (`ROBOT`). Keep them in sync when changing it.
 
 ## Requirements
 
@@ -80,7 +80,7 @@ conda env create -f env/ros_nav.yml      # ros_nav: Nav2, IPE, demo scripts
 ### 3. fleet.yaml
 
 ```bash
-cp simple_ipe/fleet.example.yaml simple_ipe/fleet.yaml
+cp ros_ipe/fleet.example.yaml ros_ipe/fleet.yaml
 ```
 
 Replace `<MEC_HOST>` and `<SANDBOX>` in `sites.<site>.cse_url` and `sites.<site>.ws.url` with your CSE addresses. `fleet.yaml` is git-ignored.
@@ -133,7 +133,7 @@ Start Nav2 and IPE for domains 7 and 8 (one terminal each), then run the two dem
 
 ```bash
 ./nav_ws/run_nav2.sh 7 8
-./simple_ipe/run_ipe.sh 7 8
+./ros_ipe/run_ipe.sh 7 8
 ROS_DOMAIN_ID=7 python -u demo_task_executor/<c1 script>
 ROS_DOMAIN_ID=8 python -u demo_task_executor/<c2 script>
 ```
@@ -151,11 +151,11 @@ ROS_DOMAIN_ID=8 python -u demo_task_executor/<c2 script>
 
 ```bash
 ./nav_ws/run_nav2.sh [domain...]     # all if omitted; creates launch/ on first run
-./simple_ipe/run_ipe.sh [domain...]  # all robots in fleet.yaml if omitted
+./ros_ipe/run_ipe.sh [domain...]  # all robots in fleet.yaml if omitted
 ./nav_ws/stop_all.sh [domain...]     # cancel Nav2 goals + stop (stop the demos first)
 ```
 
-Logs go to `nav_ws/logs/` and `simple_ipe/logs/`. The IPE also keeps a copy of the telemetry it uploads in `~/telemetry_dump/<AE>_<time>.jsonl`. To disable this, add `dump_dir: ""` to `simple_ipe/ipe_common.yaml`.
+Logs go to `nav_ws/logs/` and `ros_ipe/logs/`. The IPE also keeps a copy of the telemetry it uploads in `~/telemetry_dump/<AE>_<time>.jsonl`. To disable this, add `dump_dir: ""` to `ros_ipe/ipe_common.yaml`.
 
 ### CSE outage
 

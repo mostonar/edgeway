@@ -8,7 +8,7 @@
 #   knob        knob on the front roller (fades during in-place turns)
 #   bearing=N   roller bearing friction, e.g. 60 (no bumps) or 10 (subtle)
 # Needs: Isaac Sim playing with sim_watcher, Nav2 for domain 8 (nav_ws/run_nav2.sh),
-#        and the IPE for domain 8 (simple_ipe/run_ipe.sh), required for the seq count.
+#        and the IPE for domain 8 (ros_ipe/run_ipe.sh), required for the seq count.
 # Knobs: ANOMALY_SEQ, END_SEQ, MAX_RUN_S (fallback timeout), CARGO_LOOP.
 
 import fcntl, itertools, json, math, os, sys, time

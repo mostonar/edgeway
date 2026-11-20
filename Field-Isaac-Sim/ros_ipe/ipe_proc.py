@@ -6,7 +6,7 @@
 #     record {robot, site, disconnect_duration_ms, buffered_count, data_loss} is posted to <AE>/log.
 #   - Optional CSE move (fleet.yaml sites.<site>.iot): while disconnected, the MEP's MEC 033 API is asked for the
 #     current CSE; if it changed, the IPE re-registers there and sends the backlog.
-# Run (normally): simple_ipe/run_ipe.sh [domains...]
+# Run (normally): ros_ipe/run_ipe.sh [domains...]
 # Direct:  ROS_DOMAIN_ID=<n> python -u ipe_proc.py --ros-args --params-file ipe_common.yaml -p fleet_file:=fleet.yaml
 # Config:  ipe_common.yaml (joint names, IMU mounts, retention), fleet.yaml (domain -> site/robot/CSE/ACP;
 #          see fleet.example.yaml).

@@ -10,8 +10,8 @@
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 NAV=$ROOT/nav_ws/run_nav2.sh
 STOP=$ROOT/nav_ws/stop_all.sh
-IPE=$ROOT/simple_ipe/run_ipe.sh
-IPE_LOG=$ROOT/simple_ipe/logs
+IPE=$ROOT/ros_ipe/run_ipe.sh
+IPE_LOG=$ROOT/ros_ipe/logs
 DEMO_DIR=$ROOT/demo_task_executor
 DEMO_GAP=1           # s between demo starts
 NAV_TIMEOUT=180      # s to wait for all Nav2 to become active

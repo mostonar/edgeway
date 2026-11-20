@@ -4,7 +4,7 @@
 #
 # Run:   ROS_DOMAIN_ID=6 python -u demo_b2_fl.py
 # Needs: Isaac Sim playing with sim_watcher, Nav2 for domain 6 (nav_ws/run_nav2.sh),
-#        and the IPE for domain 6 (simple_ipe/run_ipe.sh).
+#        and the IPE for domain 6 (ros_ipe/run_ipe.sh).
 # Knobs: RUN_TIME_S, CARGO_LOOP.
 
 import fcntl, itertools, json, math, os, time

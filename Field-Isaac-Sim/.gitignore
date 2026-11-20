@@ -1,4 +1,4 @@
-simple_ipe/fleet.yaml
+ros_ipe/fleet.yaml
 logs/
 __pycache__/
 *.pyc

@@ -5,7 +5,7 @@
 #
 # Run:   ROS_DOMAIN_ID=7 python -u demo_c1_fl.py
 # Needs: Isaac Sim playing with sim_watcher, Nav2 for domain 7 (nav_ws/run_nav2.sh),
-#        and the IPE for domain 7 (simple_ipe/run_ipe.sh), required for the seq count.
+#        and the IPE for domain 7 (ros_ipe/run_ipe.sh), required for the seq count.
 # Knobs: END_SEQ, MAX_RUN_S (fallback timeout), CARGO_LOOP.
 
 import fcntl, itertools, json, math, os, time

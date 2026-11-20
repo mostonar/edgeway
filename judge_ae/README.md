@@ -54,7 +54,7 @@ Reports whose `site` is not this site are ignored.
 The AE registers itself with originator `CJUDGE-AE-<n>` and creates `acp_judgement` (`CJUDGE-AE-<n>` + `CAdmin` only) for its own containers. The other AEs must grant it access:
 
 - Detection AE: `ANALYSIS-AE-<n>/cnt-verdict` must allow `CJUDGE-AE-<n>` to subscribe and retrieve.
-- Robot IPEs: `judge_ae: "CJUDGE-AE-<n>"` for the site in `Field-Isaac-Sim/simple_ipe/fleet.yaml` (already set in `fleet.example.yaml`; telemetry RETRIEVE/DISCOVERY, command CREATE/RETRIEVE/DISCOVERY).
+- Robot IPEs: `judge_ae: "CJUDGE-AE-<n>"` for the site in `Field-Isaac-Sim/ros_ipe/fleet.yaml` (already set in `fleet.example.yaml`; telemetry RETRIEVE/DISCOVERY, command CREATE/RETRIEVE/DISCOVERY).
 - Dashboard: uses `CAdmin`, so it can read `cnt-judgement` and write `cnt-request`.
 
 ## Requirements
