@@ -39,7 +39,7 @@ Reads from:
   Site MN-CSE       per-window anomaly scores (TRAINING-AE-i/cnt-window-scores).
                  These are site detection results and are not uploaded to the IN-CSE, so they are read on the site side.
 
-So this dashboard runs on a host that can reach the site MN-CSEs (the Edge VM in the current deployment).
+So this dashboard runs on an admin host outside the sandbox that can reach both the IN-CSE and the site MN-CSEs.
 
 Run:
 

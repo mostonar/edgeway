@@ -14,12 +14,12 @@ It reads two kinds of CSE:
 The window scores are a site's detection results, so the site apps keep them on their
 own MN-CSE and never send them to the IN-CSE; only weights and summary numbers go there.
 Because it reads both the cloud side and the sites, this folder sits at the repository
-root rather than under `Cloud/` or `Edge-ESTIMED-VM/`. Run it on a host that can reach the
-site MN-CSEs; in this setup that is the Edge VM.
+root rather than under `Cloud/` or `Edge-ESTIMED-VM/`. Run it on an admin host outside the
+sandbox that can reach both the IN-CSE and the site MN-CSEs.
 After an MN-CSE handover (scenario 6) it follows the site to the new CSE, using the
 address the site app reports in its drop-box upload.
 
-On this sandbox one Edge VM hosts all three sites, so one dashboard shows all three.
+All three sites are in one sandbox here, so one dashboard shows all three.
 In a real deployment each site would run its own.
 
 ## Setup
@@ -30,8 +30,8 @@ cp FL-Dashboard/env.local.example .env.local   # repository root, or this folder
 # fill in FL_SANDBOX_HOST, FL_SANDBOX_NAME, FL_IN_BASE_URL, FL_IN_CSE_NAME (+ FL_IN_USER / FL_IN_PASS)
 ```
 
-On the Edge VM one `.env.local` at the repository root serves this folder and
-`Edge-ESTIMED-VM/Local-Model`.
+If this folder and `Edge-ESTIMED-VM/Local-Model` run on the same host, one `.env.local`
+at the repository root serves both.
 
 ## Run
 

@@ -8,8 +8,8 @@
 #   Site MN-CSE       per-window anomaly scores (TRAINING-AE-i/cnt-window-scores)
 #
 # Site scores do not leave the site (IN-CSE), so they are read directly from the MN-CSE.
-# So it runs on a host that can reach the sandbox (site MN-CSEs). In the current deployment
-# that is the Edge VM. It can be started at any time.
+# So it runs on an admin host outside the sandbox that can reach both the IN-CSE and the
+# site MN-CSEs. It can be started at any time.
 #
 # Prerequisite: .env.local in this folder or the repo root has FL_SANDBOX_HOST / FL_SANDBOX_NAME,
 #   FL_IN_BASE_URL / FL_IN_CSE_NAME (+ FL_IN_USER / FL_IN_PASS).
