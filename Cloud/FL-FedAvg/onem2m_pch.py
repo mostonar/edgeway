@@ -258,7 +258,7 @@ class PchReceiver(threading.Thread):
         self.pcu_path = pcu_path
         self.origin = origin
         self.handler = handler
-        self._stop = threading.Event()
+        self._stop_evt = threading.Event()
         self.received = 0
         self.errors = 0
         self.respond_errors = 0
@@ -268,7 +268,7 @@ class PchReceiver(threading.Thread):
         self.duplicates = 0
 
     def stop(self) -> None:
-        self._stop.set()
+        self._stop_evt.set()
 
     # ── Internal ────────────────────────────────────────
 
@@ -316,7 +316,7 @@ class PchReceiver(threading.Thread):
             print(f"  ⚠ [{self.origin}] 응답 프리미티브 거절됨 "
                   f"{r.status_code}: {r.text[:200]}")
 
-    def _handle(self, body: dict) -> None:
+    def _dispatch(self, body: dict) -> None:
         rqp = body.get("m2m:rqp") or {}
         pc = rqp.get("pc") or {}
 
@@ -348,7 +348,7 @@ class PchReceiver(threading.Thread):
         print(f"  ✓ [{self.origin}] pollingChannel 수신 시작 "
               f"({om2m.strip_prefix(self.pcu_path)})")
 
-        while not self._stop.is_set():
+        while not self._stop_evt.is_set():
             try:
                 r = om2m._request_with_retry(
                     "get", om2m._url(self.pcu_path),
@@ -357,14 +357,14 @@ class PchReceiver(threading.Thread):
                 )
             except Exception as e:
                 self.errors += 1
-                if not self._stop.is_set():
+                if not self._stop_evt.is_set():
                     print(f"  ⚠ [{self.origin}] 폴링 오류: {e}")
                     time.sleep(PCH_BACKOFF_SEC)
                 continue
 
             if r.status_code == 200:
                 try:
-                    self._handle(r.json())
+                    self._dispatch(r.json())
                 except json.JSONDecodeError:
                     print(f"  ⚠ [{self.origin}] 알림 파싱 실패: {r.text[:160]}")
                 continue
