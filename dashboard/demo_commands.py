@@ -10,6 +10,7 @@ from urllib.request import HTTPSHandler, ProxyHandler, Request, build_opener
 
 from core import NoRedirect, dumps, utc_now
 from robot_state import primary_state
+import cse_handover
 import factory_c_address
 
 BODY = {'m2m:cin': {'con': {'command': 'clear_fault'}}}
@@ -60,6 +61,8 @@ class DemoCommands:
             return None, 'Demo commands are not enabled in demo-command.json.'
         base = (factory_c_address.selection(self.cfg, self.store)['url'] if match[1] == 'C'
                 else self.config.get('sites', {}).get(match[1], '').rstrip('/'))
+        if match[1] != 'C' and base:              # follow a saved CSE move (same URL as collector_cse_urls)
+            base, _ = cse_handover.resolve(self.cfg, self.store, match[1], base)
         u = urlsplit(base)
         if u.scheme not in ('http', 'https') or not u.hostname or u.username or u.password or u.query or u.fragment:
             return None, 'Configure a valid CSE base URL for this factory.'

@@ -10,7 +10,7 @@ import uuid
 from core import CSEError, dumps, strict_json, utc_now
 from robot_state import primary_state
 from subscription_delivery import callback_url, ensure_subscription
-from floor_judgement import content, number, rectangle_contains, is_rectangle, validate_profile
+from floor_judgement import FACTORY_NO, content, number, rectangle_contains, is_rectangle, validate_profile
 
 VERDICTS = 'ANALYSIS-AE-3/cnt-verdict'
 
@@ -66,7 +66,10 @@ def robot_fault_confirmed(db, source, suspect):
 
 class AnalysisVerdict:
     def __init__(self, cfg, store, floor):
+        # One instance per factory, bound to that factory's FloorJudgement (same CSE selection).
         self.cfg, self.store, self.floor = cfg, store, floor
+        self.factory = floor.factory
+        self.verdicts = f'ANALYSIS-AE-{FACTORY_NO[self.factory]}/cnt-verdict'
         self.lock = threading.RLock(); self.stopping = threading.Event()
         self.connecting = False; self.connection_error = ''; self.receive_error = ''; self.verified_connection = None
         with store.connect() as db:
@@ -131,7 +134,7 @@ class AnalysisVerdict:
                 with self.store.connect() as db:
                     suspects = [strict_json(row[0]) for row in db.execute("SELECT data_json FROM analysis_v_suspects WHERE connection_key=? AND state='active'",(key,))]
             return {'selected':cfg['selected'],'factory':profile['factory'],'profile':profile,'connection':conn,
-                    'suspects':suspects,'verdict_path':VERDICTS,'connection_error':self.connection_error,'receive_error':self.receive_error,'last_callback':getattr(self,'last_callback',None)}
+                    'suspects':suspects,'verdict_path':self.verdicts,'connection_error':self.connection_error,'receive_error':self.receive_error,'last_callback':getattr(self,'last_callback',None)}
 
     def set_parent(self, conn, parent):
         old = conn.get('parent_ri')
@@ -147,7 +150,7 @@ class AnalysisVerdict:
     def refresh_container(self, conn):
         # Empty latest or a new CIN parent can mean that the same path was recreated.
         profile = conn['profile']
-        cnt = self.floor.rpc(profile,'GET',VERDICTS).get('m2m:cnt',{})
+        cnt = self.floor.rpc(profile,'GET',self.verdicts).get('m2m:cnt',{})
         if not isinstance(cnt,dict) or not isinstance(cnt.get('ri'),str):
             raise ValueError('Detection container unavailable.')
         cb = None
@@ -166,7 +169,7 @@ class AnalysisVerdict:
         cb = self.floor.rpc(profile,'GET').get('m2m:cb',{})
         if not isinstance(cb,dict) or cb.get('ty') != 5 or not isinstance(cb.get('csi'),str) or not cb['csi'].startswith('/'):
             raise ValueError('Analysis connection requires a CSEBase.')
-        cnt = self.floor.rpc(profile,'GET',VERDICTS).get('m2m:cnt',{})
+        cnt = self.floor.rpc(profile,'GET',self.verdicts).get('m2m:cnt',{})
         if not isinstance(cnt,dict) or cnt.get('ty') != 3 or not isinstance(cnt.get('ri'),str):
             raise ValueError('Analysis verdict CNT must exist.')
         with self.lock:
@@ -176,7 +179,7 @@ class AnalysisVerdict:
             conn.update(profile=profile,revision=cfg['revision'],csi=cb['csi'])
             conn['callback'] = callback_url(self.cfg,conn,'/onem2m/analysis-verdict/')
             conn['sub_name'] = 'edgeway-analysis-'+conn['token'][:16]
-            conn['sub_path'] = VERDICTS+'/'+conn['sub_name']; self.put(conn)
+            conn['sub_path'] = self.verdicts+'/'+conn['sub_name']; self.put(conn)
             return conn
 
     def subscribe(self, conn):
@@ -186,7 +189,7 @@ class AnalysisVerdict:
             current = self.connection(conn['key']); current.update(status='connecting',message='Confirming detection subscription.'); self.put(current)
         try:
             profile = conn['profile']; key = conn['key']
-            sub, delivery = ensure_subscription(self.floor.rpc,self.cfg,conn,VERDICTS,'/onem2m/analysis-verdict/')
+            sub, delivery = ensure_subscription(self.floor.rpc,self.cfg,conn,self.verdicts,'/onem2m/analysis-verdict/')
             with self.lock:
                 current = self.connection(key)
                 if current['parent_ri'] != conn['parent_ri']: return
@@ -208,6 +211,12 @@ class AnalysisVerdict:
             raise
         finally:
             with self.lock: self.connecting = False
+
+    def owns(self, token):
+        """True when the subscription token belongs to this factory (connections share one table)."""
+        with self.store.connect() as db:
+            row = db.execute('SELECT data_json FROM analysis_v_connections WHERE token=?',(token,)).fetchone()
+        return bool(row) and strict_json(row[0]).get('profile',{}).get('factory','C') == self.factory
 
     def notification(self, token, origin, payload):
         with self.store.connect() as db:
@@ -258,8 +267,8 @@ class AnalysisVerdict:
             self.reconcile(conn)
 
     def start(self):
-        threading.Thread(target=self.receive,name='analysis-verdict-values',daemon=True).start()
-        threading.Thread(target=self.follow,name='analysis-verdict-subscription',daemon=True).start()
+        threading.Thread(target=self.receive,name='analysis-verdict-values-'+self.factory,daemon=True).start()
+        threading.Thread(target=self.follow,name='analysis-verdict-subscription-'+self.factory,daemon=True).start()
 
     def receive(self):
         # GET reception never waits on SUB confirmation; callbacks share the same dedup path.
@@ -269,7 +278,7 @@ class AnalysisVerdict:
                 cfg, profile, key = self.target(); conn = self.connection(key)
                 if not conn or conn.get('revision') != cfg['revision']: conn = self.prepare()
                 try:
-                    cin = self.floor.rpc(profile,'GET',VERDICTS+'/la').get('m2m:cin')
+                    cin = self.floor.rpc(profile,'GET',self.verdicts+'/la').get('m2m:cin')
                     if cin: self.ingest(key,cin,{'retrieved':True,'m2m:cin':cin})
                 except CSEError as exc:
                     if exc.status != 404: raise

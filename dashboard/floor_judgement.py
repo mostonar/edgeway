@@ -16,12 +16,30 @@ import uuid
 
 from core import CSEError, NoRedirect, dumps, strict_json, utc_now
 from robot_state import primary_state
+import cse_handover
 import factory_c_address
 from subscription_delivery import callback_url, ensure_subscription
 
 JUDGEMENT = 'JUDGE-AE-3/cnt-judgement'
 REQUESTS = 'JUDGE-AE-3/cnt-request'
 CONFIG_KEY = 'floor_judgement_config'
+FACTORY_NO = {'A': 1, 'B': 2, 'C': 3}
+
+
+def site_url(cfg, factory):
+    """Configured CSEBase of factory A or B (collector_cse_urls), or None when that factory is not set up."""
+    url = (cfg.get('collector_cse_urls') or {}).get(factory)
+    if not isinstance(url, str):
+        return None
+    u = urlsplit(url)
+    if u.scheme not in ('http', 'https') or not u.hostname or u.username or u.password or u.query or u.fragment:
+        raise ValueError('collector_cse_urls.'+factory+' must be an HTTP(S) CSEBase URL.')
+    return url.rstrip('/')
+
+
+def factories(cfg):
+    """Factories with judgement/detection: C always, A and B when collector_cse_urls has their CSE."""
+    return [f for f in ('A', 'B') if site_url(cfg, f)] + ['C']
 
 
 def number(value, minimum=-1e9, maximum=1e9):
@@ -95,8 +113,13 @@ def validate_profile(value):
 
 
 class FloorJudgement:
-    def __init__(self, cfg, store):
-        self.cfg, self.store = cfg, store
+    def __init__(self, cfg, store, factory='C'):
+        self.cfg, self.store, self.factory = cfg, store, factory
+        n = FACTORY_NO[factory]
+        self.judgement, self.requests = f'JUDGE-AE-{n}/cnt-judgement', f'JUDGE-AE-{n}/cnt-request'
+        # Factory C keeps the original keys so existing deployments keep their state.
+        self.config_key = CONFIG_KEY if factory == 'C' else CONFIG_KEY+'_'+factory
+        self.cursor_key = 'floor_judgement_robot_cursor' + ('' if factory == 'C' else '_'+factory)
         self.lock = threading.RLock(); self.connecting = False; self.connection_error = ''; self.receive_error = ''; self.verified_subscription = None
         self.stopping = threading.Event()
         with store.connect() as db:
@@ -118,24 +141,34 @@ class FloorJudgement:
             db.execute("UPDATE floor_j_requests SET state='unknown',message='서버 재시작 전 전송 결과를 확인하지 못했습니다. CNT 확인이 필요합니다.' WHERE state='sending'")
 
     def configuration(self):
-        # The existing factory C selection is the only environment switch.
-        chosen=factory_c_address.selection(self.cfg,self.store)
-        selected='local' if chosen['preset']=='local' else 'mn'
+        # Factory C: the existing C selection is the environment switch. A/B: collector_cse_urls.
+        # Both follow a saved CSE move (cse_handover).
+        if self.factory=='C':
+            chosen=factory_c_address.selection(self.cfg,self.store)
+            selected='local' if chosen['preset']=='local' else 'mn'
+        else:
+            url,tag=cse_handover.resolve(self.cfg,self.store,self.factory,site_url(self.cfg,self.factory))
+            chosen={'url':url,'revision':'site-'+self.factory+(':handover-'+tag if tag else '')}
+            selected='mn'
         try:
             demo=strict_json((Path(self.cfg['config_path']).parent/'demo-command.json').read_text())
         except (OSError,ValueError):
             demo={}
         if not isinstance(demo,dict):raise ValueError('명령 연결 설정 형식을 확인하세요.')
         dimensions=self.cfg.get('floor_judgement',{})
-        common={'factory':'C','origin':demo.get('origin',self.cfg['origin']),
+        common={'factory':self.factory,'origin':demo.get('origin',self.cfg['origin']),
                 'verify_tls':demo.get('verify_tls',True) is not False,
                 'robot_length':dimensions.get('robot_length',3.12),'robot_width':dimensions.get('robot_width',1.14)}
         remote_base=dimensions.get('mn_notification_base', self.cfg['notification_url'].split('/onem2m/notify',1)[0])
-        choices=factory_c_address.presets(self.cfg)
-        profiles={'local':{**common,'url':choices['local']['url'],'notification_base':'http://127.0.0.1:'+str(self.cfg['port'])}}
-        if 'mep-c' in choices:
-            profiles['mn']={**common,'url':choices['mep-c']['url'],'notification_base':remote_base}
-        saved=self.store.setting(CONFIG_KEY,{})
+        if self.factory=='C':
+            choices=factory_c_address.presets(self.cfg)
+            profiles={'local':{**common,'url':choices['local']['url'],'notification_base':'http://127.0.0.1:'+str(self.cfg['port'])}}
+            if 'mep-c' in choices:
+                profiles['mn']={**common,'url':choices['mep-c']['url'],'notification_base':remote_base}
+        else:
+            profiles={'mn':{**common,'url':chosen['url'],'notification_base':remote_base}}
+        profiles[selected]['url']=chosen['url']  # the selected CSE, after a handover move
+        saved=self.store.setting(self.config_key,{})
         active=saved.get('active_key') if saved.get('revision')==chosen['revision'] and saved.get('selected')==selected and saved.get('profiles')==profiles else None
         return {'selected':selected,'revision':chosen['revision'],'active_key':active,'profiles':profiles}
 
@@ -169,7 +202,7 @@ class FloorJudgement:
             profile = cfg['profiles'][cfg['selected']]
             return {'config': cfg, 'connection': conn, 'zones': zones, 'factory': profile['factory'],
                     'robot_margin': 0, 'geometry': 'rectangle',
-                    'judgement_path': JUDGEMENT, 'request_path': REQUESTS, 'history': history, 'connection_error': self.connection_error, 'receive_error': self.receive_error, 'last_callback': getattr(self,'last_callback',None)}
+                    'judgement_path': self.judgement, 'request_path': self.requests, 'history': history, 'connection_error': self.connection_error, 'receive_error': self.receive_error, 'last_callback': getattr(self,'last_callback',None)}
 
     def rpc(self, profile, method, suffix='', body=None, ty=None):
         url = profile['url'] + ('/' + suffix.strip('/') if suffix else '')
@@ -204,7 +237,7 @@ class FloorJudgement:
         cb=self.rpc(profile,'GET').get('m2m:cb',{})
         if not isinstance(cb,dict) or cb.get('ty')!=5 or not isinstance(cb.get('csi'),str) or not cb['csi'].startswith('/'):
             raise ValueError('CSEBase 및 csi 확인에 실패했습니다.')
-        cnt=self.rpc(profile,'GET',JUDGEMENT).get('m2m:cnt',{})
+        cnt=self.rpc(profile,'GET',self.judgement).get('m2m:cnt',{})
         if not isinstance(cnt,dict) or cnt.get('ty')!=3 or not isinstance(cnt.get('ri'),str):
             raise ValueError('판정 CNT가 먼저 준비되어 있어야 합니다.')
         key=hashlib.sha256(dumps([cfg['selected'],profile]).encode()).hexdigest()
@@ -222,8 +255,8 @@ class FloorJudgement:
             conn.setdefault('receive_status','waiting')
             conn['callback']=callback_url(self.cfg,conn,'/onem2m/floor-judgement/')
             conn['sub_name']='edgeway-floor-'+conn['token'][:16]
-            conn['sub_path']=JUDGEMENT+'/'+conn['sub_name'];self.put_connection(conn)
-            cfg['active_key']=key;self.store.put_setting(CONFIG_KEY,cfg)
+            conn['sub_path']=self.judgement+'/'+conn['sub_name'];self.put_connection(conn)
+            cfg['active_key']=key;self.store.put_setting(self.config_key,cfg)
             return conn
 
     def connect(self):
@@ -235,7 +268,7 @@ class FloorJudgement:
             self.connecting=True
             current=self.connection(key);current.update(status='connecting',message='구독 연결 중');self.put_connection(current)
         try:
-            sub,delivery=ensure_subscription(self.rpc,self.cfg,conn,JUDGEMENT,'/onem2m/floor-judgement/')
+            sub,delivery=ensure_subscription(self.rpc,self.cfg,conn,self.judgement,'/onem2m/floor-judgement/')
             with self.lock:
                 current=self.connection(key)
                 if current['parent_ri']!=conn['parent_ri']:return
@@ -248,6 +281,12 @@ class FloorJudgement:
             raise
         finally:
             with self.lock:self.connecting=False
+
+    def owns(self, token):
+        """True when the subscription token belongs to this factory (connections share one table)."""
+        with self.store.connect() as db:
+            row=db.execute('SELECT data_json FROM floor_j_connections WHERE token=?',(token,)).fetchone()
+        return bool(row) and strict_json(row[0]).get('profile',{}).get('factory','C')==self.factory
 
     def notification(self, token, origin, payload):
         with self.store.connect() as db:
@@ -326,12 +365,12 @@ class FloorJudgement:
                 if previous:return dict(previous)
                 zone=strict_json(row['data_json']);x,y=rectangle_center(zone)
                 body={'m2m:cin':{'con':{'type':'zone-clear','x':x,'y':y}}}
-                url=conn['profile']['url']+'/'+REQUESTS
+                url=conn['profile']['url']+'/'+self.requests
                 db.execute('INSERT INTO floor_j_requests VALUES (?,?,?,?,?,?,?,?,?,?)',(request_id,row['id'],conn['key'],'sending',cause,robot_id,dumps(body),url,'해제 요청 전송 중',utc_now()))
             # The persistent sending row blocks connection switching while the network request is in flight.
         state,message='unknown','전송 결과 불명확: 요청 CNT를 확인하기 전에는 재전송하지 않습니다.'
         try:
-            cin=self.rpc(conn['profile'],'POST',REQUESTS,body,4).get('m2m:cin',{})
+            cin=self.rpc(conn['profile'],'POST',self.requests,body,4).get('m2m:cin',{})
             if not isinstance(cin,dict) or cin.get('ty')!=4 or not isinstance(cin.get('ri'),str):raise ValueError('CIN 저장 응답이 올바르지 않습니다.')
             state,message='sent','해제 요청이 CSE에 저장됐습니다. 실제 현장 조치 완료를 뜻하지는 않습니다.'
         except CSEError as exc:
@@ -343,9 +382,9 @@ class FloorJudgement:
             return dict(db.execute('SELECT * FROM floor_j_requests WHERE request_id=?',(request_id,)).fetchone())
 
     def start(self):
-        threading.Thread(target=self.monitor,name='floor-robot-fault',daemon=True).start()
-        threading.Thread(target=self.receive_latest,name='floor-judgement-values',daemon=True).start()
-        threading.Thread(target=self.follow_connection,name='floor-subscription',daemon=True).start()
+        threading.Thread(target=self.monitor,name='floor-robot-fault-'+self.factory,daemon=True).start()
+        threading.Thread(target=self.receive_latest,name='floor-judgement-values-'+self.factory,daemon=True).start()
+        threading.Thread(target=self.follow_connection,name='floor-subscription-'+self.factory,daemon=True).start()
 
     def receive_latest(self):
         # Continuous GET reception is independent of subscription confirmation/retry.
@@ -355,7 +394,7 @@ class FloorJudgement:
                 cfg=self.configuration();conn=self.connection(cfg.get('active_key'))
                 if not conn or conn.get('geometry')!='rectangle':conn=self.prepare()
                 try:
-                    cin=self.rpc(conn['profile'],'GET',JUDGEMENT+'/la').get('m2m:cin')
+                    cin=self.rpc(conn['profile'],'GET',self.judgement+'/la').get('m2m:cin')
                     if cin:
                         latest=content(cin.get('con'));items=latest.get('zones') if isinstance(latest,dict) else None
                         legacy=isinstance(items,list) and bool(items) and all(isinstance(item,dict) and 'r' in item and 'x1' not in item for item in items)
@@ -387,7 +426,7 @@ class FloorJudgement:
 
     def monitor(self):
         # Initial baseline excludes old robot faults from before this feature/connection was enabled.
-        cursor=self.store.setting('floor_judgement_robot_cursor',None)
+        cursor=self.store.setting(self.cursor_key,None)
         if cursor is None:
             with self.store.connect() as db:cursor=db.execute('SELECT COALESCE(MAX(id),0) FROM events').fetchone()[0]
         while not self.stopping.wait(.5):
@@ -395,7 +434,7 @@ class FloorJudgement:
                 with self.store.connect() as db:rows=db.execute('SELECT id,source,robot_id,resource_path,content_json FROM events WHERE id>? ORDER BY id LIMIT 100',(cursor,)).fetchall()
                 for row in rows:
                     self.robot_fault(dict(row));cursor=row['id']
-                    self.store.put_setting('floor_judgement_robot_cursor',cursor)
+                    self.store.put_setting(self.cursor_key,cursor)
             except (ValueError,OSError,sqlite3.Error):self.stopping.wait(1)
 
     def robot_fault(self, event):

@@ -4,6 +4,7 @@ This is latest-value polling, not a lossless event subscription. The original CI
 and retrieval provenance are retained. Existing mock polling remains separate.
 """
 import argparse
+import cse_handover
 import factory_c_address
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from functools import partial
@@ -166,7 +167,17 @@ def main():
                 thread_state.cse_cache = {}
             return factory_c_address.retrieve_current(cfg, store, thread_state.opener, read,
                 strict_json, robot, channel, args.timeout, thread_state.cse_cache)
-        return strict_json(read(thread_state.opener, base+'/'+robot+'/'+channel+'/la', args.timeout))
+        # A/B: follow a CSE move saved by the dashboard (cse_handover); CSE-ID cached per address.
+        current, _ = cse_handover.resolve(cfg, store, args.site, base)
+        if not hasattr(thread_state, 'csi_cache'):
+            thread_state.csi_cache = {}
+        if current not in thread_state.csi_cache:
+            cb = strict_json(read(thread_state.opener, current, args.timeout)).get('m2m:cb', {})
+            if cb.get('ty') != 5 or not isinstance(cb.get('csi'), str) or not cb['csi'].startswith('/'):
+                raise ValueError('Expected a CSEBase with csi')
+            thread_state.csi_cache = {current: cb['csi']}
+        return current, thread_state.csi_cache[current], strict_json(
+            read(thread_state.opener, current+'/'+robot+'/'+channel+'/la', args.timeout))
 
     def consume(robot, channel, payload):
         if args.site == 'C':
@@ -176,8 +187,9 @@ def main():
             if result is None:
                 return
         else:
-            result = save_cin(store, cfg, base, csi, robot, channel, payload,
-                              u.scheme == 'https' and not args.insecure_demo)
+            current, current_csi, content = payload
+            result = save_cin(store, cfg, current, current_csi, robot, channel, content,
+                              urlsplit(current).scheme == 'https' and not args.insecure_demo)
         if result['created']:
             print(json.dumps(result), flush=True)
 
@@ -187,11 +199,11 @@ def main():
     store = None
     try:
         store = Store(cfg['database'])
-        csi = None
         if args.site != 'C':
             while not stop.is_set():
                 try:
-                    cb = strict_json(read(opener, base, args.timeout)).get('m2m:cb', {})
+                    current, _ = cse_handover.resolve(cfg, store, args.site, base)
+                    cb = strict_json(read(opener, current, args.timeout)).get('m2m:cb', {})
                     csi = cb.get('csi')
                     if cb.get('ty')!=5 or not isinstance(csi,str) or not csi.startswith('/'):
                         raise ValueError('Expected a CSEBase with csi')
@@ -199,7 +211,7 @@ def main():
                 except (ValueError, OSError) as exc:
                     if args.once:
                         raise
-                    print(f'WAITING_FOR_CSE site={args.site} base={base}: {exc}; retry in 2s', flush=True)
+                    print(f'WAITING_FOR_CSE site={args.site} base={current}: {exc}; retry in 2s', flush=True)
                     stop.wait(2)
             if stop.is_set():
                 return 0

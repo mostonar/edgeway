@@ -19,8 +19,9 @@ from bindings import BindingService, camera_config, project, validate_fields
 from operations import Operations, Conflict
 from demo_commands import DemoCommands
 import factory_c_address
-from floor_judgement import FloorJudgement
+from floor_judgement import FloorJudgement, factories, site_url as floor_site_url
 from analysis_verdict import AnalysisVerdict
+from cse_handover import Handover
 from dashboard_clean import DashboardStore
 
 LOG = logging.getLogger("edgeway")
@@ -73,8 +74,15 @@ class Dashboard(ThreadingHTTPServer):
         self.bindings = BindingService(cfg, self.store)
         self.operations = Operations(cfg, self.store, self.bindings)
         self.demo_commands = DemoCommands(cfg, self.store)
-        self.floor_judgement = FloorJudgement(cfg, self.store)
-        self.analysis_verdict = AnalysisVerdict(cfg, self.store, self.floor_judgement)
+        # Judgement/detection per factory: C always, A and B when collector_cse_urls has their CSE.
+        self.floor_judgements = {f: FloorJudgement(cfg, self.store, f) for f in factories(cfg)}
+        self.analysis_verdicts = {f: AnalysisVerdict(cfg, self.store, j) for f, j in self.floor_judgements.items()}
+        self.floor_judgement, self.analysis_verdict = self.floor_judgements['C'], self.analysis_verdicts['C']
+        # CSE handover (MEC 033): the configured address of each site, before any saved move.
+        self.handover = Handover(cfg, self.store, {
+            'C': lambda: (lambda c: c['url'] if c['preset'] != 'local' else None)(
+                factory_c_address.selection(cfg, self.store, handover=False)),
+            **{f: (lambda f=f: floor_site_url(cfg, f)) for f in ('A', 'B') if f in self.floor_judgements}})
         self.csrf = secrets.token_urlsafe(32)
         self.changed = threading.Condition()
         self.stopping = threading.Event()
@@ -83,8 +91,9 @@ class Dashboard(ThreadingHTTPServer):
         super().__init__((cfg["host"], cfg["port"]), Handler)
         threading.Thread(target=self.monitor_cse, daemon=True).start()
         self.operations.start()
-        self.floor_judgement.start()
-        self.analysis_verdict.start()
+        for service in (*self.floor_judgements.values(), *self.analysis_verdicts.values()):
+            service.start()
+        self.handover.start()
 
     def monitor_cse(self):
         while not self.stopping.is_set():
@@ -101,8 +110,8 @@ class Dashboard(ThreadingHTTPServer):
 
     def stop(self):
         self.stopping.set()
-        self.floor_judgement.stopping.set()
-        self.analysis_verdict.stopping.set()
+        for service in (*self.floor_judgements.values(), *self.analysis_verdicts.values(), self.handover):
+            service.stopping.set()
         self.operations.stopping.set()
         with self.changed:
             self.changed.notify_all()
@@ -182,7 +191,7 @@ class Handler(BaseHTTPRequestHandler):
                 robots[p["robot_id"]] = {"id": p["robot_id"], "name": p["name"], "prepared": prepared}
             for robot in store.recorded_robots():
                 robots.setdefault(robot["id"], robot)
-            self.reply(200, {"version": VERSION, "cse": self.server.cse_status,
+            self.reply(200, {"version": VERSION, "cse": self.server.cse_status, "handover": self.server.handover.snapshot(),
                             "robots": list(robots.values()),
                             "subscriptions": {"registered": sum(p["state"] == "active" for p in profiles), "total": len(profiles)},
                             **store.statistics()})
@@ -192,9 +201,16 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200, {"csrf": self.server.csrf,
                             **self.server.store.test_records_preview(self.server.cfg["cse_url"])})
         elif url.path == "/api/analysis-verdict":
-            self.reply(200, self.server.analysis_verdict.snapshot())
+            factory = query.get("factory", ["C"])[0]
+            service = self.server.analysis_verdicts.get(factory)
+            self.reply(200, service.snapshot() if service else {"enabled": False, "factory": factory})
         elif url.path == "/api/floor-judgement":
-            self.reply(200, {"csrf": self.server.csrf, **self.server.floor_judgement.snapshot()})
+            factory = query.get("factory", ["C"])[0]
+            service = self.server.floor_judgements.get(factory)
+            self.reply(200, {"csrf": self.server.csrf, **service.snapshot()} if service
+                       else {"csrf": self.server.csrf, "enabled": False, "factory": factory})
+        elif url.path == "/api/handover":
+            self.reply(200, self.server.handover.snapshot())
         elif url.path == "/api/factory-c/address":
             self.reply(200, {"csrf": self.server.csrf, **factory_c_address.snapshot(self.server.cfg, self.server.store)})
         elif url.path == "/api/settings":
@@ -280,10 +296,17 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             self.server.stream_slots.release()
 
+    def notification_service(self, analysis):
+        """The factory instance that owns the callback token (unknown tokens go to C, which rejects them)."""
+        path = urlsplit(self.path).path
+        token = path.removeprefix('/onem2m/analysis-verdict/' if analysis else '/onem2m/floor-judgement/')
+        services = self.server.analysis_verdicts if analysis else self.server.floor_judgements
+        return next((s for s in services.values() if s.owns(token)), services['C'])
+
     def floor_notification(self):
         self.close_connection = True
         analysis = urlsplit(self.path).path.startswith('/onem2m/analysis-verdict/')
-        service = self.server.analysis_verdict if analysis else self.server.floor_judgement
+        service = self.notification_service(analysis)
         trace = {'received_at': utc_now(), 'peer': self.client_address[0],
                  'origin': self.headers.get('X-M2M-Origin','')[:200],
                  'content_type': self.headers.get_content_type()[:120], 'verification': False}
@@ -306,7 +329,7 @@ class Handler(BaseHTTPRequestHandler):
             path = urlsplit(self.path).path
             analysis = path.startswith('/onem2m/analysis-verdict/')
             prefix = '/onem2m/analysis-verdict/' if analysis else '/onem2m/floor-judgement/'
-            service = self.server.analysis_verdict if analysis else self.server.floor_judgement
+            service = self.notification_service(analysis)
             payload = strict_json(raw)
             sgn = payload.get('m2m:sgn') if isinstance(payload,dict) else None
             trace['verification'] = isinstance(sgn,dict) and sgn.get('vrq') is True
@@ -450,7 +473,10 @@ class Handler(BaseHTTPRequestHandler):
             elif len(parts) == 4 and parts[:2] == ['api','events'] and parts[3] == 'actions' and method == 'POST':
                 result = self.server.operations.enqueue(int(parts[2]), data)
             elif path == '/api/floor-judgement/clear' and method == 'POST':
-                result = self.server.floor_judgement.clear(data)
+                judge = self.server.floor_judgements.get(data.get('factory', 'C'))
+                if not judge:
+                    raise ValueError('Judgement is not configured for this factory.')
+                result = judge.clear(data)
             elif path == "/api/factory-c/address" and method == "PUT":
                 result = {"csrf": self.server.csrf, **factory_c_address.save(self.server.cfg, self.server.store, data)}
             elif path == "/api/control/settings" and method == "PUT":

@@ -5,6 +5,8 @@ import threading
 from urllib.parse import urlsplit
 import uuid
 
+import cse_handover
+
 KEY = 'factory_c_address'
 ADDRESS_LOCK = threading.RLock()
 
@@ -29,7 +31,9 @@ def presets(cfg):
     return choices
 
 
-def selection(cfg, store):
+def selection(cfg, store, handover=True):
+    """Selected preset. With handover=True the URL follows a saved CSE move (cse_handover) and the move is part
+    of the revision, so components reconnect exactly as after a manual address change."""
     choices = presets(cfg)
     value = store.setting(KEY)
     if value is not None:
@@ -58,7 +62,12 @@ def selection(cfg, store):
         if not isinstance(preset, str) or preset not in choices:
             raise ValueError('Choose a configured Factory C preset in config.json.')
         revision = 'initial-'+preset
-    return {'preset': preset, 'revision': revision, **choices[preset]}
+    chosen = {'preset': preset, 'revision': revision, **choices[preset]}
+    if handover:
+        url, tag = cse_handover.resolve(cfg, store, 'C', chosen['url'])
+        if tag:
+            chosen.update(url=url, revision=revision+':handover-'+tag)
+    return chosen
 
 
 def snapshot(cfg, store):
