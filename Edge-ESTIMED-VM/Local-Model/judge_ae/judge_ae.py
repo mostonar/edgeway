@@ -4,9 +4,10 @@
 #   python judge_ae.py --site {A,B,C} --cse <CSE base URL incl. CSE name> [--robots <AE>,<AE>,...]
 #                      [--notify <URL>] [--port 9090]
 #                      [--insecure | --ca <CA file>] [--check-s 1] [--grace-s 30] [--timeout-s 600]
-#                      [--zone-margin 2] [--zone-min 5] [--alive-s 5] [--iot <MEC 033 URL>]
+#                      [--zone-margin 2] [--zone-min 5] [--alive-s 5] [--discover-s 30] [--iot <MEC 033 URL>]
 #   --site  site to judge (default C); sets the AE name, detection AE and robots below.
-#   --robots  robot AE names (default: siteA_AMR_1..4 / siteB_AMR_1..2 / siteC_AMR_1..2).
+#   --robots  fixed robot AE names. Omitted: robots are discovered by label (<site>:command, e.g. siteC:command)
+#             every --discover-s s; until the first hit siteA_AMR_1..4 / siteB_AMR_1..2 / siteC_AMR_1..2 are used.
 #   --notify  URL where the CSE delivers notifications (CSE must reach it). Omit to use a pollingChannel.
 #   --insecure / --ca  for an https CSE with a self-signed certificate.
 #   --alive-s  CSE liveness check interval. Writes are held while the CSE is down and resent when it is back.
@@ -41,6 +42,7 @@ CASE_TIMEOUT_S = 600.0
 ZONE_MIN = 5.0
 ZONE_MARGIN = 2.0
 ALIVE_S = 5.0
+DISCOVER_S = 30.0
 BACKLOG_MAX = 500
 
 ev = queue.Queue()
@@ -85,7 +87,8 @@ class CSE:
             h['Content-Type'] = f'application/json;ty={ty}'
         elif body is not None:
             h['Content-Type'] = 'application/json'
-        r = self.http.request(method, f'{self.base}/{path}'.rstrip('/'), headers=h,
+        url = self.base + path if path.startswith('?') else f'{self.base}/{path}'.rstrip('/')
+        r = self.http.request(method, url, headers=h,
                               data=json.dumps(body) if body is not None else None, timeout=timeout,
                               verify=self.verify)
         try:
@@ -291,6 +294,20 @@ def mep_cse(cse, iot):
     return next((f for f in found if f[1] == cse.base), found[0])
 
 
+def discover(cse):
+    """Robot AE names from the command containers labelled <site>:command (set by the robot IPEs)."""
+    global ROBOTS
+    try:
+        c, js = cse.req('GET', f'?fu=1&ty=3&lbl={SITE}:command')
+    except requests.RequestException:
+        return
+    found = sorted({p.rstrip('/').split('/')[-2] for p in js.get('m2m:uril') or [] if p.rstrip('/').count('/') >= 1}) \
+        if c == 200 else []
+    if found and found != ROBOTS:
+        log(f'Robots discovered by label {SITE}:command: {", ".join(found)}')
+        ROBOTS = found
+
+
 def sync(cse, notify):
     setup_ae(cse, notify)
     if not notify and not cse.ready.wait(15):
@@ -298,9 +315,10 @@ def sync(cse, notify):
     setup(cse, notify)
 
 
-def watch(cse, notify, iot):
-    """Every ALIVE_S: check the CSE. Down -> hold writes (and ask the MEP if --iot). Back or moved -> restore, resend."""
-    up, resync, said = True, False, None
+def watch(cse, notify, iot, find):
+    """Every ALIVE_S: check the CSE. Down -> hold writes (and ask the MEP if --iot). Back or moved -> restore, resend.
+    find: re-discover robots every DISCOVER_S while the CSE is up."""
+    up, resync, said, found_t = True, False, None, time.monotonic()
 
     def say(s):
         nonlocal said
@@ -332,6 +350,9 @@ def watch(cse, notify, iot):
             with cse.wlock:
                 if cse.backlog:
                     cse.flush()
+            if find and time.monotonic() - found_t >= DISCOVER_S:
+                found_t = time.monotonic()
+                discover(cse)
             continue
         if up:
             say(f'[WARN] CSE not responding ({c or "no response"}) -> holding writes')
@@ -487,11 +508,11 @@ def send(cse, case, stage, cause=None):
 
 
 def main():
-    global CHECK_S, GRACE_S, CASE_TIMEOUT_S, ZONE_MARGIN, ZONE_MIN, ALIVE_S
+    global CHECK_S, GRACE_S, CASE_TIMEOUT_S, ZONE_MARGIN, ZONE_MIN, ALIVE_S, DISCOVER_S
     ap = argparse.ArgumentParser()
     ap.add_argument('--site', default='C', type=lambda v: v.upper()[4:] if v.upper().startswith('SITE') else v.upper(), choices=sorted(SITES),
                     help='site to judge: A, B or C (default C)')
-    ap.add_argument('--robots', help='comma-separated robot AE names (default: all robots of the site)')
+    ap.add_argument('--robots', help='comma-separated robot AE names (default: discovered by label <site>:command)')
     ap.add_argument('--cse', required=True, help='CSE base URL incl. CSE name, e.g. http://<host>:<port>/<CSE name>')
     ap.add_argument('--notify', help='URL where the CSE sends notifications, e.g. http://10.1.2.3:9090. '
                                      'Omit to receive via pollingChannel (when the CSE cannot reach this PC)')
@@ -504,11 +525,13 @@ def main():
     ap.add_argument('--zone-min', type=float, help=f'no-go zone minimum width/height, m (default {ZONE_MIN:g})')
     ap.add_argument('--timeout-s', type=float, help=f'max case duration s (default {CASE_TIMEOUT_S:.0f})')
     ap.add_argument('--alive-s', type=float, help=f'CSE liveness check interval s (default {ALIVE_S:g})')
+    ap.add_argument('--discover-s', type=float, help=f'robot discovery interval s without --robots (default {DISCOVER_S:g})')
     ap.add_argument('--iot', help='MEC 033 registered_iot_platforms URL of the MEP. While the CSE is down, '
                                   'ask it for the current CSE and move there if it changed')
     a = ap.parse_args()
     configure(a.site, [r.strip() for r in a.robots.split(',') if r.strip()] if a.robots else None)
     ALIVE_S = a.alive_s or ALIVE_S
+    DISCOVER_S = a.discover_s or DISCOVER_S
     CHECK_S = a.check_s or CHECK_S
     GRACE_S = a.grace_s or GRACE_S
     CASE_TIMEOUT_S = a.timeout_s or CASE_TIMEOUT_S
@@ -528,7 +551,9 @@ def main():
         if not cse.ready.wait(15):
             raise RuntimeError('pollingChannel not ready')
     setup(cse, a.notify)
-    threading.Thread(target=watch, args=(cse, a.notify, a.iot), daemon=True).start()
+    if not a.robots:
+        discover(cse)
+    threading.Thread(target=watch, args=(cse, a.notify, a.iot, not a.robots), daemon=True).start()
     log(f'{AE_NAME} ready: monitoring {SITE} ({", ".join(ROBOTS)}), CSE check every {ALIVE_S:g} s'
         + (', CSE move via MEC 033' if a.iot else ''))
     try:

@@ -56,8 +56,6 @@ Other install locations can be set with the `ISAACSIM_DIR`, `CONDA_DIR` and `ROS
   bash Miniforge3-Linux-x86_64.sh -b -p ~/miniforge3
   ```
 
-- Isaac Sim WebRTC Streaming Client: install it on the PC used to view Isaac.
-
 ### 1. ROS 2 Humble tarball (libraries for the Isaac ROS 2 bridge)
 
 ```bash
@@ -71,11 +69,11 @@ tar xf ros2-humble-20260914-linux-jammy-amd64.tar.bz2      # -> ~/ros2_humble/ro
 ### 2. Two conda environments
 
 ```bash
-./env/setup_ros310.sh                    # ros310: old library versions used by the Isaac bridge (not for running anything)
+./env/setup_ros310.sh                    # ros310: libraries for the Isaac bridge only
 conda env create -f env/ros_nav.yml      # ros_nav: Nav2, IPE, demo scripts
 ```
 
-`env/ros_nav.lock.yml` is the full export from the test environment (reference only). Use it to compare versions if `ros_nav.yml` does not solve.
+If `ros_nav.yml` does not solve, compare versions with `env/ros_nav.lock.yml` (full export of the test environment).
 
 ### 3. fleet.yaml
 
@@ -87,8 +85,8 @@ Replace `<MEC_HOST>` and `<SANDBOX>` in `sites.<site>.cse_url` and `sites.<site>
 
 Optional per site (see the comments in `fleet.example.yaml`):
 
-- `binding`: `ws` (the example's setting, oneM2M WebSocket at `ws.url`, needs `websocket-client`) or `http`.
-- `iot.url`: the MEP's MEC 033 `registered_iot_platforms` URL. Enables moving to another CSE (see [CSE outage](#cse-outage)).
+- `binding`: `ws` (oneM2M WebSocket at `ws.url`, used in the example) or `http` (when omitted). We added WebSocket for upload speed: one open connection instead of an HTTP request per upload.
+- `iot.url`: the MEP's MEC 033 `registered_iot_platforms` URL, for [CSE handover](#cse-outage-and-handover).
 
 ## Running
 
@@ -157,7 +155,7 @@ ROS_DOMAIN_ID=8 python -u demo_task_executor/<c2 script>
 
 Logs go to `Nav2/logs/` and `ROS-IPE/logs/`. The IPE also keeps a copy of the telemetry it uploads in `~/telemetry_dump/<AE>_<time>.jsonl`. To disable this, add `dump_dir: ""` to `ROS-IPE/ipe_common.yaml`.
 
-### CSE outage
+### CSE outage and handover
 
 When the CSE cannot be reached, the IPE keeps uploads in a buffer (up to `buffer_s`, default 30 min). After reconnecting, it sends them in order. Once the backlog is sent, it posts one record to `<AE>/log`:
 
@@ -165,9 +163,9 @@ When the CSE cannot be reached, the IPE keeps uploads in a buffer (up to `buffer
 {"robot": "siteC_AMR_1", "site": "mep-c", "disconnect_duration_ms": 3240, "buffered_count": 3, "data_loss": 0}
 ```
 
-With `binding: ws`, a dropped network is detected by ping/pong within `ws.dead_s` (5 s).
+The site dashboard (`Edge-ESTIMED-VM/Site-Dashboard`) reads these records and shows each one in its Event Log.
 
-With `iot.url` set, the IPE asks the MEP for the current CSE every `iot.check_s` (5 s) while disconnected:
+Handover uses the MEC 033 IoT API. With `iot.url` set, the IPE asks the MEP for the current CSE every `iot.check_s` (5 s) while disconnected:
 
 | MEP answer | Meaning | Action |
 |---|---|---|
@@ -175,7 +173,49 @@ With `iot.url` set, the IPE asks the MEP for the current CSE every `iot.check_s`
 | same CSE | CSE restarting | keep retrying the same CSE |
 | other CSE | CSE moved | switch to it, re-create the AE, containers, ACPs, pollingChannel and subscription, then send the backlog |
 
-The CSE is taken from `customServicesTransportInfo` entries whose `id` is a CSE-ID (`/…`): `endpoint.uris[0]` + `/` + `name`, and `/ws` for the WebSocket. Outages are detected from failed uploads, so a robot that is standing still (no telemetry) is not checked until it moves. Subscriptions that other AEs made on the old CSE must be re-created by those AEs.
+The CSE address comes from the `customServicesTransportInfo` entry whose `id` is a CSE-ID. Subscriptions made by other AEs on the old CSE are re-created by those AEs.
+
+## oneM2M resources
+
+Each robot IPE creates the following on its site's CSE (n = site number: A=1, B=2, C=3):
+
+```
+<CSEBase>
+└─ <AE>                e.g. siteC_AMR_1
+   ├─ telemetry        sensor windows, mni 10000          acp_telemetry
+   ├─ status           robot state, mni 10000
+   ├─ command          verdicts/commands, mni 20          acp_command
+   │  └─ sub_ipe_cmd   subscription: new CIN -> notification to the AE
+   ├─ log              outage records, mni 200            acp_log
+   ├─ pch              pollingChannel
+   └─ acp_telemetry, acp_command, acp_log
+```
+
+- Commands reach the robot through `sub_ipe_cmd` and the pollingChannel (`rr: false`, the CSE does not need to reach the robot). Until both are ready, the IPE polls `command/la`.
+- `mni` values are set in `ROS-IPE/ipe_common.yaml`.
+
+### Access control
+
+Each ACP gives access only to the AEs that need that container. The robot AE itself and `CAdmin` have full rights.
+
+| ACP | Container | Granted to | Operations |
+|---|---|---|---|
+| `acp_telemetry` | `telemetry` | `TRAINING-AE-n`, `ANALYSIS-AE-n` | CREATE, RETRIEVE, NOTIFY, DISCOVERY |
+| | | `JUDGE-AE-n` | RETRIEVE, DISCOVERY |
+| `acp_command` | `command` | `JUDGE-AE-n` (and `cmd_writers`) | CREATE, RETRIEVE, DISCOVERY |
+| `acp_log` | `log` | – | – |
+
+With `https://` / `wss://` CSE addresses, traffic is encrypted as well.
+
+### Labels
+
+Besides `site:`, `robot:` and `type:` labels, each container has a combined `<site>:<container>` label, so one query finds e.g. all site C telemetry:
+
+```
+<cse_url>?fu=1&ty=3&lbl=siteC:telemetry
+```
+
+The judgment AE finds its robots the same way (`lbl=siteC:command`).
 
 ## Notes
 

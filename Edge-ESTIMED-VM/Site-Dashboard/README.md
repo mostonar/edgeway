@@ -1,12 +1,10 @@
-# EdgeWay Dashboard
+# Site-Dashboard
 
-Developed for the oneM2M MEC International Hackathon 2026.
-
-EdgeWay monitors autonomous mobile robots through oneM2M. It shows robot positions, event history, anomaly markers, and judged floor areas on factory floor plans. The Python server serves the dashboard and stores received records in SQLite. A separate collector retrieves the latest robot status, telemetry and network outage records.
+Site dashboard of EdgeWay. It reads robot status, telemetry, detection results and judgements from each site's oneM2M CSE and shows them on the factory floor plans and in an event log. A Python server (stdlib only) serves the page and keeps received records in SQLite.
 
 ## Quick start
 
-Use Python 3.10 or later. Run these commands from the `Edge-ESTIMED-VM/Site-Dashboard/` directory:
+Python 3.10 or later. From this directory:
 
 ```bash
 cp config.example.json config.json
@@ -14,26 +12,28 @@ cp demo-command.example.json demo-command.json
 python3 server.py --config config.json
 ```
 
-Open [http://127.0.0.1:8090](http://127.0.0.1:8090). An ACME CSE is optional for viewing the interface and the network test screen. An empty event log is normal until a CSE or collector supplies data. The server creates the local database on the first run.
+Open http://127.0.0.1:8090. The page works without a CSE; the event log stays empty until data arrives.
 
-For an example you can open immediately, go to **Floor Plan → Map settings → Network status test**, or open [the network status test screen](http://127.0.0.1:8090/tests/network-status). Select **Network recovered** and open the sample row in **Event Log**. Its detail dialog shows the robot name, outage duration, and lost data count. The sample stays in the test screen. Live outages reported by the robot IPE (`<robot>/log`) appear in **Event Log** as "Network disconnected · <duration>" with the buffered and lost counts. They are not drawn on the map.
+To see a sample outage record without a CSE, open **Floor Plan → Map settings → Network status test** (http://127.0.0.1:8090/tests/network-status) and select **Network recovered**.
 
 ## Connect a CSE
 
-Set the CSEBase URL, CSE ID, originator, and notification URL in your local `config.json`. If ACME runs in a separate network environment, use a notification address reachable from ACME. See [Configuration and deployment](docs/configuration.md) for the Factory C selector, collectors, and map calibration.
+Set `cse_url`, `cse_id`, `origin` and `notification_url` in `config.json`. The CSE must be able to reach `notification_url`. See [docs/configuration.md](docs/configuration.md) for all settings, sites A/B and CSE handover.
 
-Robot recovery commands are disabled in the example settings. For a C-2 collector on a configured local CSE, run the following in a second terminal:
+Run a collector per site in a second terminal, e.g.:
 
 ```bash
-python3 watch_isaac_cse.py --config config.json --site C --robots siteC_AMR_2
+python3 watch_isaac_cse.py --config config.json --site C --robots siteC_AMR_1 siteC_AMR_2
 ```
 
-## Testing
+It polls each robot's latest `status`, `telemetry` and `log`. Outage records from the robot IPE (`<robot>/log`) appear in the Event Log as "Network disconnected · <duration>" with the buffered and lost counts.
 
-From this directory (`Edge-ESTIMED-VM/Site-Dashboard/`), run:
+Robot recovery commands are off by default (`demo-command.json`, `enabled: false`).
+
+## Tests
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-The tests run against temporary storage and local fixtures. They do not require a lab CSE or send commands to robots. See [Data flow and validation scope](docs/architecture.md) for the distinction between the tested interface and the live integration.
+The tests use temporary storage and local fixtures; no CSE or robot is needed.
