@@ -44,14 +44,14 @@ def factories(cfg):
 
 def number(value, minimum=-1e9, maximum=1e9):
     if type(value) not in (int, float) or not math.isfinite(value) or not minimum <= value <= maximum:
-        raise ValueError('좌표는 범위 안의 유한한 숫자여야 합니다.')
+        raise ValueError('Coordinates must be finite numbers within range.')
     return value
 
 
 def rectangle_bounds(zone):
-    if not isinstance(zone,dict): raise ValueError('사각형 좌표가 필요합니다.')
+    if not isinstance(zone,dict): raise ValueError('Rectangle coordinates are required.')
     x1,y1,x2,y2=(number(zone.get(key)) for key in ('x1','y1','x2','y2'))
-    if x1==x2 or y1==y2: raise ValueError('사각형의 가로와 세로 길이는 0보다 커야 합니다.')
+    if x1==x2 or y1==y2: raise ValueError('Rectangle width and height must be greater than 0.')
     return min(x1,x2),min(y1,y2),max(x1,x2),max(y1,y2)
 
 
@@ -80,33 +80,33 @@ def content(value):
 def validate_zones(value):
     value = content(value)
     if not isinstance(value, dict) or not isinstance(value.get('zones'), list) or len(value['zones']) > 256:
-        raise ValueError('con.zones에는 최대 256개 구역의 목록이 필요합니다.')
+        raise ValueError('con.zones must be a list of up to 256 zones.')
     zones, seen = [], set()
     for item in value['zones']:
-        if not isinstance(item, dict): raise ValueError('구역 형식이 올바르지 않습니다.')
+        if not isinstance(item, dict): raise ValueError('Invalid zone format.')
         data={key:number(item.get(key)) for key in ('x1','y1','x2','y2')}
         bounds=rectangle_bounds(data)
         key=dumps(['rectangle',*bounds])
-        if key in seen:raise ValueError('같은 사각형이 중복되었습니다.')
+        if key in seen:raise ValueError('Duplicate rectangle.')
         seen.add(key);zones.append({**data,'shape':'rectangle','key':key})
     return zones
 
 
 def validate_profile(value):
-    if not isinstance(value, dict): raise ValueError('연결 설정 형식이 올바르지 않습니다.')
+    if not isinstance(value, dict): raise ValueError('Invalid connection settings format.')
     result = {}
     for key in ('url', 'notification_base'):
         url = value.get(key, '')
-        if not isinstance(url, str) or len(url) > 1500: raise ValueError('연결 주소를 확인하세요.')
+        if not isinstance(url, str) or len(url) > 1500: raise ValueError('Check the connection URL.')
         url = url.strip().rstrip('/'); u = urlsplit(url)
         if u.scheme not in ('http', 'https') or not u.hostname or u.username or u.password or u.query or u.fragment or any(c.isspace() for c in url):
-            raise ValueError('계정 정보나 쿼리가 없는 HTTP(S) 주소를 입력하세요.')
+            raise ValueError('Enter an HTTP(S) URL without credentials or query.')
         result[key] = url
-    if value.get('factory') not in ('A', 'B', 'C'): raise ValueError('공장을 선택하세요.')
-    if type(value.get('verify_tls')) is not bool: raise ValueError('인증서 검증 설정을 확인하세요.')
+    if value.get('factory') not in ('A', 'B', 'C'): raise ValueError('Select a factory.')
+    if type(value.get('verify_tls')) is not bool: raise ValueError('Check the certificate verification setting.')
     origin = value.get('origin', 'CAdmin')
     if not isinstance(origin, str) or not 1 <= len(origin) <= 200 or any(ord(c) < 33 or ord(c) > 126 for c in origin):
-        raise ValueError('요청 Origin을 확인하세요.')
+        raise ValueError('Check the request Origin.')
     result.update(factory=value['factory'], verify_tls=value['verify_tls'], origin=origin,
                   robot_length=number(value.get('robot_length'), .01, 100), robot_width=number(value.get('robot_width'), .01, 100))
     return result
@@ -138,7 +138,7 @@ class FloorJudgement:
                   state TEXT NOT NULL, cause TEXT NOT NULL, robot_id TEXT NOT NULL,
                   body_json TEXT NOT NULL, url TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL);
             ''')
-            db.execute("UPDATE floor_j_requests SET state='unknown',message='서버 재시작 전 전송 결과를 확인하지 못했습니다. CNT 확인이 필요합니다.' WHERE state='sending'")
+            db.execute("UPDATE floor_j_requests SET state='unknown',message='Send result was not confirmed before server restart. Check the CNT.' WHERE state='sending'")
 
     def configuration(self):
         # Factory C: the existing C selection is the environment switch. A/B: collector_cse_urls.
@@ -154,7 +154,7 @@ class FloorJudgement:
             demo=strict_json((Path(self.cfg['config_path']).parent/'demo-command.json').read_text())
         except (OSError,ValueError):
             demo={}
-        if not isinstance(demo,dict):raise ValueError('명령 연결 설정 형식을 확인하세요.')
+        if not isinstance(demo,dict):raise ValueError('Check the command connection settings format.')
         dimensions=self.cfg.get('floor_judgement',{})
         common={'factory':self.factory,'origin':demo.get('origin',self.cfg['origin']),
                 'verify_tls':demo.get('verify_tls',True) is not False,
@@ -219,13 +219,13 @@ class FloorJudgement:
         try:
             with opener.open(Request(url, method=method, headers=headers, data=raw), timeout=15) as response:
                 payload = response.read(1048577)
-                if len(payload)>1048576: raise ValueError('CSE 응답이 너무 큽니다.')
+                if len(payload)>1048576: raise ValueError('CSE response is too large.')
                 rsc = response.headers.get('X-M2M-RSC', '')
                 expected = {'POST': ('201','2001'), 'PUT': ('200','2004'), 'DELETE': ('200','2002')}.get(method, ('200','2000'))
                 if (str(response.status),rsc)!=expected or response.headers.get('X-M2M-RI')!=ri:
-                    raise ValueError('CSE가 요청 성공을 확인하지 않았습니다.')
+                    raise ValueError('CSE did not confirm the request succeeded.')
                 result = strict_json(payload)
-                if not isinstance(result, dict): raise ValueError('CSE JSON 응답 형식이 올바르지 않습니다.')
+                if not isinstance(result, dict): raise ValueError('Invalid CSE JSON response format.')
                 return result
         except HTTPError as exc:
             raise CSEError(method+' '+(suffix or 'CSEBase')+': CSE HTTP '+str(exc.code)+' / RSC '+exc.headers.get('X-M2M-RSC','-'), exc.code, exc.headers.get('X-M2M-RSC')) from exc
@@ -236,13 +236,13 @@ class FloorJudgement:
         cfg=self.configuration(); profile=validate_profile(cfg['profiles'][cfg['selected']])
         cb=self.rpc(profile,'GET').get('m2m:cb',{})
         if not isinstance(cb,dict) or cb.get('ty')!=5 or not isinstance(cb.get('csi'),str) or not cb['csi'].startswith('/'):
-            raise ValueError('CSEBase 및 csi 확인에 실패했습니다.')
+            raise ValueError('Failed to verify CSEBase and csi.')
         cnt=self.rpc(profile,'GET',self.judgement).get('m2m:cnt',{})
         if not isinstance(cnt,dict) or cnt.get('ty')!=3 or not isinstance(cnt.get('ri'),str):
-            raise ValueError('판정 CNT가 먼저 준비되어 있어야 합니다.')
+            raise ValueError('The verdict CNT must exist first.')
         key=hashlib.sha256(dumps([cfg['selected'],profile]).encode()).hexdigest()
         with self.lock:
-            if self.configuration()['revision']!=cfg['revision']: raise ValueError('연결 설정이 변경됐습니다.')
+            if self.configuration()['revision']!=cfg['revision']: raise ValueError('Connection settings have changed.')
             conn=self.connection(key) or {'key':key,'token':uuid.uuid4().hex,'profile':profile,'last_ct':'','last_st':None,'status':'pending'}
             if conn.get('parent_ri') and conn['parent_ri']!=cnt['ri']:
                 conn.update(previous_parent_ri=conn['parent_ri'],container_changed_at=utc_now(),last_ct='',last_st=None,
@@ -266,13 +266,13 @@ class FloorJudgement:
         with self.lock:
             if self.connecting:return
             self.connecting=True
-            current=self.connection(key);current.update(status='connecting',message='구독 연결 중');self.put_connection(current)
+            current=self.connection(key);current.update(status='connecting',message='Connecting subscription');self.put_connection(current)
         try:
             sub,delivery=ensure_subscription(self.rpc,self.cfg,conn,self.judgement,'/onem2m/floor-judgement/')
             with self.lock:
                 current=self.connection(key)
                 if current['parent_ri']!=conn['parent_ri']:return
-                current.update(**delivery,status='active',sub_ri=sub['ri'],message='구독 연결됨. 새 판정 알림을 기다립니다.');self.put_connection(current)
+                current.update(**delivery,status='active',sub_ri=sub['ri'],message='Subscription connected. Waiting for new verdict notifications.');self.put_connection(current)
                 self.verified_subscription=(key,current['parent_ri'])
             return self.snapshot()
         except Exception as exc:
@@ -291,29 +291,29 @@ class FloorJudgement:
     def notification(self, token, origin, payload):
         with self.store.connect() as db:
             row=db.execute('SELECT key,data_json FROM floor_j_connections WHERE token=?',(token,)).fetchone()
-        if not row: raise PermissionError('알 수 없는 구독 알림입니다.')
+        if not row: raise PermissionError('Unknown subscription notification.')
         conn=strict_json(row['data_json'])
-        if origin.rstrip('/')!=conn['csi'].rstrip('/'): raise PermissionError('구독 CSE와 알림 출처가 다릅니다.')
+        if origin.rstrip('/')!=conn['csi'].rstrip('/'): raise PermissionError('Notification origin does not match the subscribed CSE.')
         sgn=payload.get('m2m:sgn') if isinstance(payload,dict) else None
-        if not isinstance(sgn,dict): raise ValueError('m2m:sgn이 필요합니다.')
+        if not isinstance(sgn,dict): raise ValueError('m2m:sgn is required.')
         if self.configuration().get('active_key')!=row['key']: return
         if sgn.get('vrq') is True:return
         if sgn.get('sud') is True:
             with self.lock:
-                conn=self.connection(row['key']);conn.update(status='error',message='원격 구독이 삭제됐습니다. 다시 연결하세요.');self.put_connection(conn)
+                conn=self.connection(row['key']);conn.update(status='error',message='Remote subscription was deleted. Reconnect.');self.put_connection(conn)
             return
         nev=sgn.get('nev')
-        if not isinstance(nev,dict) or nev.get('net')!=3:raise ValueError('CIN 생성 알림만 처리합니다.')
+        if not isinstance(nev,dict) or nev.get('net')!=3:raise ValueError('Only CIN creation notifications are handled.')
         sur=sgn.get('sur');base_name=urlsplit(conn['profile']['url']).path.rstrip('/').split('/')[-1]
         paths={conn['sub_path'],'/'+conn['sub_path'],'/'+base_name+'/'+conn['sub_path'],conn['csi']+'/'+conn['sub_path']}
         if conn.get('sub_ri'):paths.update({conn['sub_ri'],'/'+conn['sub_ri'],conn['csi']+'/'+conn['sub_ri']})
-        if not isinstance(sur,str) or sur not in paths:raise ValueError('구독 참조가 일치하지 않습니다.')
+        if not isinstance(sur,str) or sur not in paths:raise ValueError('Subscription reference does not match.')
         cin=nev.get('rep',{}).get('m2m:cin')
         self.ingest(row['key'],cin,payload)
 
     def ingest(self, key, cin, raw):
         if not isinstance(cin,dict) or cin.get('ty')!=4 or not isinstance(cin.get('ri'),str) or not isinstance(cin.get('ct'),str):
-            raise ValueError('유효한 CIN ri/ct/ty가 필요합니다.')
+            raise ValueError('Valid CIN ri/ct/ty is required.')
         zones=validate_zones(cin.get('con'))
         with self.lock:
             conn=self.connection(key)
@@ -349,30 +349,30 @@ class FloorJudgement:
 
     def clear(self, data, cause='manual', robot_id=''):
         request_id=data.get('request_id')
-        if not isinstance(request_id,str) or not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('유효한 요청 ID가 필요합니다.')
-        if data.get('confirm') is not True:raise ValueError('해제 요청 확인이 필요합니다.')
+        if not isinstance(request_id,str) or not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('A valid request ID is required.')
+        if data.get('confirm') is not True:raise ValueError('Release request must be confirmed.')
         with self.lock:
             with self.store.connect() as db:
                 prior=db.execute('SELECT * FROM floor_j_requests WHERE request_id=?',(request_id,)).fetchone()
                 if prior:
-                    if prior['zone_id']!=data.get('zone_id') or prior['connection_key']!=data.get('connection_key'):raise ValueError('다른 구역의 요청 ID입니다.')
+                    if prior['zone_id']!=data.get('zone_id') or prior['connection_key']!=data.get('connection_key'):raise ValueError('Request ID belongs to another zone.')
                     return dict(prior)
                 cfg=self.configuration();conn=self.connection(cfg.get('active_key'))
-                if not conn or (conn['status']!='active' and conn.get('receive_status')!='active') or data.get('connection_key')!=conn['key']:raise ValueError('활성 연결이 변경됐습니다. 다시 확인하세요.')
+                if not conn or (conn['status']!='active' and conn.get('receive_status')!='active') or data.get('connection_key')!=conn['key']:raise ValueError('Active connection has changed. Check again.')
                 row=db.execute("SELECT * FROM floor_j_zones WHERE id=? AND connection_key=? AND state='active'",(data.get('zone_id'),conn['key'])).fetchone()
-                if not row:raise ValueError('구역이 이미 해제됐거나 다른 요청이 진행 중입니다.')
+                if not row:raise ValueError('Zone already released or another request is in progress.')
                 previous=db.execute("SELECT * FROM floor_j_requests WHERE zone_id=? AND state IN ('sending','sent','unknown') ORDER BY rowid DESC LIMIT 1",(row['id'],)).fetchone()
                 if previous:return dict(previous)
                 zone=strict_json(row['data_json']);x,y=rectangle_center(zone)
                 body={'m2m:cin':{'con':{'type':'zone-clear','x':x,'y':y}}}
                 url=conn['profile']['url']+'/'+self.requests
-                db.execute('INSERT INTO floor_j_requests VALUES (?,?,?,?,?,?,?,?,?,?)',(request_id,row['id'],conn['key'],'sending',cause,robot_id,dumps(body),url,'해제 요청 전송 중',utc_now()))
+                db.execute('INSERT INTO floor_j_requests VALUES (?,?,?,?,?,?,?,?,?,?)',(request_id,row['id'],conn['key'],'sending',cause,robot_id,dumps(body),url,'Sending release request',utc_now()))
             # The persistent sending row blocks connection switching while the network request is in flight.
-        state,message='unknown','전송 결과 불명확: 요청 CNT를 확인하기 전에는 재전송하지 않습니다.'
+        state,message='unknown','Send result unknown: will not resend until the request CNT is checked.'
         try:
             cin=self.rpc(conn['profile'],'POST',self.requests,body,4).get('m2m:cin',{})
-            if not isinstance(cin,dict) or cin.get('ty')!=4 or not isinstance(cin.get('ri'),str):raise ValueError('CIN 저장 응답이 올바르지 않습니다.')
-            state,message='sent','해제 요청이 CSE에 저장됐습니다. 실제 현장 조치 완료를 뜻하지는 않습니다.'
+            if not isinstance(cin,dict) or cin.get('ty')!=4 or not isinstance(cin.get('ri'),str):raise ValueError('Invalid CIN save response.')
+            state,message='sent','Release request saved to CSE. This does not mean on-site action is complete.'
         except CSEError as exc:
             if 300<=exc.status<500:state,message='failed',str(exc)
         except (OSError,ValueError,TypeError):pass

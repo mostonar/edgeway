@@ -18,7 +18,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/fl_env.sh"
 
 if ! INFO="$(fl_site "${1:-}")"; then
-  echo "사용법: bash $0 A|B|C"
+  echo "Usage: bash $0 A|B|C"
   exit 2
 fi
 read -r SITE IDX NODE PORT <<< "$INFO"
@@ -31,37 +31,37 @@ if [ "$STANDALONE" = "1" ]; then
   fl_load_env
   fl_require_torch
   echo
-  echo "[사업장 ${SITE}] 지난 실행 정리"
+  echo "[site ${SITE}] Clean up previous run"
   fl_free_ports "$PORT" "mn_ae_standard.py ${IDX} ${PORT}"
   if [ "${FL_RESET_ON_START:-1}" = "1" ]; then
     BASE="${FL_MODEL_BASE_DIR:-/tmp/fl_models}"
     rm -rf "$BASE/local/$NODE" "$BASE/cache/$NODE"
-    echo "  ✓ 로컬 모델/캐시 비움: $BASE/{local,cache}/$NODE"
+    echo "  ✓ cleared local model/cache: $BASE/{local,cache}/$NODE"
   fi
 
   if [ "$FROM_CSE" = "0" ]; then
     echo
-    echo "[사업장 ${SITE}] 오프라인 모드: pkl 준비 (AMR_DATA 의 telemetry.json)"
+    echo "[site ${SITE}] Offline mode: prepare pkl (telemetry.json in AMR_DATA)"
     python3 prepare_data_amr.py
   else
     fl_warn_notify_host
     echo
-    echo "[사업장 ${SITE}] MN-CSE 리소스 확인"
+    echo "[site ${SITE}] Check MN-CSE resources"
     if ! python3 setup_resources_standard.py --scope mn --nodes "$NODE" --verify; then
       echo
-      echo "  리소스가 빠져 있다. 먼저 생성한다."
+      echo "  Resources are missing. Creating them first."
       python3 setup_resources_standard.py --scope mn --nodes "$NODE"
     fi
     echo
-    echo "[사업장 ${SITE}] Isaac Sim 로봇 대기 (최소 ${FL_MIN_ROBOTS_PER_SITE:-1}대)"
+    echo "[site ${SITE}] Wait for Isaac Sim robots (at least ${FL_MIN_ROBOTS_PER_SITE:-1})"
     if ! python3 setup_resources_standard.py --scope mn --nodes "$NODE" --wait-robots; then
-      echo "  ⚠ 로봇이 다 준비되지 않았다. 그래도 진행한다."
+      echo "  ⚠ Not all robots are ready. Continuing anyway."
     fi
   fi
 fi
 
 LOG_DIR="$(fl_log_dir)"
 echo
-echo "[사업장 ${SITE}] TRAINING-AE-$((IDX + 1)) 기동 (포트 ${PORT})  로그: $LOG_DIR/${NODE}.log"
+echo "[site ${SITE}] TRAINING-AE-$((IDX + 1)) started (port ${PORT})  log: $LOG_DIR/${NODE}.log"
 fl_start "$LOG_DIR/${NODE}.log" python3 -u mn_ae_standard.py "$IDX" "$PORT"
 wait

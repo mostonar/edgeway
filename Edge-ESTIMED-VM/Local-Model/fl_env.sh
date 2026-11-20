@@ -21,8 +21,8 @@ fl_load_env() {
     fi
   done
   if [ -z "$f" ]; then
-    echo "  ⚠ .env.local 이 없다 ($FL_HERE 와 그 위 두 단계). 주소가 기본값으로 간다."
-    echo "    cp $FL_HERE/env.local.example $FL_HERE/.env.local  한 뒤 채울 것"
+    echo "  ⚠ No .env.local ($FL_HERE and two levels up). Addresses fall back to defaults."
+    echo "    cp $FL_HERE/env.local.example $FL_HERE/.env.local  then fill it in"
     return 0
   fi
   local line name
@@ -39,14 +39,14 @@ fl_load_env() {
       eval "export $line"
     fi
   done < "$f"
-  echo "  ✓ .env.local 읽음 ($f)"
+  echo "  ✓ .env.local loaded ($f)"
 }
 
 fl_require_torch() {
   if ! python3 -c "import torch" 2>/dev/null; then
     echo
-    echo "  ✗ 지금 python3 에 torch 가 없다: $(command -v python3)"
-    echo "    가상환경을 켜고 다시 실행할 것 (pip install -r $FL_HERE/requirements.txt)"
+    echo "  ✗ current python3 has no torch: $(command -v python3)"
+    echo "    activate the virtualenv and run again (pip install -r $FL_HERE/requirements.txt)"
     exit 1
   fi
 }
@@ -67,13 +67,13 @@ fl_free_ports() {
   for port in $ports; do
     pid="$(ss -ltnpH "sport = :${port}" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -1 || true)"
     if [ -n "${pid:-}" ]; then
-      echo "  · 포트 ${port} 를 PID ${pid} 가 잡고 있다 -> 내린다"
+      echo "  · port ${port} is held by PID ${pid} -> stopping it"
       kill -TERM "$pid" 2>/dev/null || true
       sleep 1
       kill -KILL "$pid" 2>/dev/null || true
     fi
   done
-  [ -n "$ports" ] && echo "  ✓ 정리: 포트 ${ports}"
+  [ -n "$ports" ] && echo "  ✓ cleaned up: ports ${ports}"
   return 0
 }
 
@@ -125,9 +125,9 @@ fl_warn_notify_host() {
   case "${FL_NOTIFY_HOST:-127.0.0.1}" in
     127.0.0.1|localhost)
       echo
-      echo "  ⚠ FL_NOTIFY_HOST 가 ${FL_NOTIFY_HOST:-비어 있음(127.0.0.1)} 이다."
-      echo "    MN-CSE 는 샌드박스 컨테이너 안이라 이 주소로는 사업장 앱(5001-5003)에"
-      echo "    알림을 못 보낸다. .env.local 에 이 호스트의 IP 를 넣을 것."
+      echo "  ⚠ FL_NOTIFY_HOST is ${FL_NOTIFY_HOST:-empty (127.0.0.1)}."
+      echo "    MN-CSE runs inside the sandbox container, so with this address it cannot"
+      echo "    notify the site apps (5001-5003). Put this host's IP in .env.local."
       ;;
   esac
 }

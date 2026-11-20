@@ -95,7 +95,7 @@ def find_app(name: str, mep: str) -> Optional[str]:
     for a in list_apps():
         if a.get("name") == name and a.get("nodeName") == mep and a.get("id"):
             return a["id"]
-    print(f"  ✗ 시나리오에 FL 앱 {name}({mep}) 이 없다 — 샌드박스 시나리오를 확인할 것")
+    print(f"  ✗ FL app {name}({mep}) not in scenario — check the sandbox scenario")
     return None
 
 
@@ -184,7 +184,7 @@ def services(mep: str) -> List[dict]:
     r = _req("GET", f"{mep_base(mep)}/mec_service_mgmt/v1/services")
     if r is None or r.status_code != 200:
         if r is not None:
-            print(f"  ✗ 서비스 목록: HTTP {r.status_code}")
+            print(f"  ✗ service list: HTTP {r.status_code}")
         return []
     try:
         data = r.json()
@@ -232,14 +232,14 @@ def discover(mep: str) -> Dict[str, dict]:
 
 def main() -> None:
     import argparse
-    ap = argparse.ArgumentParser(description="MEC011 등록·서비스 발견 점검")
+    ap = argparse.ArgumentParser(description="Check MEC011 registration and service discovery")
     ap.add_argument("--nodes", default=",".join(config.ALL_NODES))
     ap.add_argument("--keep", action="store_true",
-                    help="점검 뒤 등록을 지우지 않는다 (앱 인스턴스는 어느 쪽이든 그대로 둔다)")
+                    help="Do not delete the registration after the check (the app instance is kept either way)")
     ap.add_argument("--endpoint-host", default=None,
-                    help="MEC011 등록에 넣을 앱 주소 (기본 FL_MEC_APP_HOST, 없으면 FL_NOTIFY_HOST)")
+                    help="App address for MEC011 registration (default FL_MEC_APP_HOST, else FL_NOTIFY_HOST)")
     ap.add_argument("--base-port", type=int, default=5001,
-                    help="mn1 의 포트. mn2, mn3 은 1씩 더한다")
+                    help="Port for mn1. mn2, mn3 add 1 each")
     args = ap.parse_args()
     config.require_sandbox()
     print(f"sandbox-ctrl: {ctrl_base()}")
@@ -248,7 +248,7 @@ def main() -> None:
         name = app_name(mep)
         print(f"\n=== {node} / {mep} ===")
         app_id = find_app(name, mep)
-        print(f"  앱 인스턴스: {app_id}")
+        print(f"  app instance: {app_id}")
         if app_id:
             print(f"  confirm_ready: {confirm_ready(mep, app_id)}")
             idx = config.ALL_NODES.index(node) if node in config.ALL_NODES else 0
@@ -256,12 +256,12 @@ def main() -> None:
                   if args.endpoint_host else endpoint_for(args.base_port + idx))
             print(f"  registrations: {register(mep, app_id, name, ep)}  ({ep})")
         for s in services(mep):
-            print(f"  서비스 {s.get('serName')!s:20s} "
+            print(f"  service {s.get('serName')!s:20s} "
                   f"{(s.get('serCategory') or {}).get('name')!s:14s} "
                   f"{s.get('state')}  {_uri_of(s)}")
-        print(f"  발견: {discover(mep)}")
+        print(f"  discovered: {discover(mep)}")
         if app_id and not args.keep:
-            print(f"  등록 삭제: {deregister(mep, app_id)}")
+            print(f"  registration deleted: {deregister(mep, app_id)}")
 
 
 if __name__ == "__main__":

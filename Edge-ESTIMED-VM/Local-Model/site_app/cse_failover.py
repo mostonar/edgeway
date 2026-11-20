@@ -69,8 +69,8 @@ class CseWatch:
         self._th = threading.Thread(target=self._loop, daemon=True,
                                     name=f"cse-watch-{self.node}")
         self._th.start()
-        print(f"  ✓ [{self.node}] MN-CSE 감시 시작 "
-              f"({PROBE_SEC:.0f}초마다, {FAILOVER_SEC:.0f}초 무응답이면 핸드오버)")
+        print(f"  ✓ [{self.node}] MN-CSE watch started "
+              f"(every {PROBE_SEC:.0f}s, handover after {FAILOVER_SEC:.0f}s without response)")
 
     def stop(self) -> None:
         self._stop.set()
@@ -108,14 +108,14 @@ class CseWatch:
                 if is_down(code):
                     if self._down_since is None:
                         self._down_since = time.time()
-                        print(f"  ⚠ [{self.node}] MN-CSE 응답 없음 "
-                              f"({code if code is not None else '연결 실패'}) "
+                        print(f"  ⚠ [{self.node}] MN-CSE not responding "
+                              f"({code if code is not None else 'connection failed'}) "
                               f"— {base}/{cse}")
                 elif self._down_since is not None:
                     gone = time.time() - self._down_since
                     self._down_since = None
-                    print(f"  ✓ [{self.node}] MN-CSE 다시 응답 "
-                          f"({gone:.0f}초 만에) — 핸드오버 안 함")
+                    print(f"  ✓ [{self.node}] MN-CSE responding again "
+                          f"(after {gone:.0f}s) — no handover")
 
 
 def pick_replacement(node: str,
@@ -134,5 +134,5 @@ def pick_replacement(node: str,
         # unregistered originator, so it is checked with the admin identity.
         if mec_iot.cse_answers(base, cse, origin=config.ORIGINATOR):
             return base, cse, pid
-        print(f"    · 후보 {base}/{cse} 응답 없음")
+        print(f"    · candidate {base}/{cse} no response")
     return None

@@ -81,8 +81,8 @@ class INAECoordinator:
 
         if self.non_contributing_nodes:
             print(
-                f"  [FedAvg] 집계 참여: {self.training_nodes} / "
-                f"미기여(추론 결과만 올림): {self.non_contributing_nodes}"
+                f"  [FedAvg] aggregating: {self.training_nodes} / "
+                f"non-contributing (inference results only): {self.non_contributing_nodes}"
             )
         self.dropbox_by_node = {
             node: f"{self.dropbox_root}/cnt-{node}" for node in self.node_names
@@ -316,7 +316,7 @@ class INAECoordinator:
                             f"  [NO-AGG/NOTIFY] "
                             f"{fired_node} Round {cin_round} "
                             f"val_auroc={result_data.get('val_auroc')} "
-                            f"(FedAvg 미기여)"
+                            f"(not in FedAvg)"
                         )
                     else:
                         self.collected_results[
@@ -386,8 +386,8 @@ class INAECoordinator:
             ae_path, f"http://127.0.0.1:{port}/notify", label="IN-AE")
         if not self.pch_receiver:
             self.notify_target = None
-            print("    ⚠ IN-AE 는 알림을 받을 수 없다. 드롭박스 구독을 "
-                  "만들지 않는다.")
+            print("    ⚠ IN-AE cannot receive notifications. Not creating "
+                  "drop-box subscriptions.")
             return
         self.notify_target = self.pch_receiver.origin
 
@@ -405,7 +405,7 @@ class INAECoordinator:
         404 (no resource) and 403 (access denied) are different problems. The former means setup is
         incomplete; the latter is a policy problem. Reporting them together makes diagnosis impossible.
         """
-        print("\n=== ACP 접근 제어 검증 ===")
+        print("\n=== ACP access control check ===")
 
         in_cse = config.in_endpoint()[1]
 
@@ -443,24 +443,24 @@ class INAECoordinator:
             short = path.split("/", 1)[-1]
 
             if code is None:
-                print(f"    ⚠ 확인 못함  {short}  (Origin={origin})  {body}")
+                print(f"    ⚠ unverified  {short}  (Origin={origin})  {body}")
                 return
             if code == 404:
                 # It is not a policy issue; the resource does not exist. Not reported as a bug.
-                print(f"    ⚠ 리소스 없음  {short}  (Origin={origin})")
+                print(f"    ⚠ no resource  {short}  (Origin={origin})")
                 return
 
             allowed = code in (200, 201)
             blocked = code == 403 or "no privilege" in body
 
             if expect_allow:
-                mark = "✓ 허용" if allowed else f"✗ 차단됨(버그) HTTP {code}"
+                mark = "✓ allowed" if allowed else f"✗ blocked (bug) HTTP {code}"
             else:
-                mark = "✓ 차단" if blocked else f"✗ 허용됨(버그) HTTP {code}"
+                mark = "✓ blocked" if blocked else f"✗ allowed (bug) HTTP {code}"
             print(f"    {mark}  {short}  (Origin={origin})")
 
         # ── [1] Check acpi links ──────────────────────────
-        print("\n  [1] acpi 연결 확인")
+        print("\n  [1] acpi linkage check")
         ae = config.IN_AE_NAME
 
         in_paths = [
@@ -480,14 +480,14 @@ class INAECoordinator:
             res = om2m.get_resource(path)
             short = path.split("/", 1)[-1]
             if res is None:
-                print(f"    ⚠ 없음  {short}")
+                print(f"    ⚠ missing  {short}")
                 continue
             acpi = res.get("m2m:cnt", {}).get("acpi", [])
-            print(f"    {'✓' if acpi else '⚠ acpi 없음'}  {short}  acpi={acpi}")
+            print(f"    {'✓' if acpi else '⚠ no acpi'}  {short}  acpi={acpi}")
 
         # ── [2] Access that must be blocked ───────────────
         # An attempt by one site to look at another site's data.
-        print("\n  [2] 차단돼야 하는 접근")
+        print("\n  [2] access that must be blocked")
         mn_a = config.mn_endpoint("mn1")[1]
         mn_b = config.mn_endpoint("mn2")[1]
 
@@ -507,7 +507,7 @@ class INAECoordinator:
         check("", f"{in_cse}/{ae}/cnt-local-updates/cnt-mn1", id1, False)
 
         # ── [3] Access that must be allowed ───────────────
-        print("\n  [3] 허용돼야 하는 접근")
+        print("\n  [3] access that must be allowed")
         mn_c = config.mn_endpoint("mn3")[1]
 
         check("", f"{in_cse}/{ae}/cnt-fl-control", id1, True)
@@ -562,8 +562,8 @@ class INAECoordinator:
     def _subscribe_dropbox(self):
         print("\n  Subscribe drop-box per-node containers (net=3 CIN create)...")
         if not self.notify_target:
-            print("    ✗ 알림 경로가 없어 구독을 만들지 않는다. "
-                  "만들어도 CSE 가 검증하지 못한다.")
+            print("    ✗ No notification path; not creating subscriptions. "
+                  "The CSE could not verify them anyway.")
             return
         for node, cnt_path in self.dropbox_by_node.items():
             sub_name = f"sub_in_dropbox_{node}"
@@ -786,7 +786,7 @@ class INAECoordinator:
             )
         except Exception as exc:
             print(
-                f"  ✗ global weight embedding 실패 "
+                f"  ✗ global weight embedding failed "
                 f"({type(exc).__name__}: {exc})"
             )
             return None
@@ -801,7 +801,7 @@ class INAECoordinator:
         elif getattr(config, "FL_CHUNK_WEIGHTS", True):
             manifest = self._publish_weight_chunks(round_num, enc)
             if not manifest:
-                print("  ✗ 글로벌 가중치 조각 업로드 실패")
+                print("  ✗ global weight chunk upload failed")
                 return None
             data.update(manifest)
             print(
@@ -813,8 +813,8 @@ class INAECoordinator:
             print(
                 f"  ✗ global weights "
                 f"{enc['weights_bytes'] / 1024:.0f}KB > "
-                f"limit {limit / 1024:.0f}KB, 조각 전송 꺼짐 "
-                f"(FL_CHUNK_WEIGHTS=1 필요)"
+                f"limit {limit / 1024:.0f}KB, chunking disabled "
+                f"(needs FL_CHUNK_WEIGHTS=1)"
             )
             return None
 
@@ -938,11 +938,11 @@ class INAECoordinator:
 
         nodes = list(results.keys())
         if len(nodes) < 2:
-            print("  [Anomaly Detection] 노드 수 < 2, 스킵")
+            print("  [Anomaly Detection] nodes < 2, skipped")
             return []
 
         if round_num <= bypass_rounds:
-            print(f"  [Anomaly Detection] Round {round_num} <= {bypass_rounds} (early bypass), 스킵")
+            print(f"  [Anomaly Detection] Round {round_num} <= {bypass_rounds} (early bypass), skipped")
             return []
 
         train_losses = {n: results[n]["train_loss"] for n in nodes}
@@ -1031,7 +1031,7 @@ class INAECoordinator:
                 resource_name=model_codec.chunk_resource_name(round_num, i),
             )
             if not res:
-                print(f"    ✗ 글로벌 가중치 조각 {i + 1}/{len(chunks)} 실패")
+                print(f"    ✗ global weight chunk {i + 1}/{len(chunks)} failed")
                 return None
 
         manifest["weights_chunk_container"] = cnt_path
@@ -1057,14 +1057,14 @@ class INAECoordinator:
                 )
             except Exception as exc:
                 print(
-                    f"    ⚠ {node}: con 가중치 사용 불가 "
+                    f"    ⚠ {node}: con weights unusable "
                     f"({type(exc).__name__}: {exc})"
                 )
 
             if sd is None:
                 print(
-                    f"    ✗ {node}: con 에 가중치가 없음 "
-                    f"-> 이번 라운드 제외"
+                    f"    ✗ {node}: no weights in con "
+                    f"-> excluded this round"
                 )
                 continue
 
@@ -1075,21 +1075,21 @@ class INAECoordinator:
         anomalies = self._detect_anomaly(results, round_num)
 
         if anomalies:
-            print(f"  ⚠ 이상 노드 제외: {anomalies}")
+            print(f"  ⚠ excluding anomalous nodes: {anomalies}")
             for n in anomalies:
                 state_dicts.pop(n, None)
                 num_samples.pop(n, None)
 
         if not state_dicts:
-            print("  ✗ 정상 노드 없음, aggregation 스킵")
+            print("  ✗ no normal nodes, aggregation skipped")
             return 0.0, None
 
         client_states = [(sd, num_samples[n]) for n, sd in state_dicts.items()]
 
         # Record which weights were used for merging. Whether it is per-site uniform or proportional to
         # sample count changes how results are read, so it must show in the logs.
-        print(f"    집계 가중: {self.aggregator.describe(client_states)}")
-        print(f"      노드 순서: {', '.join(state_dicts.keys())}")
+        print(f"    aggregation weights: {self.aggregator.describe(client_states)}")
+        print(f"      node order: {', '.join(state_dicts.keys())}")
 
         global_state = self.aggregator.aggregate(client_states)
 
@@ -1105,7 +1105,7 @@ class INAECoordinator:
         print(f"  ✓ Aggregation done! Global Train Loss: {avg_loss:.4f}, Total: {total}")
         print(f"  ✓ Global state saved: {out_path}")
         if anomalies:
-            print(f"  ⚠ (이상 노드 {anomalies} 제외됨)")
+            print(f"  ⚠ (anomalous nodes {anomalies} excluded)")
         return avg_loss, out_path
 
     # -----------------------
@@ -1125,7 +1125,7 @@ class INAECoordinator:
         try:
             m = valset.evaluate(model_path)
         except Exception as e:
-            print(f"  ⚠ 검증셋 평가 실패(계속 진행): {e}")
+            print(f"  ⚠ valset evaluation failed (continuing): {e}")
             return
 
         if not m:
@@ -1147,7 +1147,7 @@ class INAECoordinator:
                 labels=[f"round_{round_num}", "global-eval"],
             )
         except Exception as e:
-            print(f"  ⚠ 평가 결과 업로드 실패(계속 진행): {e}")
+            print(f"  ⚠ evaluation upload failed (continuing): {e}")
 
     # -----------------------
     # Main loop
@@ -1166,10 +1166,10 @@ class INAECoordinator:
         if getattr(config, "VERIFY_ACP", True):
             self._verify_acp()
         else:
-            print("\n=== ACP 접근 제어 검증 — 건너뜀 (FL_VERIFY_ACP=0) ===")
-            print("  이 진단은 사업장 MN-CSE 에 직접 접속한다.")
-            print("  IN-AE 가 중앙에서 돌면 그쪽이 방화벽 뒤라 닿지 않는다.")
-            print("  연합학습 동작과는 무관하다.\n")
+            print("\n=== ACP access control check — skipped (FL_VERIFY_ACP=0) ===")
+            print("  This check connects directly to the site MN-CSEs.")
+            print("  When IN-AE runs centrally they are behind a firewall and unreachable.")
+            print("  It does not affect federated learning.\n")
 
         # Wait until all MN-AE subscriptions are ready so the Round 1 command is not missed
         if not self._wait_for_mn_command_subscriptions():

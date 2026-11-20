@@ -32,32 +32,32 @@ export FL_COMMAND_SUBSCRIPTION_WAIT="${FL_COMMAND_SUBSCRIPTION_WAIT:-900}"
 # there is nowhere to connect and it just keeps retrying, so turn it off. (The check is diagnostic and unrelated to training)
 if [ -z "${FL_SANDBOX_HOST:-}" ] && [ -z "${FL_VERIFY_ACP:-}" ]; then
   export FL_VERIFY_ACP=0
-  echo "  · FL_SANDBOX_HOST 가 없어 시작 때 ACP 점검(FL_VERIFY_ACP)을 끈다"
+  echo "  · FL_SANDBOX_HOST unset; disabling startup ACP check (FL_VERIFY_ACP)"
 fi
 
 echo
-echo "[1/3] 지난 실행 정리"
+echo "[1/3] clean up previous run"
 fl_free_ports "6000" "in_ae_standard.py"
 if [ "${FL_RESET_ON_START:-1}" = "1" ]; then
   BASE="${FL_MODEL_BASE_DIR:-/tmp/fl_models}"
   # Global model files the IN-AE leaves every round. Clear the previous run's.
   rm -rf "$BASE/global"
   mkdir -p "$BASE/global"
-  echo "  ✓ 글로벌 모델 파일 비움: $BASE/global"
+  echo "  ✓ cleared global model files: $BASE/global"
 fi
 
 echo
-echo "[2/3] IN-CSE 리소스 확인"
+echo "[2/3] check IN-CSE resources"
 if ! python3 setup_resources_standard.py --scope in --verify; then
   echo
-  echo "  리소스가 빠져 있다. 먼저 생성한다."
+  echo "  Resources missing. Creating them first."
   python3 setup_resources_standard.py --scope in
 fi
 
 echo
-echo "[3/3] IN-AE (코디네이터)"
+echo "[3/3] IN-AE (coordinator)"
 LOG_DIR="$(fl_log_dir)"
-echo "  로그: $LOG_DIR/in_ae.log"
-echo "  사업장 앱 구독 대기 최대 ${FL_COMMAND_SUBSCRIPTION_WAIT}초"
+echo "  log: $LOG_DIR/in_ae.log"
+echo "  waiting up to ${FL_COMMAND_SUBSCRIPTION_WAIT}s for site app subscriptions"
 fl_start "$LOG_DIR/in_ae.log" python3 -u in_ae_standard.py
 wait

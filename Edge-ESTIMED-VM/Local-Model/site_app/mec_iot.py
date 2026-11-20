@@ -149,18 +149,18 @@ def resolve(node: str) -> Tuple[str, str]:
     fallback = config.mn_endpoint(node)
     mep = config.MEP_OF_NODE.get(node, "")
     if os.getenv(f"FL_MN_BASE_URL_{node.upper()}"):
-        print(f"  [{node}] MN-CSE: FL_MN_BASE_URL_{node.upper()} 사용 (MEC033 건너뜀)")
+        print(f"  [{node}] MN-CSE: using FL_MN_BASE_URL_{node.upper()} (MEC033 skipped)")
         return fallback
     if not _on() or not mep or not config.sandbox_ready():
         return fallback
     for base, cse, pid in candidates(mep):
         if _cse_answers(base, cse):
             same = (base, cse) == fallback
-            print(f"  [{node}] MN-CSE: MEC033 {mep} 플랫폼 {pid or '?'} → "
-                  f"{base}/{cse}  {'(규칙 주소와 같음)' if same else '(규칙 주소와 다름)'}")
+            print(f"  [{node}] MN-CSE: MEC033 {mep} platform {pid or '?'} → "
+                  f"{base}/{cse}  {'(same as rule address)' if same else '(differs from rule address)'}")
             return base, cse
-        print(f"  [{node}] MEC033 후보 {base}/{cse} 응답 없음")
-    print(f"  [{node}] MN-CSE: MEC033 에서 못 받아 규칙 주소 사용 "
+        print(f"  [{node}] MEC033 candidate {base}/{cse} no response")
+    print(f"  [{node}] MN-CSE: not available from MEC033, using rule address "
           f"{fallback[0]}/{fallback[1]}")
     return fallback
 
@@ -174,10 +174,10 @@ def main() -> None:
         mep = config.MEP_OF_NODE.get(node, "?")
         print(f"\n=== {node} / {mep} ===")
         for p in platforms(mep):
-            print(f"  플랫폼 {p.get('iotPlatformId')} enabled={p.get('enabled')}")
+            print(f"  platform {p.get('iotPlatformId')} enabled={p.get('enabled')}")
         for c in candidates(mep):
-            print(f"  후보 {c[0]}/{c[1]}")
-        print(f"  결과 {resolve(node)}")
+            print(f"  candidate {c[0]}/{c[1]}")
+        print(f"  result {resolve(node)}")
 
 
 if __name__ == "__main__":

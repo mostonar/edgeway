@@ -60,7 +60,7 @@ def _get(mep: str, path: str) -> Optional[dict]:
     try:
         return r.json()
     except Exception:
-        print(f"  ✗ MEC013 {mep}{path}: JSON 파싱 실패")
+        print(f"  ✗ MEC013 {mep}{path}: JSON parse failed")
         return None
 
 
@@ -121,7 +121,7 @@ def zones(mep: str) -> List[dict]:
 def main() -> None:
     import argparse
     import mec_topology as topo
-    ap = argparse.ArgumentParser(description="MEC013 으로 로봇 위치를 본다")
+    ap = argparse.ArgumentParser(description="Show robot location via MEC013")
     ap.add_argument("--nodes", default=",".join(config.ALL_NODES))
     args = ap.parse_args()
     config.require_sandbox()
@@ -130,7 +130,7 @@ def main() -> None:
         print(f"\n=== {node} / {mep} ===  {loc_base(mep)}")
         for z in zones(mep):
             print(f"  zone {z.get('zoneId')}  AP {z.get('numberOfAccessPoints')}"
-                  f"  단말 {z.get('numberOfUsers')}")
+                  f"  users {z.get('numberOfUsers')}")
         for ae in config.robot_names(node):
             ue = topo.ae_to_ue(ae)
             loc = user_location(mep, ue) if ue else None

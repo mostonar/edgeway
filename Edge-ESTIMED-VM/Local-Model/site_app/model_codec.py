@@ -139,19 +139,19 @@ def decode_state_dict(
     if not b64 and meta.get("weights_chunked"):
         if fetch_chunk is None:
             raise ValueError(
-                "가중치가 조각으로 와 있는데 fetch_chunk가 없다"
+                "weights are chunked but fetch_chunk is missing"
             )
 
         count = int(meta.get("weights_chunk_count", 0))
         if count <= 0:
-            raise ValueError("weights_chunk_count가 비정상이다")
+            raise ValueError("weights_chunk_count is invalid")
 
         parts = []
         for i in range(count):
             part = fetch_chunk(i)
             if not part:
                 raise ValueError(
-                    f"가중치 조각 {i}/{count}를 가져오지 못했다"
+                    f"failed to fetch weight chunk {i}/{count}"
                 )
             parts.append(part)
         b64 = "".join(parts)
@@ -201,6 +201,6 @@ def describe(meta: Dict[str, Any]) -> str:
     if meta.get("weights_chunked"):
         return (
             f"{codec} {n / 1024:.0f}KB "
-            f"({meta.get('weights_chunk_count')}조각)"
+            f"({meta.get('weights_chunk_count')} chunks)"
         )
-    return f"{codec} {n / 1024:.0f}KB (단일 CIN)"
+    return f"{codec} {n / 1024:.0f}KB (single CIN)"

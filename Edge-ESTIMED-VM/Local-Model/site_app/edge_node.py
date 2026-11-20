@@ -48,7 +48,7 @@ try:
 except Exception:                                   # pragma: no cover
     _robust_ref = _apply_ref = None
     if SCORE_MODE == "diff":
-        print("  ⚠ amr_schema 를 못 들여왔다 -> FL_SCORE_MODE=recon 으로 진행")
+        print("  ⚠ could not import amr_schema -> continuing with FL_SCORE_MODE=recon")
         SCORE_MODE = "recon"
 from config import TrainConfig, AEConfig
 from model_cvae import CVAE1D
@@ -228,7 +228,7 @@ class AEEdgeNode:
         Local training (normal data only). Returns: (train_loss, val_loss, val_auroc)
         """
         if self.num_train_samples == 0:
-            print("    ⚠ 학습 데이터가 없다")
+            print("    ⚠ no training data")
             v_loss, v_auroc = self._evaluate_val()
             return 0.0, float(v_loss), float(v_auroc)
 
@@ -281,8 +281,8 @@ class AEEdgeNode:
         min_steps = int(getattr(self.train_cfg, "min_steps", 0) or 0)
         n_epochs = max(int(self.train_cfg.local_epochs),
                        math.ceil(min_steps / steps_per_epoch))
-        print(f"    ◦ 로컬 학습 {n_epochs}에폭 x {steps_per_epoch}배치 "
-              f"= {n_epochs * steps_per_epoch}스텝"
+        print(f"    ◦ local training {n_epochs} epochs x {steps_per_epoch} batches "
+              f"= {n_epochs * steps_per_epoch} steps"
               f"{' (DP)' if use_dp else ''}")
 
         self.model.train()
@@ -334,8 +334,8 @@ class AEEdgeNode:
         train_loss = loss_sum / max(total, 1)
 
         if trimmed:
-            print(f"    ◦ 절사 손실: {trimmed}/{total * n_epochs} 샘플을 학습에서 제외 "
-                  f"(비율 {trim_ratio:.0%}, 워밍업 {trim_warmup}에폭)")
+            print(f"    ◦ trimmed loss: {trimmed}/{total * n_epochs} samples excluded from training "
+                  f"(ratio {trim_ratio:.0%}, warmup {trim_warmup} epochs)")
 
         # Re-take the per-channel reference error and threshold against the trained model.
         self.calibrate()
@@ -409,10 +409,10 @@ class AEEdgeNode:
              self.diff_alive) = _robust_ref(D, keys)
             scores = torch.from_numpy(self._diff_scores(D, cond_np))
             dead = int((~self.diff_alive).sum())
-            print(f"    ◦ 점수 방식 diff (차분 오차 채널 z 최대) · "
-                  f"조건칸 기준 {len(self.diff_ref)}개 · 기준 창 {n_ref}개"
-                  f"{' (고정 기준 집합)' if self.calib_ds is not None else ''}"
-                  + (f" · 상수 채널 {dead}개 제외" if dead else ""))
+            print(f"    ◦ score mode diff (max z over diff-error channels) · "
+                  f"{len(self.diff_ref)} condition-cell refs · {n_ref} ref windows"
+                  f"{' (fixed reference set)' if self.calib_ds is not None else ''}"
+                  + (f" · {dead} constant channels excluded" if dead else ""))
         else:
             scores = self._aggregate(E)
 
@@ -428,8 +428,8 @@ class AEEdgeNode:
             }
             scores = torch.from_numpy(
                 self._apply_cond_norm(raw, C_ref[:len(raw)].cpu().numpy()))
-            print(f"    ◦ 조건별 기준 {len(self.cond_norm)}개 "
-                  f"(중앙값 범위 {min(self.cond_norm.values()):.2f}"
+            print(f"    ◦ {len(self.cond_norm)} per-condition refs "
+                  f"(median range {min(self.cond_norm.values()):.2f}"
                   f"~{max(self.cond_norm.values()):.2f})")
 
         med = scores.median()
@@ -450,11 +450,11 @@ class AEEdgeNode:
             torch.tensor([0.50, 0.90, 0.99], device=scores.device),
         ).tolist()
         over = int((scores > self.threshold).sum())
-        print(f"    ◦ 임계 {self.threshold:.4f}  (중앙값 {q[0]:.4f} "
+        print(f"    ◦ threshold {self.threshold:.4f}  (median {q[0]:.4f} "
               f"+ {n_sigma:g} x MAD {float(mad):.4f})\n"
-              f"      학습점수 p50 {q[0]:.3f}  p90 {q[1]:.3f}  "
+              f"      train scores p50 {q[0]:.3f}  p90 {q[1]:.3f}  "
               f"p99 {q[2]:.3f}  max {float(scores.max()):.3f}  "
-              f"| 임계 초과 {over}/{len(scores)} "
+              f"| above threshold {over}/{len(scores)} "
               f"({over / max(1, len(scores)):.1%})")
 
         return self.threshold
@@ -640,6 +640,6 @@ class EdgeNode:
 
     def __init__(self, node_id, data, sensor_cols, train_cfg, device="cpu", **kwargs):
         raise NotImplementedError(
-            "EdgeNode (통계피처 MLP) 는 더 이상 사용하지 않습니다. "
-            "AEEdgeNode 를 사용하세요."
+            "EdgeNode (statistical-feature MLP) is no longer used. "
+            "Use AEEdgeNode."
         )

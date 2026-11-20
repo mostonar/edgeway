@@ -164,7 +164,7 @@ def resource_labels(node: str, kind: str):
     """Labels to attach to resources we create. kind is something like 'local-model'."""
     return [site_label(node), f"type:{kind}", f"node:{node}"]
 
-CLASS_NAMES = ["정상", "이상"]
+CLASS_NAMES = ["normal", "anomaly"]
 NUM_CLASSES = 2
 
 # The first file where RMS exceeds this value is used as the fault onset
@@ -293,12 +293,12 @@ def require_sandbox() -> None:
     if sandbox_ready():
         return
     raise SystemExit(
-        "\n샌드박스 주소가 설정되지 않았다.\n"
-        "  export FL_SANDBOX_HOST=<호스트>     # 예: 테일넷 주소나 공인 IP\n"
-        "  export FL_SANDBOX_NAME=<인스턴스 이름>\n"
+        "\nSandbox address is not set.\n"
+        "  export FL_SANDBOX_HOST=<host>     # e.g. tailnet address or public IP\n"
+        "  export FL_SANDBOX_NAME=<instance name>\n"
         "\n"
-        "공개 저장소라 실제 주소를 코드에 두지 않는다.\n"
-        ".env.local 에 적어 두고 `source .env.local` 해도 된다.\n"
+        "This is a public repo, so real addresses are not kept in code.\n"
+        "You can also put them in .env.local and run `source .env.local`.\n"
     )
 
 # If the sandbox uses an IP-based self-signed certificate, verification fails.

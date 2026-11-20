@@ -408,7 +408,7 @@ class NormStats:
         if X is None or np.asarray(X).size == 0:
             return X
         if self.mean is None:
-            raise RuntimeError("NormStats.apply: update() 를 먼저 불러야 한다")
+            raise RuntimeError("NormStats.apply: call update() first")
         Z = (np.asarray(X, dtype=np.float32) - self.mean) / self.std
         if self.clip > 0:
             Z = np.clip(Z, -self.clip, self.clip)
@@ -417,7 +417,7 @@ class NormStats:
     def describe(self) -> str:
         cnt = "/".join(str(int(c)) for c in self._load_counts)
         if self.frozen:
-            return (f"정규화 통계 고정됨 (R{self.frozen_round}, "
-                    f"적재 빈/경/중 {cnt}, |z|≤{self.clip:g})")
-        return (f"정규화 통계 누적 중 (적재 빈/경/중 {cnt}, "
-                f"각 {self.min_per_load}창 또는 R{self.freeze_round} 에 고정)")
+            return (f"normalization stats frozen (R{self.frozen_round}, "
+                    f"load empty/light/heavy {cnt}, |z|≤{self.clip:g})")
+        return (f"normalization stats accumulating (load empty/light/heavy {cnt}, "
+                f"freeze at {self.min_per_load} windows each or R{self.freeze_round})")

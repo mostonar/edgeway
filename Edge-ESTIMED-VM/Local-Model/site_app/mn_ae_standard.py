@@ -414,12 +414,12 @@ class MNAETrainer:
         if config.remote_notify_mode() == "pch":
             self.pch_receiver = onem2m_pch.setup(
                 om2m.in_path(self.ae_name), local_notify,
-                label=f"{self.ae_name} / 원격")
+                label=f"{self.ae_name} / remote")
             self.remote_notify_target = (
                 self.pch_receiver.origin if self.pch_receiver else None)
             if not self.pch_receiver:
-                print(f"    ⚠ {self.ae_name} 은 IN-CSE 로부터 알림을 받을 수 "
-                      f"없다. 라운드 명령 구독이 실패할 것이다.")
+                print(f"    ⚠ {self.ae_name} cannot receive notifications "
+                      f"from IN-CSE. Round command subscription will fail.")
         else:
             self.remote_notify_target = f"{poa}/notify"
 
@@ -435,7 +435,7 @@ class MNAETrainer:
         local_ae = f"{self.mn_cse_name}/{self.ae_name}"
         if config.local_notify_mode() == "pch":
             self.local_pch = onem2m_pch.setup(
-                local_ae, local_notify, label=f"{self.ae_name} / 로컬")
+                local_ae, local_notify, label=f"{self.ae_name} / local")
             self.local_notify_target = (
                 self.local_pch.origin if self.local_pch else None)
         else:
@@ -461,9 +461,9 @@ class MNAETrainer:
             return False
         if ts <= 0 or ts >= self.started_at:
             return False
-        print(f"  ⓘ {self.node_name}: 지난 실행의 명령 무시 "
-              f"(발행 {time.strftime('%H:%M:%S', time.localtime(ts))}, "
-              f"기동 {time.strftime('%H:%M:%S', time.localtime(self.started_at))})")
+        print(f"  ⓘ {self.node_name}: ignoring command from a previous run "
+              f"(issued {time.strftime('%H:%M:%S', time.localtime(ts))}, "
+              f"started {time.strftime('%H:%M:%S', time.localtime(self.started_at))})")
         return True
 
     def _is_expected_command(self, command: dict | None, round_num: int) -> bool:
@@ -582,18 +582,18 @@ class MNAETrainer:
         # Telemetry notifications come from inside the site. Unrelated to the remote path.
         notify_url = self.local_notify_target
         if not notify_url:
-            print(f"    ⚠ 로컬 알림 경로가 없다 — 구독을 걸지 않는다.")
+            print(f"    ⚠ No local notification path — not subscribing.")
             return 0
 
         ok = 0
-        print(f"\n  [{self.node_name}] 로봇 텔레메트리 구독")
+        print(f"\n  [{self.node_name}] subscribing to robot telemetry")
         for robot, tel_path in zip(self.robot_names, self.telemetry_paths):
             # When re-discovering mid-round, subscribe only to newly appeared robots. Deleting everything and
             # resubscribing would miss notifications in between and stall the round being collected.
             if only is not None and robot not in only:
                 continue
             if not om2m.resource_exists(tel_path):
-                print(f"    ⚠ {robot}: telemetry 없음 — 건너뜀")
+                print(f"    ⚠ {robot}: no telemetry — skipped")
                 continue
 
             sub_name = f"sub-sensor-data-{self.node_name}"
@@ -608,7 +608,7 @@ class MNAETrainer:
                 use_nct=1,
             )
             if not res:
-                print(f"    ✗ {robot}: 구독 실패")
+                print(f"    ✗ {robot}: subscription failed")
                 continue
 
             ri = (res.get("m2m:sub") or {}).get("ri")
@@ -618,14 +618,14 @@ class MNAETrainer:
             print(f"    ✓ {robot}")
 
         if ok == 0:
-            print(f"    ⚠ 구독이 하나도 안 걸렸다. 수집은 주기 조회로 돈다.")
+            print(f"    ⚠ No subscription succeeded. Collection falls back to polling.")
         return ok
 
     def _subscribe_to_fl_control(self):
         """Round command subscription. The target is the cloud IN-CSE, so the remote path is used."""
         if not self.remote_notify_target:
-            print(f"  ✗ {self.node_name}: IN-CSE 로부터 알림을 받을 경로가 "
-                  f"없어 구독을 만들지 않는다.")
+            print(f"  ✗ {self.node_name}: no path to receive notifications "
+                  f"from IN-CSE; not creating subscriptions.")
             return None
 
         sub_name = f"sub_{self.node_name}"
@@ -692,17 +692,17 @@ class MNAETrainer:
             )
         except Exception as e:
             if not quiet:
-                print(f"    ⚠ telemetry 디스커버리 실패(기존 경로 유지): {e}")
+                print(f"    ⚠ telemetry discovery failed (keeping existing paths): {e}")
             return False
 
         if not found:
             if not quiet and not self.telemetry_discovered:
                 codes = ", ".join(str(c) for c in om2m.LAST_DISCOVERY_STATUS)
-                print(f"    ⓘ 라벨 {labels} 로 찾은 telemetry 가 없다 "
-                      f"(응답 {codes or '없음'}). 경로 조립으로 진행한다")
+                print(f"    ⓘ no telemetry found with labels {labels} "
+                      f"(response {codes or 'none'}). Falling back to path assembly")
                 if any(c == 403 for c in om2m.LAST_DISCOVERY_STATUS):
-                    print(f"      403 이면 {self.ae_id} 에 CSEBase DISCOVERY "
-                          f"권한이 없는 것이다")
+                    print(f"      403 means {self.ae_id} lacks CSEBase DISCOVERY "
+                          f"permission")
             return False
 
         robots = sorted(found)
@@ -712,8 +712,8 @@ class MNAETrainer:
         # misread and the list replaced anyway, the whole round is lost.
         if not om2m.resource_exists(paths[0]):
             if not quiet:
-                print(f"    ⚠ 디스커버리 경로가 안 열린다 ({paths[0]}) "
-                      f"-> 기존 경로 유지")
+                print(f"    ⚠ discovered path not reachable ({paths[0]}) "
+                      f"-> keeping existing paths")
             return False
         changed = (robots != self.robot_names or paths != self.telemetry_paths)
         # Robots that are new or whose path changed. Subscriptions are created only for these.
@@ -722,9 +722,9 @@ class MNAETrainer:
                                  if before.get(r) != found[r]]
         if changed and not quiet:
             added = [r for r in robots if r not in self.robot_names]
-            print(f"    ✓ 디스커버리: {len(robots)}대 "
+            print(f"    ✓ discovery: {len(robots)} robots "
                   f"({', '.join(robots)})"
-                  + (f"  새로 발견 {', '.join(added)}" if added else ""))
+                  + (f"  newly found {', '.join(added)}" if added else ""))
         self.robot_names = robots
         self.telemetry_paths = paths
         self.telemetry_discovered = True
@@ -748,8 +748,8 @@ class MNAETrainer:
         poll = float(os.getenv("FL_ROBOT_POLL_SEC", "5"))
 
         site = config.SITE_OF_NODE.get(self.node_name, self.node_name)
-        print(f"\n  [{self.node_name}/{site}] Isaac Sim 대기 "
-              f"(최대 {timeout:.0f}s, 최소 {min_robots}대)")
+        print(f"\n  [{self.node_name}/{site}] waiting for Isaac Sim "
+              f"(max {timeout:.0f}s, min {min_robots} robots)")
 
         deadline = time.time() + timeout
         next_log = 0.0
@@ -764,24 +764,24 @@ class MNAETrainer:
             now = time.time()
 
             if len(ready) >= min_robots:
-                print(f"    ✓ {len(ready)}/{len(self.robot_names)}대 준비됨 "
+                print(f"    ✓ {len(ready)}/{len(self.robot_names)} robots ready "
                       f"({', '.join(ready)})")
                 missing = [r for r in self.robot_names if r not in ready]
                 if missing:
-                    print(f"    ⓘ 아직 없는 로봇: {', '.join(missing)} "
-                          f"(나중에 올라오면 그 라운드부터 포함된다)")
+                    print(f"    ⓘ robots not up yet: {', '.join(missing)} "
+                          f"(included from the round they appear)")
                 return True
 
             if now >= deadline:
-                print(f"    ✗ {timeout:.0f}s 동안 로봇이 올라오지 않았다")
-                print(f"      기대: {', '.join(self.robot_names)}")
-                print(f"      확인: Isaac Sim이 {self.mn_cse_name} 에 "
-                      f"등록 중인지")
+                print(f"    ✗ no robots came up in {timeout:.0f}s")
+                print(f"      expected: {', '.join(self.robot_names)}")
+                print(f"      check: whether Isaac Sim is registering "
+                      f"to {self.mn_cse_name}")
                 return False
 
             if now >= next_log:
-                print(f"    ⏳ {len(ready)}/{min_robots}대 "
-                      f"(남은 {deadline - now:.0f}s)")
+                print(f"    ⏳ {len(ready)}/{min_robots} robots "
+                      f"({deadline - now:.0f}s left)")
                 next_log = now + 10.0
 
             time.sleep(poll)
@@ -835,15 +835,15 @@ class MNAETrainer:
         old_base, old_cse = self.cse_watch.target()
         down = self.cse_watch.down_for()
         mep = config.MEP_OF_NODE.get(self.node_name, "?")
-        print(f"\n  ⇄ [{self.node_name}] MN-CSE {down:.0f}초 무응답 "
-              f"— MEC033 에서 {mep} 의 다른 CSE 를 찾는다")
+        print(f"\n  ⇄ [{self.node_name}] MN-CSE unresponsive for {down:.0f}s "
+              f"— looking up another CSE of {mep} via MEC033")
         rep = cse_failover.pick_replacement(self.node_name, (old_base, old_cse))
         if not rep:
-            print(f"    ✗ 옮겨 갈 CSE 가 없다. "
-                  f"{os.getenv('FL_CSE_HANDOVER_RETRY_SEC', '15')}초 뒤 다시 본다")
+            print(f"    ✗ No CSE to move to. "
+                  f"Retrying in {os.getenv('FL_CSE_HANDOVER_RETRY_SEC', '15')}s")
             return False
         base, cse, pid = rep
-        print(f"    → {base}/{cse}  (IoT 플랫폼 {pid or '?'})")
+        print(f"    → {base}/{cse}  (IoT platform {pid or '?'})")
 
         # 2) Binding. Places that use config.mn_endpoint (setup_resources_standard) are also
         #    made to see the new CSE by overriding this process's environment variables.
@@ -876,16 +876,16 @@ class MNAETrainer:
             try:
                 robots_ok = self._wait_for_robots(timeout=wait)
             except Exception as e:
-                print(f"    ⚠ 새 CSE 에서 로봇 확인 실패: {e}")
+                print(f"    ⚠ robot check on new CSE failed: {e}")
             if not robots_ok:
-                print(f"    ⚠ 새 CSE 에 로봇이 아직 없다. acp-verdict 에 로봇이 "
-                      f"빠지고, 수집 루프가 로봇을 계속 다시 찾는다")
+                print(f"    ⚠ No robots on new CSE yet. Robots are left out of acp-verdict "
+                      f"and the collection loop keeps looking for them")
 
             # 4) Our resources
             try:
                 srs.setup_mn_resources(self.node_name)
             except Exception as e:
-                print(f"    ⚠ 새 CSE 리소스 생성 중 오류(계속 진행): {e}")
+                print(f"    ⚠ error creating resources on new CSE (continuing): {e}")
         finally:
             om2m.set_endpoint(base, cse)
             if config.USE_AE_IDENTITY:
@@ -895,7 +895,7 @@ class MNAETrainer:
         try:
             self._setup_local_notify()
         except Exception as e:
-            print(f"    ⚠ 로컬 알림 경로 설정 실패: {e}")
+            print(f"    ⚠ local notification path setup failed: {e}")
         if robots_ok:
             self._subscribe_to_telemetry()
             if os.getenv("FL_SENSOR_SEED_CURSOR", "1") != "0":
@@ -919,8 +919,8 @@ class MNAETrainer:
             self.net_status_path, rec,
             labels=["cse-handover"] + ([f"round_{round_num}"] if round_num else []),
         )
-        print(f"    {'✓' if res else '⚠'} 핸드오버 완료 "
-              f"({old_cse} → {cse}){'' if res else ' — 기록은 실패'}")
+        print(f"    {'✓' if res else '⚠'} handover done "
+              f"({old_cse} → {cse}){'' if res else ' — record failed'}")
         return True
 
     # ct is oneM2M absolute time (UTC). cra accepts only the part before the comma.
@@ -939,7 +939,7 @@ class MNAETrainer:
             try:
                 cin = om2m.get_latest_content_instance(path)
             except Exception as e:
-                print(f"    ⚠ {path} 마지막 ct 조회 실패(건너뜀): {e}")
+                print(f"    ⚠ {path} last ct lookup failed (skipped): {e}")
                 continue
             ct = ((cin or {}).get("m2m:cin") or {}).get("ct")
             if ct and (newest is None or str(ct) > str(newest)):
@@ -979,16 +979,16 @@ class MNAETrainer:
         n_cnt = len(self.telemetry_paths)
 
         if backlog == 0:
-            print(f"  ⏱ [{self.node_name}] 쌓여 있는 텔레메트리를 처음부터 "
-                  f"전부 쓴다. 라운드당 양은 take_head 가 "
-                  f"{os.getenv('FL_SENSOR_MIN_WINDOWS', '50')}개로 맞춘다.")
+            print(f"  ⏱ [{self.node_name}] using all stored telemetry from "
+                  f"the start. take_head caps each round at "
+                  f"{os.getenv('FL_SENSOR_MIN_WINDOWS', '50')}.")
             return
 
         if backlog > 0:
             newest = self._cse_now_ct()
             if newest is None:
-                print(f"  ⏱ [{self.node_name}] 아직 텔레메트리가 없다. "
-                      f"커서 없이 시작한다.")
+                print(f"  ⏱ [{self.node_name}] no telemetry yet. "
+                      f"Starting without a cursor.")
                 return
 
             stamp = str(newest).split(",")[0]
@@ -997,16 +997,16 @@ class MNAETrainer:
                 cutoff = time.strftime(self.CT_FMT,
                                        time.gmtime(base - backlog))
             except ValueError as e:
-                print(f"  ⚠ [{self.node_name}] ct 해석 실패({stamp}): {e}. "
-                      f"커서 없이 시작한다.")
+                print(f"  ⚠ [{self.node_name}] ct parse failed ({stamp}): {e}. "
+                      f"Starting without a cursor.")
                 return
 
             for path in self.telemetry_paths:
                 self.telemetry_cursor[path] = cutoff
 
-            print(f"  ⏱ [{self.node_name}] 최근 {backlog:.0f}초 안에 쌓인 "
-                  f"텔레메트리부터 쓴다 (cra={cutoff}, 최신={stamp}, "
-                  f"컨테이너 {n_cnt}개).")
+            print(f"  ⏱ [{self.node_name}] using telemetry from the last "
+                  f"{backlog:.0f}s (cra={cutoff}, latest={stamp}, "
+                  f"{n_cnt} containers).")
             return
 
         # backlog < 0 : skip everything accumulated so far.
@@ -1015,7 +1015,7 @@ class MNAETrainer:
             try:
                 cin = om2m.get_latest_content_instance(path)
             except Exception as e:
-                print(f"    ⚠ {path} 마지막 ct 조회 실패(건너뜀): {e}")
+                print(f"    ⚠ {path} last ct lookup failed (skipped): {e}")
                 continue
 
             ct = ((cin or {}).get("m2m:cin") or {}).get("ct")
@@ -1025,9 +1025,9 @@ class MNAETrainer:
             else:
                 empty += 1
 
-        print(f"  ⏱ [{self.node_name}] 쌓여 있던 텔레메트리는 건너뛴다 "
-              f"(커서 설정 {seeded}개 / 비어 있음 {empty}개). "
-              f"지금부터 쌓이는 것만 학습한다.")
+        print(f"  ⏱ [{self.node_name}] skipping stored telemetry "
+              f"(cursor set {seeded} / empty {empty}). "
+              f"Training only on new data from now.")
 
     def _load_sensor_data_for_round(self, round_num: int,
                                     max_attempts: int = 3):
@@ -1078,16 +1078,16 @@ class MNAETrainer:
 
             left = deadline - time.time()
             if left <= 0:
-                print(f"    ✗ {budget:.0f}초 동안 학습할 수 있는 구간이 "
-                      f"생기지 않았다 (시도 {attempt}회).")
-                print(f"      로봇이 주행 중인지 확인하라. "
-                      f"이번 라운드는 빠진다.")
+                print(f"    ✗ No trainable segment appeared "
+                      f"in {budget:.0f}s ({attempt} attempts).")
+                print(f"      Check that robots are moving. "
+                      f"Skipping this round.")
                 return SKIP_ROUND
 
             now = time.time()
             if now >= next_log:
-                print(f"    ⏳ 쓸 수 있는 구간이 없다. 라운드를 빠지지 않고 "
-                      f"기다린다 (시도 {attempt}회, 남은 {left:.0f}s)")
+                print(f"    ⏳ No usable segment. Waiting instead of "
+                      f"skipping the round ({attempt} attempts, {left:.0f}s left)")
                 next_log = now + 15.0
 
             # Wait for new telemetry and look again.
@@ -1118,7 +1118,7 @@ class MNAETrainer:
         With FL_SENSOR_FROM_CSE=0 it falls back to local pkl (for offline verification).
         """
         site = config.SITE_OF_NODE.get(self.node_name, self.node_name)
-        print(f"\n  [{self.node_name}/{site}] round_{round_num} 데이터 수집 ...")
+        print(f"\n  [{self.node_name}/{site}] round_{round_num} collecting data ...")
 
         if not getattr(config, "FL_SENSOR_FROM_CSE", True):
             return self._load_sensor_data_from_pkl(round_num)
@@ -1200,8 +1200,8 @@ class MNAETrainer:
                 if n_polls <= 1:
                     # The case where no waiting was needed. Not a single progress line gets printed and
                     # collection looks skipped, so leave one line.
-                    print(f"    [{self.node_name}] ✓ 윈도우 {n}/{want_min} "
-                          f"— 첫 조회에서 이미 찼다 (쌓여 있던 분량)")
+                    print(f"    [{self.node_name}] ✓ windows {n}/{want_min} "
+                          f"— already full on first fetch (stored backlog)")
                 break
 
             # If 10 queries (about 20 s) return nothing, print once how many CINs each container has.
@@ -1210,7 +1210,7 @@ class MNAETrainer:
             if (n == 0 and n_polls >= 10
                     and not getattr(self, "_empty_diag_done", False)):
                 self._empty_diag_done = True
-                print(f"    [{self.node_name}] ⓘ 받은 윈도우가 없다. 컨테이너 상태:")
+                print(f"    [{self.node_name}] ⓘ no windows received. Container status:")
                 for _p in self.telemetry_paths:
                     _r = (om2m.get_resource(_p) or {}).get("m2m:cnt") or {}
                     print(f"      {_p}  cni={_r.get('cni', '?')}  "
@@ -1219,27 +1219,27 @@ class MNAETrainer:
             now = time.time()
             if now >= deadline:
                 if n == 0 and incremental and self.telemetry_cursor:
-                    print(f"    ⊘ 지난 라운드 이후 새 윈도우가 없다.")
-                    print(f"      로봇이 주행 중인지, 라운드 간격이 너무 "
-                          f"짧지 않은지 확인하라.")
+                    print(f"    ⊘ No new windows since the last round.")
+                    print(f"      Check that robots are moving and the round "
+                          f"interval is not too short.")
                     return SKIP_ROUND   # Wait again on the outside
                 if n == 0:
-                    print(f"    ✗ {site} 로봇 텔레메트리가 비어 있다.")
-                    print(f"      확인: {len(self.telemetry_paths)}개 컨테이너 "
+                    print(f"    ✗ {site} robot telemetry is empty.")
+                    print(f"      checked: {len(self.telemetry_paths)} containers "
                           f"({', '.join(self.robot_names)})")
-                    print("      Isaac Sim이 이 MN-CSE에 등록·전송 중인지 보라.")
+                    print("      Check that Isaac Sim is registering/sending to this MN-CSE.")
                     return None
-                print(f"    ⚠ 윈도우 {n}개로 진행한다 (최소 {want_min}개 기대)")
+                print(f"    ⚠ proceeding with {n} windows (expected at least {want_min})")
                 break
 
             if now >= next_log:
-                via = "구독" if self.telemetry_subs else "주기 조회"
+                via = "subscription" if self.telemetry_subs else "polling"
                 # Print the newly received count (+N) as well. If it stays +0, the CSE is
                 # not returning CINs after the cursor; if it is +N but the left number does not
                 # grow, the accumulating side is wrong. The logs alone tell them apart.
-                print(f"    [{self.node_name}] ⏳ 윈도우 {n}/{want_min} 수집 중 "
-                      f"(직전 +{n_fresh}, 조회누계 {n_fetched}, "
-                      f"{n_polls}회, {via}, 남은 {deadline - now:.0f}s)")
+                print(f"    [{self.node_name}] ⏳ collecting windows {n}/{want_min} "
+                      f"(last +{n_fresh}, fetched total {n_fetched}, "
+                      f"{n_polls} polls, {via}, {deadline - now:.0f}s left)")
                 next_log = now + 5.0
 
             # If subscriptions are in place, wait until a notification wakes us.
@@ -1273,40 +1273,40 @@ class MNAETrainer:
             # finds no normal segment and returns SKIP_ROUND, the windows just taken
             # would vanish. They are moved outside once the round is established.
             self._pending_leftover = leftover
-            print(f"    [{self.node_name}] ⓘ 시간순 {before}개 중 앞 "
-                  f"{len(got['signals'])}개 사용, "
-                  f"{len(leftover['signals'])}개는 다음 라운드로")
+            print(f"    [{self.node_name}] ⓘ using the first "
+                  f"{len(got['signals'])} of {before} by time, "
+                  f"{len(leftover['signals'])} carried to next round")
         else:
             got = amr_ingest.sort_by_time(got)
             self._pending_leftover = None
 
         if self.telemetry_subs:
-            print(f"    [{self.node_name}] ⓘ 이번 수집까지 받은 알림 "
-                  f"{self.data_notifications}건 "
-                  f"(구독 {len(self.telemetry_subs)}개)")
+            print(f"    [{self.node_name}] ⓘ notifications received so far: "
+                  f"{self.data_notifications} "
+                  f"({len(self.telemetry_subs)} subscriptions)")
 
         robots_seen = sorted(set(got["robot"].tolist()))
-        print(f"    [{self.node_name}] ✓ 윈도우 {len(got['signals'])}개 "
-              f"/ 로봇 {len(robots_seen)}대 "
-              f"(CIN {got['n_raw']}개"
-              f"{', 증분' if incremental else ', 최근 N개'})")
+        print(f"    [{self.node_name}] ✓ {len(got['signals'])} windows "
+              f"/ {len(robots_seen)} robots "
+              f"({got['n_raw']} CINs"
+              f"{', incremental' if incremental else ', latest N'})")
         if len(robots_seen) < len(self.robot_names):
             missing = [r for r in self.robot_names if r not in robots_seen]
-            print(f"    ⚠ 데이터가 없는 로봇: {', '.join(missing)}")
+            print(f"    ⚠ robots with no data: {', '.join(missing)}")
 
         # Per-robot shares are not forced to match. Reflecting actual driving volume as is
         # is correct. But if one robot hogs the round, that round learns only that robot's route,
         # so it is printed to help find the cause if the loss looks odd later.
         counts = amr_ingest.robot_counts(got)
         if counts:
-            print(f"    [{self.node_name}] ⓘ 로봇별: "
+            print(f"    [{self.node_name}] ⓘ per robot: "
                   + "  ".join(f"{r.split('_')[-1]}={c}"
                               for r, c in sorted(counts.items())))
 
         gaps = amr_ingest.seq_gaps(got)
         if gaps:
-            print(f"    [{self.node_name}] ⚠ 윈도우 유실(seq 기준): "
-                  + "  ".join(f"{r.split('_')[-1]}={n}개"
+            print(f"    [{self.node_name}] ⚠ windows lost (by seq): "
+                  + "  ".join(f"{r.split('_')[-1]}={n}"
                               for r, n in sorted(gaps.items())))
 
         return self._build_round_data_from_cse(got, round_num)
@@ -1318,7 +1318,7 @@ class MNAETrainer:
         """
         path = config.DATA_PATHS.get(self.node_name)
         if not path or not os.path.exists(path):
-            print(f"    ✗ pkl 없음: {path}")
+            print(f"    ✗ pkl not found: {path}")
             return None
 
         with open(path, "rb") as f:
@@ -1327,7 +1327,7 @@ class MNAETrainer:
         train_sigs = data_dict.get("train_signals", np.array([]))
         total = len(train_sigs)
         if total == 0:
-            print("    ✗ pkl에 train_signals가 없다")
+            print("    ✗ pkl has no train_signals")
             return None
 
         if config.GLOBAL_ROUNDS > 1:
@@ -1349,8 +1349,8 @@ class MNAETrainer:
         data_dict["round_end_idx"] = int(end)
         data_dict["sensor_meta"] = {"source": "pkl", "round": int(round_num)}
 
-        print(f"    ✓ pkl 폴백 [{start}:{end}] "
-              f"({end - start}/{total} 윈도우)")
+        print(f"    ✓ pkl fallback [{start}:{end}] "
+              f"({end - start}/{total} windows)")
         return data_dict
 
 
@@ -1446,22 +1446,22 @@ class MNAETrainer:
             flagged = scores > thr
             self.last_windows["pre_scores"] = scores
             self.last_windows["pre_threshold"] = thr
-            print(f"      ◦ 학습 전 판정: 직전 판정기로 {int(flagged.sum())}/"
-                  f"{len(flagged)}창이 임계 {thr:.2f} 초과 "
-                  f"(최대 {float(scores.max()):.2f})")
+            print(f"      ◦ pre-train check: previous judge flags {int(flagged.sum())}/"
+                  f"{len(flagged)} windows above threshold {thr:.2f} "
+                  f"(max {float(scores.max()):.2f})")
             # Excluded from training only after the reference is frozen. Before that the scorer itself
             # is not settled yet and could wrongly exclude normal data.
             if self._calib_frozen and EXCLUDE_FLAGGED and flagged.any():
                 rest = train_mask & ~flagged
                 if int(rest.sum()) >= 8:
                     train_mask = rest
-                    print(f"      ◦ 임계 초과 {int(flagged.sum())}창은 이번 학습에서 뺀다")
+                    print(f"      ◦ excluding {int(flagged.sum())} over-threshold windows from this training")
                 else:
                     # If nearly all of them cross, nothing is left to train on after exclusion. Then
                     # the round is SKIPped, the same windows come back, and it stalls.
                     # Train this round as is (the reference is frozen, so it does not move).
-                    print(f"      ⚠ {int(flagged.sum())}/{len(flagged)}창이 임계 초과 — "
-                          f"빼면 학습할 창이 모자라 이번엔 빼지 않는다")
+                    print(f"      ⚠ {int(flagged.sum())}/{len(flagged)} windows over threshold — "
+                          f"too few left if excluded, so keeping them this time")
 
         # ── Normal reference windows ─────────────────────
         if not self._calib_frozen:
@@ -1473,20 +1473,20 @@ class MNAETrainer:
                 self._calib_frozen = True
                 self._calib_frozen_round = round_num
                 n_ref = sum(len(a) for a in self._calib_X)
-                print(f"      ◦ 정상 기준 창 고정 (R{round_num}, {n_ref}창). "
-                      f"이후 기준·임계값은 이 창으로만 잡는다")
+                print(f"      ◦ normal reference windows fixed (R{round_num}, {n_ref} windows). "
+                      f"Later baseline/threshold use only these")
         calib_X = (np.concatenate(self._calib_X) if self._calib_X else None)
         calib_C = (np.concatenate(self._calib_C) if self._calib_C else None)
 
         n_train = int(train_mask.sum())
         n_label_anom = int((~label_ok).sum())
 
-        print(f"      이동 {len(Xn)}개 중 학습 대상 {n_train}개 "
-              f"(라벨 이상 {n_label_anom}개"
-              f"{', 학습에서 제외' if use_label else ', 학습에 포함'})")
+        print(f"      {n_train} of {len(Xn)} moving windows for training "
+              f"({n_label_anom} labeled anomalous"
+              f"{', excluded' if use_label else ', included'})")
 
         if n_train == 0:
-            print("      ✗ 학습에 쓸 윈도우가 없다. 이 라운드는 학습하지 않는다.")
+            print("      ✗ No windows to train on. Skipping training this round.")
             return SKIP_ROUND
 
         return {
@@ -1514,7 +1514,7 @@ class MNAETrainer:
         try:
             return np.asarray(det.compute_anomaly_scores(Xn, C)), float(thr)
         except Exception as e:
-            print(f"      ⚠ 학습 전 판정 실패(학습은 계속): {e}")
+            print(f"      ⚠ pre-train check failed (training continues): {e}")
             return None
 
     def _build_ae_node_from_data_dict(self, data_dict: dict) -> AEEdgeNode | None:
@@ -1528,7 +1528,7 @@ class MNAETrainer:
         val_labels = data_dict.get("val_labels")
 
         if train_sigs is None or len(train_sigs) == 0:
-            print(f"    ✗ train_signals 없음")
+            print(f"    ✗ no train_signals")
             return None
 
         if val_sigs is None:
@@ -1538,7 +1538,7 @@ class MNAETrainer:
         # Anomalous node simulation (for testing)
         if self.inject_anomaly:
             noise_scale = 2.0  # Small, since it is relative to the normalized signal
-            print(f"  ⚠ [ANOMALY] 센서 데이터 노이즈 주입 (scale={noise_scale})")
+            print(f"  ⚠ [ANOMALY] injecting noise into sensor data (scale={noise_scale})")
             train_sigs = train_sigs + np.random.randn(*train_sigs.shape).astype(
                 np.float32
             ) * noise_scale
@@ -1791,7 +1791,7 @@ class MNAETrainer:
             )
         except Exception as e:
             print(
-                f"    ⚠ con 가중치 복원 실패 "
+                f"    ⚠ failed to restore weights from con "
                 f"({type(e).__name__}: {e})"
             )
 
@@ -1800,10 +1800,10 @@ class MNAETrainer:
                 torch.save(state_dict, dst_path)
                 print("    ↓ global weights from con(base64)")
             except Exception as e:
-                print(f"    ⚠ 캐시 저장 실패: {e}")
+                print(f"    ⚠ cache save failed: {e}")
                 return None
         else:
-            print("    ✗ con 에 글로벌 가중치가 없음")
+            print("    ✗ no global weights in con")
             return None
 
         self._write_cache_meta(
@@ -1855,7 +1855,7 @@ class MNAETrainer:
             )
             if not res:
                 print(
-                    f"    ✗ 가중치 조각 {i + 1}/{len(chunks)} 업로드 실패"
+                    f"    ✗ weight chunk {i + 1}/{len(chunks)} upload failed"
                 )
                 return None
 
@@ -1923,7 +1923,7 @@ class MNAETrainer:
             try:
                 scores = node.compute_anomaly_scores(w["X"], w["C"])
             except Exception as e:
-                print(f"    ⚠ 윈도우 점수 계산 실패(업로드는 계속): {e}")
+                print(f"    ⚠ window score computation failed (upload continues): {e}")
                 return {}
             thr = getattr(node, "threshold", None)
         labels = w.get("labels")
@@ -1962,7 +1962,7 @@ class MNAETrainer:
             labels=[f"round_{round_num}", "window-scores"],
         )
         if not res:
-            print(f"  ⚠ {config.WINDOW_SCORES_CNT} 기록 실패")
+            print(f"  ⚠ {config.WINDOW_SCORES_CNT} write failed")
 
     def _record_net_status(self, round_num: int) -> None:
         """
@@ -1972,23 +1972,23 @@ class MNAETrainer:
         try:
             snap = self.mec.link_snapshot(round_num)
         except Exception as e:
-            print(f"  ⚠ {self.node_name}: MEC 링크·위치 조회 실패 — {e}")
+            print(f"  ⚠ {self.node_name}: MEC link/location lookup failed — {e}")
             return
         if not snap:
             return
         bad = [r.get("ae") for r in snap["robots"]
                if r.get("verdict") in ("DEGRADED", "LOST")]
         zones = sorted({str(r["zone"]) for r in snap["robots"] if r.get("zone")})
-        print(f"  ◦ MEC 링크·위치 ({'+'.join(snap['sources'])}): "
+        print(f"  ◦ MEC link/location ({'+'.join(snap['sources'])}): "
               f"{snap['summary'] or '-'}"
-              + (f"  나쁨 {', '.join(bad)}" if bad else "")
+              + (f"  bad {', '.join(bad)}" if bad else "")
               + (f"  zone {', '.join(zones)}" if zones else ""))
         res = om2m.create_content_instance(
             self.net_status_path, snap,
             labels=[f"round_{round_num}", "net-status"],
         )
         if not res:
-            print(f"  ⚠ cnt-net-status 기록 실패")
+            print(f"  ⚠ cnt-net-status write failed")
 
     def _publish_verdicts(self, round_num: int,
                           model_uri: str = None) -> int:
@@ -2010,7 +2010,7 @@ class MNAETrainer:
         # verdicts issued then have no basis, right or wrong.
         start = int(getattr(config, "VERDICT_START_ROUND", 1))
         if round_num < start:
-            print(f"  · 판정 보류 — R{round_num} < R{start} "
+            print(f"  · verdict deferred — R{round_num} < R{start} "
                   f"(FL_VERDICT_START_ROUND)")
             return 0
 
@@ -2021,7 +2021,7 @@ class MNAETrainer:
         # Use only scores assigned before training by the previous scorer. Scoring the same windows with the model
         # trained this round lets anomalies be absorbed into training and suppresses the scores.
         if w.get("pre_scores") is None:
-            print("  · 판정 보류 — 직전 라운드 판정기가 없다")
+            print("  · verdict deferred — no previous-round judge")
             return 0
         scores = w["pre_scores"]
         threshold = w["pre_threshold"]
@@ -2043,7 +2043,7 @@ class MNAETrainer:
                         else None),
             )
         except Exception as e:
-            print(f"  ⚠ {self.node_name}: 판정 실패 — {e}")
+            print(f"  ⚠ {self.node_name}: verdict failed — {e}")
             return 0
 
     def _upload_inference_result(
@@ -2090,7 +2090,7 @@ class MNAETrainer:
             print(
                 f"  [{self.node_name}] ✓ inference result -> "
                 f"{self.dropbox_cnt_path} "
-                f"(round {round_num}, 가중치 없음)"
+                f"(round {round_num}, no weights)"
             )
 
         return result
@@ -2143,19 +2143,19 @@ class MNAETrainer:
                     )
                 else:
                     print(
-                        "    ⚠ 조각 업로드 실패 "
-                        "-> 이번 라운드 집계에서 빠진다"
+                        "    ⚠ chunk upload failed "
+                        "-> excluded from this round's aggregation"
                     )
             else:
                 print(
                     f"    ⚠ weights {enc['weights_bytes'] / 1024:.0f}KB "
-                    f"> limit {limit / 1024:.0f}KB, 조각 전송 꺼짐 "
-                    f"-> 이번 라운드 집계에서 빠진다"
+                    f"> limit {limit / 1024:.0f}KB, chunked upload disabled "
+                    f"-> excluded from this round's aggregation"
                 )
         except Exception as exc:
             print(
-                f"    ⚠ weight embedding 실패 ({type(exc).__name__}: {exc}) "
-                f"-> 이번 라운드 집계에서 빠진다"
+                f"    ⚠ weight embedding failed ({type(exc).__name__}: {exc}) "
+                f"-> excluded from this round's aggregation"
             )
 
         result = om2m.create_content_instance(
@@ -2175,10 +2175,10 @@ class MNAETrainer:
     # Main loop
     # ---------------------------
     def run(self):
-        print(f"\n=== {self.node_name.upper()} Trainer start (AE 버전) ===")
+        print(f"\n=== {self.node_name.upper()} Trainer start (AE version) ===")
         print(f"  AE:           {self.ae_name}")
-        print(f"  telemetry:    {len(self.telemetry_paths)}개 컨테이너 "
-              f"({'라벨 디스커버리' if self.telemetry_discovered else '경로 조립'})")
+        print(f"  telemetry:    {len(self.telemetry_paths)} containers "
+              f"({'label discovery' if self.telemetry_discovered else 'path assembly'})")
         # Printing only the name cannot show whether the wrong container (status, our AE's container)
         # was picked. Print the full path.
         for _p in self.telemetry_paths:
@@ -2189,16 +2189,16 @@ class MNAETrainer:
         print(f"  drop-box:     {self.dropbox_cnt_path}")
         if self.is_cold_start:
             print(
-                "  ❄ 관측 전용: 학습하지 않음 "
-                "(글로벌 모델 수신 → 추론만 → 가중치 미전송)"
+                "  ❄ observe-only: no training "
+                "(receive global model → inference only → no weight upload)"
             )
         elif self.is_local_only:
             print(
-                "  ◐ 로컬 전용: 자기 데이터로 학습하되 FedAvg에 기여하지 않음 "
-                "(글로벌 모델 수신 → 로컬 보정 → 가중치 미전송)"
+                "  ◐ local-only: trains on own data but does not contribute to FedAvg "
+                "(receive global model → local fine-tune → no weight upload)"
             )
         if self.inject_anomaly:
-            print("  ⚠ ANOMALY MODE: 센서 데이터에 노이즈 주입 예정")
+            print("  ⚠ ANOMALY MODE: noise will be injected into sensor data")
 
         self.start_server()
 
@@ -2209,7 +2209,7 @@ class MNAETrainer:
         self._ensure_local_model_container()
 
         if not self._wait_for_robots():
-            print(f"  ✗ {self.node_name}: 로봇 텔레메트리 없이는 학습할 수 없다")
+            print(f"  ✗ {self.node_name}: cannot train without robot telemetry")
             return
 
         # Subscribe after the robots come up. You cannot subscribe to a container that does not exist.
@@ -2219,7 +2219,7 @@ class MNAETrainer:
         try:
             self.mec.start()
         except Exception as e:
-            print(f"  ⚠ {self.node_name}: MEC 기동 실패(계속 진행) — {e}")
+            print(f"  ⚠ {self.node_name}: MEC startup failed (continuing) — {e}")
 
         # Use the accumulated telemetry from the beginning (default).
         # Set a boundary with FL_SENSOR_BACKLOG_SEC only when stale data is mixed in.
@@ -2264,8 +2264,8 @@ class MNAETrainer:
                 # Normally _load_sensor_data_for_round waits until data accumulates,
                 # so it does not get here.
                 print(
-                    f"  ⊘ Round {round_num}: 학습 가능한 정상 구간이 없어 "
-                    f"이번 라운드는 빠진다 ({self.node_name})"
+                    f"  ⊘ Round {round_num}: no trainable normal segment, "
+                    f"skipping this round ({self.node_name})"
                 )
                 continue
 
@@ -2364,7 +2364,7 @@ class MNAETrainer:
                 # compute only the threshold/AUROC, and upload without weights.
                 print(
                     f"  [{self.node_name}] Round {round_num} "
-                    f"COLD START — 학습 없음, 글로벌 모델로 추론만"
+                    f"COLD START — no training, inference with global model only"
                 )
 
                 val_loss, val_auroc = self.edge_node._evaluate_val()
@@ -2400,7 +2400,7 @@ class MNAETrainer:
             else:
                 print(
                     f"  [{self.node_name}] Round {round_num} training..."
-                    f" {security_mode} (DP 비활성)"
+                    f" {security_mode} (DP disabled)"
                 )
                 dp_epsilon = None
 
@@ -2442,8 +2442,8 @@ class MNAETrainer:
                 # This is the site that receives the shared model and fine-tunes it on its own data.
                 # The center excludes this node from FedAvg and from the aggregation wait.
                 print(
-                    f"  [{self.node_name}] ◐ 로컬 전용: 가중치 미전송 "
-                    f"(지표만 보고, 임계값={self.edge_node.threshold})"
+                    f"  [{self.node_name}] ◐ local-only: no weight upload "
+                    f"(metrics only, threshold={self.edge_node.threshold})"
                 )
                 upload_result = self._upload_inference_result(
                     round_num=round_num,

@@ -72,7 +72,7 @@ def load(path: Optional[str] = None):
         C = z["cond"].astype(np.float32)
         Y = z["labels"].astype(np.int64)
     except Exception as e:
-        print(f"  ⚠ 검증셋 로드 실패 ({p}): {e}")
+        print(f"  ⚠ valset load failed ({p}): {e}")
         return None
 
     # Pad the condition width if it is short.
@@ -90,14 +90,14 @@ def load(path: Optional[str] = None):
         if pad.shape[1] >= 1:
             pad[:, 0] = 1.0            # LOAD_STATES[0] == "empty"
         C = np.concatenate([C, pad], axis=1)
-        print(f"  · 검증셋 조건 폭을 {C.shape[1] - pad.shape[1]} -> {want} 로 "
-              f"채웠다 (빈 차 기준). 새로 뜨면 이 줄은 사라진다.")
+        print(f"  · valset cond width padded {C.shape[1] - pad.shape[1]} -> {want} "
+              f"(as empty load). Regenerate the valset to drop this line.")
     elif C.shape[1] > want:
-        print(f"  ⚠ 검증셋 조건 폭 {C.shape[1]} > 모델 {want}. 앞쪽만 쓴다.")
+        print(f"  ⚠ valset cond width {C.shape[1]} > model {want}. Using leading columns only.")
         C = C[:, :want]
 
     if len(X) == 0 or len(np.unique(Y)) < 2:
-        print(f"  ⚠ 검증셋이 비었거나 한 클래스뿐이다 ({p})")
+        print(f"  ⚠ valset is empty or has only one class ({p})")
         return None
 
     # Standardize with the validation set's own statistics. Labels are not used.
@@ -120,8 +120,8 @@ def load(path: Optional[str] = None):
         "fault_type": ft,
         "path": p,
     }
-    print(f"  ✓ 검증셋 {len(Y)}개 "
-          f"(정상 {int((Y == 0).sum())} / 이상 {int((Y == 1).sum())}) "
+    print(f"  ✓ valset {len(Y)} windows "
+          f"(normal {int((Y == 0).sum())} / anomaly {int((Y == 1).sum())}) "
           f"<- {os.path.basename(p)}")
     return _cache
 
@@ -243,7 +243,7 @@ def evaluate(model_path: str, n_sigma: float = None) -> Optional[dict]:
         model.load_state_dict(torch.load(model_path, map_location="cpu"))
         model.eval()
     except Exception as e:
-        print(f"  ⚠ 검증용 모델 로드 실패: {e}")
+        print(f"  ⚠ validation model load failed: {e}")
         return None
 
     X, C, y = ds["X"], ds["C"], ds["y"]
@@ -335,12 +335,12 @@ def summary_line(m: dict) -> str:
             for k, v in sorted(m["by_fault"].items())) + "]"
     base = ""
     if m.get("baseline_auroc") is not None:
-        base = (f"  | 모델없음 {m['baseline_auroc']:.4f} "
+        base = (f"  | no-model {m['baseline_auroc']:.4f} "
                 f"(Δ{m['delta_vs_baseline']:+.4f})")
     return (f"AUROC {m['auroc']:.4f}  "
-            f"탐지 {m['detected']}/{m['n_anomaly']}  "
-            f"오경보 {m['false_alarms']}/{m['n_normal']}  "
-            f"정상 {m['mean_normal']:.3f} vs 이상 {m['mean_anomaly']:.3f}  "
+            f"detected {m['detected']}/{m['n_anomaly']}  "
+            f"false alarms {m['false_alarms']}/{m['n_normal']}  "
+            f"normal {m['mean_normal']:.3f} vs anomaly {m['mean_anomaly']:.3f}  "
             f"thr {m['threshold']:.3f}"
-            f"(평균+{config.THRESHOLD_N_SIGMA:g}σ {m['threshold_mean3s']:.3f} -> "
+            f"(mean+{config.THRESHOLD_N_SIGMA:g}σ {m['threshold_mean3s']:.3f} -> "
             f"{m['detected_mean3s']}/{m['false_alarms_mean3s']})" + tail + base)

@@ -22,7 +22,7 @@ def show(tag, url):
     try:
         r, js = get(url)
     except Exception as e:
-        print(f"    연결 실패: {e}")
+        print(f"    connection failed: {e}")
         return None, {}
     print(f"    HTTP {r.status_code}  RSC {r.headers.get('X-M2M-RSC')}  "
           f"Server {r.headers.get('Server')}")
@@ -40,11 +40,11 @@ for node in ("mn1", "mn2"):
     print(f"    csi = {csi[node]}")
 
 if not csi["mn1"]:
-    sys.exit("\nmn1 CSEBase 를 못 읽었다. 시나리오가 떠 있는지, 주소가 맞는지 먼저 확인.")
+    sys.exit("\nCould not read mn1 CSEBase. First check that the scenario is up and the address is correct.")
 
 # 2) remoteCSE held by mn1 (IN-CSE registration)
 base_a, cse_a = ep["mn1"]
-_, js = show("mn1 remoteCSE 목록", f"{base_a}/{cse_a}?fu=1&ty=16")
+_, js = show("mn1 remoteCSE list", f"{base_a}/{cse_a}?fu=1&ty=16")
 uril = js.get("m2m:uril") or []
 if isinstance(uril, str):
     uril = uril.split()
@@ -58,13 +58,13 @@ for u in uril:
 
 # 3) Test 1: MN-a → IN (registrar)
 if in_cb:
-    show("테스트1 MN-a → IN", f"{base_a}/~{in_cb}")
+    show("Test1 MN-a → IN", f"{base_a}/~{in_cb}")
 else:
-    print("\nremoteCSE 가 안 보여서 테스트1 생략")
+    print("\nremoteCSE not visible, skipping Test1")
 
 # 4) Test 2: MN-a → (via IN) MN-b
 if csi["mn2"]:
-    show("테스트2 MN-a → MN-b", f"{base_a}/~{csi['mn2']}/{ep['mn2'][1]}")
+    show("Test2 MN-a → MN-b", f"{base_a}/~{csi['mn2']}/{ep['mn2'][1]}")
 
 if csi["mn1"] == csi["mn2"]:
-    print("\n주의: mep-a 와 mep-b MN-CSE 의 CSE-ID 가 같다. CSE 간 라우팅이 성립하지 않는다.")
+    print("\nWarning: mep-a and mep-b MN-CSE have the same CSE-ID. Inter-CSE routing will not work.")

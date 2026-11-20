@@ -52,7 +52,7 @@ class Aggregator:
         self.weighting = (weighting or WEIGHTING).lower()
         if self.weighting not in ("uniform", "samples"):
             raise ValueError(
-                f"FL_AGG_WEIGHTING 은 uniform 또는 samples 여야 한다: "
+                f"FL_AGG_WEIGHTING must be uniform or samples: "
                 f"{self.weighting}"
             )
 
@@ -73,7 +73,7 @@ class Aggregator:
         active = [1.0 if c > 0 else 0.0 for c in counts]
         total = sum(active)
         if total == 0:
-            raise ValueError("학습한 노드가 하나도 없다")
+            raise ValueError("no node has trained")
         return [a / total for a in active]
 
     def aggregate(
@@ -119,8 +119,8 @@ class Aggregator:
         try:
             weights = self._weights(counts)
         except ValueError as e:
-            return f"집계 불가: {e}"
+            return f"cannot aggregate: {e}"
         parts = [f"n={c} w={w:.3f}" for c, w in zip(counts, weights)]
-        label = ("사업장 균등" if self.weighting == "uniform"
-                 else "샘플 수 비례")
+        label = ("uniform per site" if self.weighting == "uniform"
+                 else "proportional to samples")
         return f"{label}  " + "  ".join(parts)

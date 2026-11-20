@@ -78,10 +78,10 @@ def _post_event(event_type: str, body: dict) -> bool:
                           verify=config.TLS_VERIFY,
                           headers={"Content-Type": "application/json"})
     except Exception as e:
-        print(f"  ✗ 샌드박스 이벤트 {event_type}: {e}")
+        print(f"  ✗ sandbox event {event_type}: {e}")
         return False
     if r.status_code not in (200, 201, 204):
-        print(f"  ✗ 샌드박스 이벤트 {event_type}: "
+        print(f"  ✗ sandbox event {event_type}: "
               f"HTTP {r.status_code} {r.text[:160]}")
         return False
     return True
@@ -96,7 +96,7 @@ def handover(ue_name: str, dest_poa: str) -> bool:
         "type": "MOBILITY",
         "eventMobility": {"elementName": ue_name, "dest": dest_poa},
     })
-    print(f"  {'✓' if ok else '✗'} 핸드오버 {ue_name} → {dest_poa}")
+    print(f"  {'✓' if ok else '✗'} handover {ue_name} → {dest_poa}")
     return ok
 
 
@@ -107,7 +107,7 @@ def disconnect(ue_name: str) -> bool:
         "type": "MOBILITY",
         "eventMobility": {"elementName": ue_name, "dest": "DISCONNECTED"},
     })
-    print(f"  {'✓' if ok else '✗'} 링크 차단 {ue_name}")
+    print(f"  {'✓' if ok else '✗'} link cut {ue_name}")
     return ok
 
 
@@ -136,16 +136,16 @@ def degrade_poa(poa_name: str,
     """Degrade AP quality. Starting point of scenario 2."""
     nc = netchar or POA_NETCHAR_DEGRADED
     ok = set_poa_netchar(poa_name, nc)
-    print(f"  {'✓' if ok else '✗'} AP 품질 저하 {poa_name}  "
-          f"지연 {nc['latency']}ms, 손실 {nc['packetLoss']}%, "
-          f"상향 {nc['throughputUl']}Mbps")
+    print(f"  {'✓' if ok else '✗'} AP degraded {poa_name}  "
+          f"latency {nc['latency']}ms, loss {nc['packetLoss']}%, "
+          f"uplink {nc['throughputUl']}Mbps")
     return ok
 
 
 def restore_poa(poa_name: str) -> bool:
     """Restore AP quality to normal."""
     ok = set_poa_netchar(poa_name, POA_NETCHAR_NORMAL)
-    print(f"  {'✓' if ok else '✗'} AP 품질 복구 {poa_name}")
+    print(f"  {'✓' if ok else '✗'} AP restored {poa_name}")
     return ok
 
 

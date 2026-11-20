@@ -128,12 +128,12 @@ def create_channel(ae_path: str, aei: str,
             timeout=10,
         )
     except Exception as e:
-        print(f"  ✗ pollingChannel 생성 오류: {e}")
+        print(f"  ✗ pollingChannel creation error: {e}")
         return None
 
     if r.status_code in (201, 409):
         return name
-    print(f"  ✗ pollingChannel 생성 실패: {r.status_code} {r.text[:160]}")
+    print(f"  ✗ pollingChannel creation failed: {r.status_code} {r.text[:160]}")
     return None
 
 
@@ -157,13 +157,13 @@ def set_request_unreachable(ae_path: str, aei: str,
             timeout=10,
         )
     except Exception as e:
-        print(f"  ✗ rr 변경 오류: {e}")
+        print(f"  ✗ rr update error: {e}")
         return False
 
     if r.status_code in (200, 204):
         print(f"  ✓ {om2m.strip_prefix(ae_path)} rr={not unreachable}")
         return True
-    print(f"  ✗ rr 변경 실패: {r.status_code} {r.text[:160]}")
+    print(f"  ✗ rr update failed: {r.status_code} {r.text[:160]}")
     return False
 
 
@@ -184,28 +184,28 @@ def setup(ae_path: str, notify_url: str,
     When the caller gets None, it should assume notifications cannot be received on that path.
     """
     tag = f" ({label})" if label else ""
-    print(f"\n  oneM2M <pollingChannel> 준비{tag}")
-    print(f"    대상: {om2m.strip_prefix(ae_path)}")
+    print(f"\n  oneM2M <pollingChannel> setup{tag}")
+    print(f"    target: {om2m.strip_prefix(ae_path)}")
 
     aei = ae_identity(ae_path)
     if not aei:
-        print(f"    ✗ 이 CSE 에 {om2m.strip_prefix(ae_path)} 가 없다.")
-        print(f"      <pollingChannel> 은 AE 의 자식이라 AE 없이는 만들 수 없다.")
+        print(f"    ✗ {om2m.strip_prefix(ae_path)} does not exist on this CSE.")
+        print(f"      <pollingChannel> is a child of the AE, so it cannot be created without the AE.")
         return None
     print(f"    AE-ID: {aei}")
 
     chan = find_channel(ae_path, aei)
     if chan:
-        print(f"    = 이미 있음: {chan}")
+        print(f"    = already exists: {chan}")
     else:
         chan = create_channel(ae_path, aei, name)
         if not chan:
-            print(f"    ✗ 채널을 확보하지 못했다. rr 은 건드리지 않는다.")
+            print(f"    ✗ Could not obtain the channel. Leaving rr unchanged.")
             return None
-        print(f"    ✓ 생성: {chan}")
+        print(f"    ✓ created: {chan}")
 
     if not set_request_unreachable(ae_path, aei):
-        print(f"    ✗ rr 을 끄지 못했다. CSE 는 계속 직접 호출을 시도한다.")
+        print(f"    ✗ Could not turn rr off. The CSE will keep trying direct calls.")
         return None
 
     recv = PchReceiver(
@@ -234,7 +234,7 @@ def relay_to_local(notify_url: str) -> Callable[[dict], None]:
         try:
             requests.post(notify_url, json=pc, timeout=10)
         except Exception as e:
-            print(f"  ⚠ 로컬 알림 전달 실패 ({notify_url}): {e}")
+            print(f"  ⚠ local notification delivery failed ({notify_url}): {e}")
 
     return _handler
 
@@ -303,7 +303,7 @@ class PchReceiver(threading.Thread):
             )
         except Exception as e:
             self.respond_errors += 1
-            print(f"  ⚠ [{self.origin}] 응답 프리미티브 전송 실패: {e}")
+            print(f"  ⚠ [{self.origin}] response primitive send failed: {e}")
             return
 
         # Always check the status code. Previously only exceptions were caught, so if the CSE
@@ -313,7 +313,7 @@ class PchReceiver(threading.Thread):
         #         BAD_REQUEST if m2m:rsp is missing or fails validation
         if r.status_code not in (200, 201, 204):
             self.respond_errors += 1
-            print(f"  ⚠ [{self.origin}] 응답 프리미티브 거절됨 "
+            print(f"  ⚠ [{self.origin}] response primitive rejected "
                   f"{r.status_code}: {r.text[:200]}")
 
     def _dispatch(self, body: dict) -> None:
@@ -328,16 +328,16 @@ class PchReceiver(threading.Thread):
         rqi = str(rqp.get("rqi") or "")
         if rqi and rqi in self._seen_rqi:
             self.duplicates += 1
-            print(f"  ⚠ [{self.origin}] 같은 알림이 다시 왔다 "
-                  f"(rqi={rqi}, 누적 {self.duplicates}건). "
-                  f"직전 응답이 CSE 에 닿지 않았다는 뜻이다.")
+            print(f"  ⚠ [{self.origin}] same notification arrived again "
+                  f"(rqi={rqi}, total {self.duplicates}). "
+                  f"The previous response did not reach the CSE.")
         elif rqi:
             self._seen_rqi.add(rqi)
 
         try:
             self.handler(pc)
         except Exception as e:
-            print(f"  ⚠ [{self.origin}] 알림 처리 중 오류: {e}")
+            print(f"  ⚠ [{self.origin}] error while handling notification: {e}")
         finally:
             # Send a response even if handling fails. Otherwise the queue gets stuck.
             self._respond(rqp)
@@ -345,7 +345,7 @@ class PchReceiver(threading.Thread):
     # ── Loop ────────────────────────────────────────────
 
     def run(self) -> None:
-        print(f"  ✓ [{self.origin}] pollingChannel 수신 시작 "
+        print(f"  ✓ [{self.origin}] pollingChannel receive started "
               f"({om2m.strip_prefix(self.pcu_path)})")
 
         while not self._stop_evt.is_set():
@@ -358,7 +358,7 @@ class PchReceiver(threading.Thread):
             except Exception as e:
                 self.errors += 1
                 if not self._stop_evt.is_set():
-                    print(f"  ⚠ [{self.origin}] 폴링 오류: {e}")
+                    print(f"  ⚠ [{self.origin}] polling error: {e}")
                     time.sleep(PCH_BACKOFF_SEC)
                 continue
 
@@ -366,7 +366,7 @@ class PchReceiver(threading.Thread):
                 try:
                     self._dispatch(r.json())
                 except json.JSONDecodeError:
-                    print(f"  ⚠ [{self.origin}] 알림 파싱 실패: {r.text[:160]}")
+                    print(f"  ⚠ [{self.origin}] notification parse failed: {r.text[:160]}")
                 continue
 
             if r.status_code == 504:
@@ -374,13 +374,13 @@ class PchReceiver(threading.Thread):
                 continue
 
             self.errors += 1
-            print(f"  ⚠ [{self.origin}] 폴링 응답 {r.status_code}: "
+            print(f"  ⚠ [{self.origin}] polling response {r.status_code}: "
                   f"{r.text[:160]}")
             time.sleep(PCH_BACKOFF_SEC)
 
-        print(f"  [{self.origin}] pollingChannel 수신 종료 "
-              f"(받은 알림 {self.received}개, 중복 {self.duplicates}건, "
-              f"응답 거절 {self.respond_errors}건, 폴링 오류 {self.errors}회)")
+        print(f"  [{self.origin}] pollingChannel receive stopped "
+              f"(notifications {self.received}, duplicates {self.duplicates}, "
+              f"responses rejected {self.respond_errors}, polling errors {self.errors})")
 
 
 def notification_target(ae_id: str) -> str:

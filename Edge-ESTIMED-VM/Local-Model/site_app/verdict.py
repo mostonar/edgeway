@@ -172,7 +172,7 @@ def publish(node_name: str,
                     if mec:
                         payload["mec"] = mec
                 except Exception as e:
-                    print(f"    ⚠ {robot}: MEC 정보 붙이기 실패 — {e}")
+                    print(f"    ⚠ {robot}: failed to attach MEC info — {e}")
             res = om2m.create_content_instance(
                 cnt_path, payload,
                 labels=[robot, "ANOMALY", site],
@@ -180,13 +180,13 @@ def publish(node_name: str,
             )
             if res:
                 total += 1
-                print(f"    ⚠ 판정 {robot}: score={score:.6f} "
-                      f"(임계 {threshold:.6f}, {k}회 연속)")
+                print(f"    ⚠ verdict {robot}: score={score:.6f} "
+                      f"(threshold {threshold:.6f}, {k} in a row)")
                 if ONCE_PER_ROBOT:
                     # First one per robot only. Later onsets in the same round are not uploaded either.
                     _reported.add((node_name, robot))
                     break
 
     if total:
-        print(f"  ✓ 판정 {total}건 -> {om2m.strip_prefix(cnt_path)}")
+        print(f"  ✓ {total} verdicts -> {om2m.strip_prefix(cnt_path)}")
     return total

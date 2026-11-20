@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/fl_env.sh"
 
 if ! INFO="$(fl_site "${1:-}")"; then
-  echo "사용법: bash $0 A|B|C"
+  echo "Usage: bash $0 A|B|C"
   exit 2
 fi
 read -r SITE IDX NODE PORT <<< "$INFO"
@@ -28,7 +28,7 @@ if [ "${FL_STANDALONE:-1}" = "1" ]; then
 fi
 
 if [ ! -f "$JUDGE_AE_DIR/judge_ae.py" ]; then
-  echo "  ✗ $JUDGE_AE_DIR/judge_ae.py 가 없다. JUDGE_AE_DIR 로 지정할 것."
+  echo "  ✗ $JUDGE_AE_DIR/judge_ae.py not found. Set it with JUDGE_AE_DIR."
   exit 1
 fi
 
@@ -44,7 +44,7 @@ print(f"{base}/{cse}", f"{mec_iot.iot_base(config.MEP_OF_NODE[node])}/registered
 PY
 ) || true
 if [ -z "$CSE_URL" ]; then
-  echo "  ✗ 사업장 ${SITE} 의 CSE 주소를 못 만들었다. .env.local 의 FL_SANDBOX_HOST / FL_SANDBOX_NAME 을 확인할 것."
+  echo "  ✗ Could not build the CSE address for site ${SITE}. Check FL_SANDBOX_HOST / FL_SANDBOX_NAME in .env.local."
   exit 1
 fi
 
@@ -53,7 +53,7 @@ case "${FL_TLS_VERIFY:-1}" in 0|false|False) INSECURE=(--insecure) ;; esac
 
 LOG_DIR="$(fl_log_dir)"
 echo
-echo "[판정 ${SITE}] JUDGE-AE-$((IDX + 1)) -> $CSE_URL  로그: $LOG_DIR/judge_${SITE}.log"
+echo "[judge ${SITE}] JUDGE-AE-$((IDX + 1)) -> $CSE_URL  log: $LOG_DIR/judge_${SITE}.log"
 fl_start "$LOG_DIR/judge_${SITE}.log" \
   python3 -u "$JUDGE_AE_DIR/judge_ae.py" --site "$SITE" --cse "$CSE_URL" --iot "$IOT_URL" "${INSECURE[@]}"
 wait

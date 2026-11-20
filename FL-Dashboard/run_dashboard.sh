@@ -24,12 +24,12 @@ fl_require_torch
 
 PORT="${FL_DASHBOARD_PORT:-7000}"
 echo
-echo "[1/2] 지난 실행 정리"
+echo "[1/2] clean up previous run"
 fl_free_ports "$PORT" "dashboard_server.py"
 
 echo
-echo "[2/2] 대시보드 -> http://localhost:${PORT}"
+echo "[2/2] dashboard -> http://localhost:${PORT}"
 LOG_DIR="$(fl_log_dir)"
-echo "  로그: $LOG_DIR/dashboard.log"
+echo "  log: $LOG_DIR/dashboard.log"
 fl_start "$LOG_DIR/dashboard.log" python3 -u dashboard_server.py
 wait

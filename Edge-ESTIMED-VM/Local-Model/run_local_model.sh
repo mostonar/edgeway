@@ -33,7 +33,7 @@ JUDGE_SITES="${JUDGE_SITES-A,B,C}"
 [ "$FROM_CSE" = "0" ] && JUDGE_SITES=""
 
 echo
-echo "[1/5] 지난 실행 정리"
+echo "[1/5] Clean up previous run"
 # Only stop existing judge_ae processes when this script launches the judge apps.
 # (If JUDGE_SITES is empty, judge apps someone else launched separately are left alone)
 if [ -n "$JUDGE_SITES" ]; then
@@ -45,32 +45,32 @@ if [ "${FL_RESET_ON_START:-1}" = "1" ]; then
   BASE="${FL_MODEL_BASE_DIR:-/tmp/fl_models}"
   rm -rf "$BASE/local" "$BASE/cache"
   mkdir -p "$BASE/local" "$BASE/cache"
-  echo "  ✓ 로컬 모델/캐시 비움: $BASE"
+  echo "  ✓ cleared local model/cache: $BASE"
 fi
 
 if [ "$FROM_CSE" = "0" ]; then
   echo
-  echo "[2/5] 오프라인 모드: pkl 준비 (AMR_DATA 의 telemetry.json)"
+  echo "[2/5] Offline mode: prepare pkl (telemetry.json in AMR_DATA)"
   python3 prepare_data_amr.py
   echo
-  echo "[3/5] 로봇 대기 — 오프라인 모드라 건너뛴다"
+  echo "[3/5] Wait for robots — skipped in offline mode"
 else
   fl_warn_notify_host
   echo
-  echo "[2/5] MN-CSE 리소스 확인"
+  echo "[2/5] Check MN-CSE resources"
   # Only our resources are checked (TRAINING-AE-i, ANALYSIS-AE-i, containers, ACPs).
   # Robot AEs are owned by Isaac, so missing ones do not count as failures.
   if ! python3 setup_resources_standard.py --scope mn --verify; then
     echo
-    echo "  리소스가 빠져 있다. 먼저 생성한다."
+    echo "  Resources are missing. Creating them first."
     python3 setup_resources_standard.py --scope mn
   fi
   echo
-  echo "[3/5] Isaac Sim 로봇 대기 (사업장당 최소 ${FL_MIN_ROBOTS_PER_SITE:-1}대)"
+  echo "[3/5] Wait for Isaac Sim robots (at least ${FL_MIN_ROBOTS_PER_SITE:-1} per site)"
   if ! python3 setup_resources_standard.py --scope mn --wait-robots; then
     echo
-    echo "  ⚠ 로봇이 다 준비되지 않았다. 그래도 진행한다."
-    echo "    (뒤늦게 올라온 로봇은 그 라운드부터 포함된다)"
+    echo "  ⚠ Not all robots are ready. Continuing anyway."
+    echo "    (late robots are included from that round on)"
   fi
 fi
 
@@ -78,16 +78,16 @@ export FL_STANDALONE=0
 export FL_LOG_DIR="$(fl_log_dir)"
 
 echo
-echo "[4/5] 사업장 앱 3개"
+echo "[4/5] 3 site apps"
 for s in A B C; do
   bash "$HERE/run_site_app.sh" "$s" &
   FL_PIDS+=("$!")
 done
 
 echo
-echo "[5/5] 판정 앱"
+echo "[5/5] Judge apps"
 if [ -z "$JUDGE_SITES" ]; then
-  echo "  띄우지 않는다 (JUDGE_SITES 가 비었거나 오프라인 모드)."
+  echo "  not started (JUDGE_SITES is empty or offline mode)."
 else
   for s in ${JUDGE_SITES//,/ }; do
     bash "$HERE/run_judge.sh" "$s" &
@@ -98,7 +98,7 @@ fi
 sleep 2
 echo
 echo "============================================================"
-echo "  전부 기동됨. 로그: $FL_LOG_DIR/"
-echo "  Ctrl+C 로 전체 종료"
+echo "  All started. Logs: $FL_LOG_DIR/"
+echo "  Ctrl+C to stop all"
 echo "============================================================"
 wait

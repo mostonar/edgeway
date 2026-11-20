@@ -5,11 +5,11 @@
   const section = document.createElement('section');
   section.className = 'settings-section';
   section.setAttribute('aria-labelledby', 'factory-c-address-title');
-  section.innerHTML = `<div class="section-title"><div><p class="step-label">Factory C</p><h2 id="factory-c-address-title">공장 C 연결 주소</h2></div></div>
-    <p class="hint">C-1·C-2의 상태·좌표 조회와 오류 해제 명령에 같은 주소를 사용합니다.</p>
-    <form id="factory-c-address-form"><label>연결 대상<select id="factory-c-address-select" disabled></select></label>
-    <p id="factory-c-address-url" class="mono"></p><div class="button-row"><button id="factory-c-address-save" class="primary" type="submit" disabled>선택한 주소 적용</button><button id="factory-c-address-reload" class="secondary" type="button">저장값 다시 보기</button></div></form>
-    <p id="factory-c-address-feedback" class="hint" role="status" aria-live="polite">연결 주소를 불러오는 중입니다.</p>`;
+  section.innerHTML = `<div class="section-title"><div><p class="step-label">Factory C</p><h2 id="factory-c-address-title">Factory C connection URL</h2></div></div>
+    <p class="hint">C-1 and C-2 status/position queries and error release commands use the same URL.</p>
+    <form id="factory-c-address-form"><label>Target<select id="factory-c-address-select" disabled></select></label>
+    <p id="factory-c-address-url" class="mono"></p><div class="button-row"><button id="factory-c-address-save" class="primary" type="submit" disabled>Apply selected URL</button><button id="factory-c-address-reload" class="secondary" type="button">Reload saved value</button></div></form>
+    <p id="factory-c-address-feedback" class="hint" role="status" aria-live="polite">Loading connection URL...</p>`;
   const connectionCard = main.querySelector('.connection-card');
   if (connectionCard) connectionCard.after(section); else main.prepend(section);
   const select = section.querySelector('select'), button = section.querySelector('button[type="submit"]');
@@ -28,7 +28,7 @@
       headers: method === 'PUT' ? {'Content-Type':'application/json','X-EdgeWay-CSRF':current.csrf} : {},
       ...(body ? {body:JSON.stringify(body)} : {})});
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || '주소를 저장하지 못했습니다.');
+    if (!response.ok) throw new Error(data.error || 'Could not save the URL.');
     return data;
   }
   function accept(data) {
@@ -39,11 +39,11 @@
   }
   async function load() {
     busy = true; render();
-    try { accept(await request('GET')); feedback.textContent = '현재 저장된 주소입니다. 다른 주소를 선택한 뒤 적용하세요.'; }
+    try { accept(await request('GET')); feedback.textContent = 'This is the saved URL. Select another URL and apply to change it.'; }
     catch (error) { feedback.textContent = error.message; }
     finally { busy = false; render(); }
   }
-  select.addEventListener('change', () => { dirty = true; render(); feedback.textContent = '아직 적용하지 않았습니다. 조회·명령 주소를 함께 바꾸려면 적용하세요.'; });
+  select.addEventListener('change', () => { dirty = true; render(); feedback.textContent = 'Not applied yet. Apply to change both the query and command URL.'; });
   reload.addEventListener('click', load);
   section.querySelector('form').addEventListener('submit', async event => {
     event.preventDefault(); if (busy || !current || !dirty) return;
@@ -51,8 +51,8 @@
     busy = true; render();
     try {
       accept(await request('PUT', {preset, expected_revision:current.revision}));
-      feedback.textContent = '주소를 저장했습니다. 다음 조회부터 적용됩니다. 새 데이터 수신 후 해당 주소의 기록을 선택하세요.';
-    } catch (error) { feedback.textContent = error.message + ' 저장값을 다시 불러와 확인하세요.'; }
+      feedback.textContent = 'URL saved. It applies from the next query. Once new data arrives, select the record for this URL.';
+    } catch (error) { feedback.textContent = error.message + ' Reload the saved value to check.'; }
     finally { busy = false; render(); }
   });
   load();

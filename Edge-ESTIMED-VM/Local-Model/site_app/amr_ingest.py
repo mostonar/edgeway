@@ -468,7 +468,7 @@ def fetch_round_windows(
 
     if not cins:
         # A deployment with no round separation at all. Train on the recent segment.
-        print(f"    ⓘ round_{round_num} 표시가 없어 최근 {limit}개로 대체")
+        print(f"    ⓘ no round_{round_num} marker, using latest {limit} instead")
         return fetch_latest_windows(container_path, limit=limit)
 
     return build_from_cins(cins)

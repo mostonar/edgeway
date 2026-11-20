@@ -65,36 +65,36 @@ def count_after(path, since_ct):
         uril = om2m.discover_cins_after(path, since_ct, lim=300)
         return len(uril or [])
     except Exception as e:
-        return f"조회 실패: {e}"
+        return f"query failed: {e}"
 
 
 def main():
     nodes = sys.argv[1:] or list(config.ALL_NODES)
 
     print("=" * 66)
-    print("  로봇 telemetry 컨테이너 점검")
-    print(f"  {GAP_SEC:.0f}초 간격으로 두 번 본다")
+    print("  Robot telemetry container check")
+    print(f"  checking twice, {GAP_SEC:.0f}s apart")
     print("=" * 66)
 
     first = {n: snapshot(n) for n in nodes}
 
     for node in nodes:
         site = config.SITE_OF_NODE.get(node, node)
-        print(f"\n[{node} / {site}]  로봇 {len(first[node])}대")
+        print(f"\n[{node} / {site}]  {len(first[node])} robots")
         for rb, s in first[node].items():
             if s is None:
-                print(f"  ✗ {rb}: telemetry 컨테이너를 못 읽음")
+                print(f"  ✗ {rb}: cannot read telemetry container")
                 continue
-            mni = s["mni"] if s["mni"] is not None else "무제한"
+            mni = s["mni"] if s["mni"] is not None else "unlimited"
             print(f"  {rb}: mni={mni}  cni={s['cni']}  last_ct={s['last_ct']}")
 
-    print(f"\n{GAP_SEC:.0f}초 기다린다 ...")
+    print(f"\nwaiting {GAP_SEC:.0f}s ...")
     time.sleep(GAP_SEC)
 
     second = {n: snapshot(n) for n in nodes}
 
     print("\n" + "=" * 66)
-    print("  결과")
+    print("  Result")
     print("=" * 66)
 
     for node in nodes:
@@ -105,7 +105,7 @@ def main():
         for rb in first[node]:
             a, b = first[node][rb], second[node].get(rb)
             if a is None or b is None:
-                print(f"  ✗ {rb}: 컨테이너를 못 읽음")
+                print(f"  ✗ {rb}: cannot read container")
                 continue
 
             # Use the last ct of the first snapshot as the cursor and see how many
@@ -113,23 +113,23 @@ def main():
             after = count_after(a["path"], a["last_ct"])
             grew = (a["last_ct"] != b["last_ct"])
 
-            mni = a["mni"] if a["mni"] is not None else "무제한"
+            mni = a["mni"] if a["mni"] is not None else "unlimited"
             print(f"  {rb}")
             print(f"    mni={mni}  cni: {a['cni']} -> {b['cni']}")
-            print(f"    마지막 CIN 시각 바뀜: {'예' if grew else '아니오'}")
-            print(f"    커서 이후 조회됨: {after}건")
+            print(f"    last CIN time changed: {'yes' if grew else 'no'}")
+            print(f"    returned after cursor: {after}")
 
             if not grew:
-                print("    => 로봇이 발행을 멈췄다. Isaac Sim 을 보라.")
+                print("    => robots stopped publishing. Check Isaac Sim.")
             elif isinstance(after, int) and after == 0:
-                print("    => 새 CIN 은 생기는데 cra 조회가 0건이다. "
-                      "CSE 의 createdAfter 필터 문제다.")
+                print("    => new CINs appear but the cra query returns 0. "
+                      "The CSE createdAfter filter is the problem.")
             elif (a["mni"] is not None
                   and str(a["cni"]) == str(a["mni"])):
-                print("    => cni 가 mni 에 붙어 있다. "
-                      "들어오는 만큼 지워진다. mni 를 올려야 한다.")
+                print("    => cni is at mni. "
+                      "Old CINs are deleted as new ones arrive. Raise mni.")
             else:
-                print("    => 발행도 되고 조회도 된다. 여기는 정상이다.")
+                print("    => publishing and querying both work. This is fine.")
 
 
 if __name__ == "__main__":

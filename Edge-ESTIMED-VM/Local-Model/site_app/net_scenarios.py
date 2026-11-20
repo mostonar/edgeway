@@ -78,7 +78,7 @@ def report(node: str, payload: dict) -> bool:
                 f"robot:{payload.get('robot', '-')}"],
     )
     if not ok:
-        print(f"  ⚠ cnt-net-status 기록 실패 ({payload.get('scenario')})")
+        print(f"  ⚠ cnt-net-status write failed ({payload.get('scenario')})")
     return bool(ok)
 
 
@@ -90,14 +90,14 @@ def cmd_watch(node: str, seconds: float, interval: float) -> None:
     """Read MEC028 periodically to show and record link state."""
     bind(node)
     mep = config.MEP_OF_NODE.get(node)
-    print(f"=== {node} / {mep} 링크 감시 ({seconds:.0f}s, {interval:.0f}s 간격) ===")
+    print(f"=== {node} / {mep} link watch ({seconds:.0f}s, every {interval:.0f}s) ===")
     print(f"  MEC028: {wai.wai_base(mep)}")
 
     end = time.time() + seconds
     while time.time() < end:
         states = wai.site_link_states(node)
         if not states:
-            print("  ⚠ MEC028에서 단말을 못 받았다")
+            print("  ⚠ got no UE from MEC028")
         for st in states:
             mark = {"GOOD": "✓", "DEGRADED": "⚠", "LOST": "✗"}[st["verdict"]]
             print(f"  {mark} {st['ae']:14s} AP={st['ap']}  "
@@ -129,31 +129,31 @@ def cmd_scenario2(node: str, robot_ae: str,
     mep = config.MEP_OF_NODE.get(node)
     ue = topo.ae_to_ue(robot_ae)
     if not ue:
-        print(f"✗ {robot_ae}에 대응하는 UE 이름을 못 찾았다")
+        print(f"✗ {robot_ae}: no matching UE name found")
         return False
 
-    print(f"\n=== 시나리오 2: 네트워크 이상 → 핸드오버 ===")
-    print(f"  사업장 {node} / {mep} / 로봇 {robot_ae} ({ue})")
+    print(f"\n=== Scenario 2: network fault → handover ===")
+    print(f"  site {node} / {mep} / robot {robot_ae} ({ue})")
 
     before = wai.link_state(mep, ue)
-    print(f"\n[1] 현재 상태: {before['verdict']}  AP={before['ap']}  "
+    print(f"\n[1] Current state: {before['verdict']}  AP={before['ap']}  "
           f"RSSI={before['rssi']}  UL={before['ul_kbps']}kbps")
     if before["verdict"] == "LOST":
-        print("  ✗ 지금 이미 끊겨 있다. 시나리오 3을 써라.")
+        print("  ✗ Already disconnected. Use scenario 3.")
         return False
 
     serving = before["ap"]
 
     if inject:
-        print(f"\n[2] 장애 주입: {serving}")
+        print(f"\n[2] Injecting fault: {serving}")
         if not serving:
-            print("  ✗ 붙어 있는 AP를 모르겠다")
+            print("  ✗ Serving AP unknown")
             return False
         sbx.degrade_poa(serving)
     else:
-        print("\n[2] 장애 주입 생략 (--no-inject)")
+        print("\n[2] Fault injection skipped (--no-inject)")
 
-    print(f"\n[3] MEC028으로 탐지 (최대 {wait_detect:.0f}s)")
+    print(f"\n[3] Detecting via MEC028 (max {wait_detect:.0f}s)")
     deadline = time.time() + wait_detect
     detected = None
     while time.time() < deadline:
@@ -164,11 +164,11 @@ def cmd_scenario2(node: str, robot_ae: str,
         time.sleep(2.0)
 
     if detected is None:
-        print("  ⚠ 문턱을 넘지 않았다. FL_RSSI_WARN_DBM / FL_UL_MIN_KBPS를")
-        print("    조정하거나 FL_DEGRADE_* 를 더 세게 줘라.")
+        print("  ⚠ Threshold not crossed. Adjust FL_RSSI_WARN_DBM / FL_UL_MIN_KBPS")
+        print("    or make FL_DEGRADE_* stronger.")
         detected = wai.link_state(mep, ue)
     else:
-        print(f"  ⚠ 이상 감지: {detected['verdict']}")
+        print(f"  ⚠ Fault detected: {detected['verdict']}")
         for r in detected["reasons"]:
             print(f"      - {r}")
 
@@ -177,23 +177,23 @@ def cmd_scenario2(node: str, robot_ae: str,
                   "rssi": detected["rssi"], "ul_kbps": detected["ul_kbps"],
                   "reasons": detected["reasons"]})
 
-    print(f"\n[4] 대체 AP 선정")
+    print(f"\n[4] Selecting alternate AP")
     target = wai.best_target_ap(mep, ue, exclude=[serving] if serving else None)
     if not target:
-        print("  ✗ 옮겨갈 AP가 없다 → 시나리오 3(버퍼링)으로 넘어가야 한다")
+        print("  ✗ No AP to move to → fall back to scenario 3 (buffering)")
         report(node, {"scenario": "s2-no-target", "robot": robot_ae,
                       "verdict": "FALLBACK_BUFFER", "ap": detected["ap"]})
         return False
 
     same_site = topo.site_of_poa(target) == topo.site_of_poa(serving or "")
     print(f"  → {target}"
-          f"  ({'같은 사업장, MN-CSE 유지' if same_site else '다른 사업장, MEP 변경'})")
+          f"  ({'same site, MN-CSE kept' if same_site else 'different site, MEP changed'})")
 
-    print(f"\n[5] 핸드오버 요청 (샌드박스가 실행한다)")
+    print(f"\n[5] Handover request (executed by sandbox)")
     if not sbx.handover(ue, target):
         return False
 
-    print(f"\n[6] 회복 확인")
+    print(f"\n[6] Checking recovery")
     time.sleep(3.0)
     after = None
     deadline = time.time() + 30.0
@@ -215,8 +215,8 @@ def cmd_scenario2(node: str, robot_ae: str,
                   "same_site": same_site, "moved": moved,
                   "rssi": after["rssi"], "ul_kbps": after["ul_kbps"]})
 
-    print(f"\n{'✓ 핸드오버 완료. 데이터 경로가 바뀌었을 뿐 흐름은 유지된다.' if moved else '✗ AP가 바뀌지 않았다'}")
-    print(f"  (정리는: python3 Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py restore --node {node})")
+    print(f"\n{'✓ Handover done. Only the data path changed; the flow continues.' if moved else '✗ AP did not change'}")
+    print(f"  (cleanup: python3 Edge-ESTIMED-VM/Local-Model/site_app/net_scenarios.py restore --node {node})")
     return moved
 
 
@@ -281,7 +281,7 @@ class StoreAndForward:
                 labels=labels,
             )
             if not ok:
-                print(f"    ⚠ 전송 실패, 여기서 멈춘다 (남은 {len(self)}개)")
+                print(f"    ⚠ Send failed, stopping here ({len(self)} left)")
                 break
             os.remove(path)
             sent += 1
@@ -301,39 +301,39 @@ def cmd_scenario3(node: str, robot_ae: str,
     mep = config.MEP_OF_NODE.get(node)
     ue = topo.ae_to_ue(robot_ae)
     if not ue:
-        print(f"✗ {robot_ae}에 대응하는 UE 이름을 못 찾았다")
+        print(f"✗ {robot_ae}: no matching UE name found")
         return False
 
     cse = om2m.cse_name()
     tel_path = f"{cse}/{robot_ae}/{config.ROBOT_TELEMETRY_CNT}"
 
-    print(f"\n=== 시나리오 3: 네트워크 이상 → 버퍼링 ===")
-    print(f"  사업장 {node} / {mep} / 로봇 {robot_ae} ({ue})")
-    print(f"  텔레메트리: {tel_path}")
+    print(f"\n=== Scenario 3: network fault → buffering ===")
+    print(f"  site {node} / {mep} / robot {robot_ae} ({ue})")
+    print(f"  telemetry: {tel_path}")
 
     before = wai.link_state(mep, ue)
     serving = before["ap"]
-    print(f"\n[1] 현재 상태: {before['verdict']}  AP={serving}")
+    print(f"\n[1] Current state: {before['verdict']}  AP={serving}")
 
     n_before = len(om2m.list_uril(tel_path, lim=1000))
-    print(f"    지금까지 쌓인 CIN {n_before}개")
+    print(f"    CINs so far: {n_before}")
 
     queue = StoreAndForward(f"{node}-{robot_ae}")
     if len(queue):
-        print(f"    ⚠ 이전 실행의 큐가 {len(queue)}개 남아 있다")
+        print(f"    ⚠ {len(queue)} items left in queue from a previous run")
 
     if inject:
-        print(f"\n[2] 링크 차단 ({outage:.0f}s)")
+        print(f"\n[2] Blocking link ({outage:.0f}s)")
         if not sbx.disconnect(ue):
             return False
     else:
-        print("\n[2] 차단 생략 (--no-inject)")
+        print("\n[2] Blocking skipped (--no-inject)")
 
     report(node, {"scenario": "s3-outage-start", "robot": robot_ae,
                   "verdict": "BUFFERING", "ap": serving,
                   "cin_before": n_before})
 
-    print(f"\n[3] 차단 동안 들어오는 윈도우를 큐에 쌓는다")
+    print(f"\n[3] Queueing windows that arrive during the outage")
     end = time.time() + outage
     buffered = 0
     seq = 0
@@ -351,13 +351,13 @@ def cmd_scenario3(node: str, robot_ae: str,
         })
         buffered += 1
         seq += 1
-        print(f"    큐 {len(queue):3d}개  (링크 {st['verdict']})")
+        print(f"    queue {len(queue):3d}  (link {st['verdict']})")
         time.sleep(5.0)
 
-    print(f"\n[4] 링크 복구")
+    print(f"\n[4] Restoring link")
     target = serving or wai.best_target_ap(mep, ue)
     if not target:
-        print("  ✗ 되돌릴 AP를 모르겠다")
+        print("  ✗ AP to restore unknown")
         return False
     sbx.reconnect(ue, target)
 
@@ -365,26 +365,26 @@ def cmd_scenario3(node: str, robot_ae: str,
     while time.time() < deadline:
         st = wai.link_state(mep, ue)
         if st["verdict"] != "LOST":
-            print(f"  ✓ 복구됨: {st['verdict']}  AP={st['ap']}")
+            print(f"  ✓ Restored: {st['verdict']}  AP={st['ap']}")
             break
         time.sleep(2.0)
     else:
-        print("  ⚠ 복구를 확인하지 못했다")
+        print("  ⚠ Could not confirm recovery")
 
-    print(f"\n[5] 큐 비우기 ({len(queue)}개)")
+    print(f"\n[5] Flushing queue ({len(queue)})")
     status_path = net_status_path(node)
     sent = queue.drain(
         status_path,
         labels_of=lambda p: [f"scenario:s3-replay", f"robot:{robot_ae}",
                              f"seq:{p.get('seq')}"],
     )
-    print(f"  ✓ {sent}개 전송, 남은 {len(queue)}개")
+    print(f"  ✓ {sent} sent, {len(queue)} left")
 
     n_after = len(om2m.list_uril(tel_path, lim=1000))
-    print(f"\n[6] 결과")
-    print(f"    차단 전 CIN {n_before}개 → 복구 후 {n_after}개")
-    print(f"    버퍼에 쌓았던 {buffered}개 중 {sent}개 전송, "
-          f"유실 {buffered - sent}개")
+    print(f"\n[6] Result")
+    print(f"    CINs before outage {n_before} → after recovery {n_after}")
+    print(f"    {sent} of {buffered} buffered sent, "
+          f"{buffered - sent} lost")
 
     report(node, {"scenario": "s3-replay-done", "robot": robot_ae,
                   "verdict": "RECOVERED" if sent == buffered else "PARTIAL",
@@ -393,7 +393,7 @@ def cmd_scenario3(node: str, robot_ae: str,
                   "cin_before": n_before, "cin_after": n_after})
 
     ok = (sent == buffered)
-    print(f"\n{'✓ 유실 0. 버퍼링으로 통신이 유지됐다.' if ok else '✗ 유실이 있다'}")
+    print(f"\n{'✓ 0 lost. Buffering kept communication alive.' if ok else '✗ Data was lost'}")
     return ok
 
 
@@ -404,30 +404,30 @@ def cmd_restore(node: str) -> None:
     bind(node)
     site = topo.SITE_OF_NODE.get(node)
     if not site:
-        print(f"✗ {node}의 사업장을 모르겠다")
+        print(f"✗ Site of {node} unknown")
         return
     poas = topo.poas_of_site(site)
-    print(f"=== {site} AP {len(poas)}개 품질 복구 ===")
+    print(f"=== {site} restoring quality of {len(poas)} APs ===")
     sbx.restore_all(poas)
     report(node, {"scenario": "restore", "verdict": "NORMAL",
                   "poas": len(poas)})
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="데모 시나리오 2·3 (네트워크 이상)")
+    ap = argparse.ArgumentParser(description="Demo scenarios 2/3 (network fault)")
     ap.add_argument("cmd", choices=["watch", "s2", "s3", "restore"])
     ap.add_argument("--node", default="mn3",
-                    help="사업장 노드 (mn1/mn2/mn3)")
+                    help="site node (mn1/mn2/mn3)")
     ap.add_argument("--robot", default=None,
-                    help="로봇 AE 이름 (기본: 그 사업장 1번)")
+                    help="robot AE name (default: that site's #1)")
     ap.add_argument("--seconds", type=float, default=60.0,
-                    help="watch 지속 시간")
+                    help="watch duration")
     ap.add_argument("--interval", type=float, default=5.0,
-                    help="watch 간격")
+                    help="watch interval")
     ap.add_argument("--outage", type=float, default=40.0,
-                    help="s3 차단 시간")
+                    help="s3 outage duration")
     ap.add_argument("--no-inject", action="store_true",
-                    help="장애를 주입하지 않고 탐지·조치만 한다")
+                    help="detect and act only, without injecting a fault")
     args = ap.parse_args()
 
     config.require_sandbox()

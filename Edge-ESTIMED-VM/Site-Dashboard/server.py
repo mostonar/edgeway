@@ -313,19 +313,19 @@ class Handler(BaseHTTPRequestHandler):
         status, rsc = 503, 5000
         try:
             if self.headers.get('Origin'):
-                raise PermissionError('브라우저에서 구독 알림을 보낼 수 없습니다.')
+                raise PermissionError('Subscription notifications cannot be sent from a browser.')
             if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length', [])) != 1:
-                raise ValueError('Content-Length가 필요합니다.')
+                raise ValueError('Content-Length is required.')
             size = int(self.headers['Content-Length'])
             if not 0 < size <= MAX_BODY:
-                raise ValueError('알림 크기는 1 MiB 이하여야 합니다.')
+                raise ValueError('Notification must be 1 MiB or smaller.')
             if self.headers.get_content_type() not in ('application/json', 'application/vnd.onem2m-ntfy+json', 'application/vnd.onem2m-res+json'):
-                raise ValueError('JSON 알림이 필요합니다.')
+                raise ValueError('JSON notification is required.')
             if not self.headers.get('X-M2M-RI') or len(self.headers['X-M2M-RI']) > 200:
-                raise ValueError('X-M2M-RI가 필요합니다.')
+                raise ValueError('X-M2M-RI is required.')
             raw = self.rfile.read(size)
             if len(raw) != size:
-                raise ValueError('불완전한 알림입니다.')
+                raise ValueError('Incomplete notification.')
             path = urlsplit(self.path).path
             analysis = path.startswith('/onem2m/analysis-verdict/')
             prefix = '/onem2m/analysis-verdict/' if analysis else '/onem2m/floor-judgement/'
@@ -344,7 +344,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(status, {'error':str(exc)}, rsc)
         except (OSError, sqlite3.Error):
             status,rsc=503,5000; trace['error']='Notification connection/storage failure.'
-            self.reply(status, {'error':'판정 알림을 저장하지 못했습니다.'}, rsc)
+            self.reply(status, {'error':'Could not save verdict notification.'}, rsc)
         finally:
             trace.update(http=status,rsc=rsc)
             service.last_callback=trace

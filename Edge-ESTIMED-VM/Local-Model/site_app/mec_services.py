@@ -51,8 +51,8 @@ class _Breaker:
         self.fails += 1
         if self.enabled and self.fails >= MAX_FAIL:
             self.enabled = False
-            print(f"  ⚠ {self.label}: {self.fails}번 연속 실패 — "
-                  f"이번 실행에서는 더 부르지 않는다")
+            print(f"  ⚠ {self.label}: {self.fails} consecutive failures — "
+                  f"not calling it again this run")
 
 
 class SiteMec:
@@ -79,29 +79,29 @@ class SiteMec:
             return
         if not self.app.enabled:
             return
-        print(f"\n  [{self.node}] MEC011 앱 등록 ({self.mep})")
+        print(f"\n  [{self.node}] MEC011 app registration ({self.mep})")
         name = mec_app.app_name(self.mep)
         self.app_id = mec_app.find_app(name, self.mep)
         if not self.app_id:
-            print(f"    ⚠ 앱 인스턴스가 없어 MEC011 등록을 건너뛴다. MEC013·028 은 기본 주소로 부른다")
+            print(f"    ⚠ No app instance, skipping MEC011 registration. MEC013/028 use default addresses")
             self.app.enabled = False
             return
-        print(f"    ✓ 앱 인스턴스 {self.app_id}")
+        print(f"    ✓ app instance {self.app_id}")
         # On normal shutdown (including Ctrl+C) only the registration is deleted. The app instance belongs to the scenario.
         # If it ended with kill and the registration remains, the next startup checks and reuses it as is.
         atexit.register(self.stop)
         self.ready = mec_app.confirm_ready(self.mep, self.app_id)
         print(f"    {'✓' if self.ready else '⚠'} confirm_ready "
-              f"{'READY' if self.ready else '실패'}")
+              f"{'READY' if self.ready else 'failed'}")
         # Registration must come after READY (sending it first gives 403). A registration from a previous run
         # may remain, so it is checked regardless of the confirm_ready result.
         if self.endpoint:
             self.registered = mec_app.register(
                 self.mep, self.app_id, name, self.endpoint)
             print(f"    {'✓' if self.registered else '⚠'} registrations "
-                  f"{self.endpoint if self.registered else '실패'}")
+                  f"{self.endpoint if self.registered else 'failed'}")
         else:
-            print("    · registrations 건너뜀 (endpoint 없음)")
+            print("    · registrations skipped (no endpoint)")
 
         self.discovered = mec_app.discover(self.mep)
         loc = self.discovered.get("location")
@@ -112,13 +112,13 @@ class SiteMec:
             mec_wai.DISCOVERED[self.mep] = wai["uri"]
         for kind in ("location", "wai"):
             d = self.discovered.get(kind)
-            print(f"    {'✓' if d else '·'} 서비스 발견 {kind}: "
-                  f"{(d or {}).get('name')} {(d or {}).get('uri', '(기본 주소 사용)')}")
+            print(f"    {'✓' if d else '·'} service discovery {kind}: "
+                  f"{(d or {}).get('name')} {(d or {}).get('uri', '(using default address)')}")
 
     def stop(self) -> None:
         if self.app_id and self.registered:
             ok = mec_app.deregister(self.mep, self.app_id)
-            print(f"  [{self.node}] MEC011 등록 해제: {'✓' if ok else '⚠'}")
+            print(f"  [{self.node}] MEC011 deregistration: {'✓' if ok else '⚠'}")
             self.registered = False
 
     # ── MEC013 ──────────────────────────────────────────
@@ -200,7 +200,7 @@ def main() -> None:
     """Check only the MEC integration without training: register → discover → link and location once."""
     import argparse
     import json
-    ap = argparse.ArgumentParser(description="사업장 MEC 연동 점검")
+    ap = argparse.ArgumentParser(description="Check site MEC integration")
     ap.add_argument("--nodes", default=",".join(config.ALL_NODES))
     args = ap.parse_args()
     config.require_sandbox()
@@ -212,7 +212,7 @@ def main() -> None:
         print(json.dumps(snap, ensure_ascii=False, indent=1)[:2000])
         robots = config.robot_names(node)
         if robots:
-            print(f"  판정용 정보 {robots[0]}: {m.robot_context(robots[0])}")
+            print(f"  verdict context {robots[0]}: {m.robot_context(robots[0])}")
         m.stop()
 
 

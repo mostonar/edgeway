@@ -77,7 +77,7 @@ def _get(mep: str, path: str) -> Optional[dict]:
     try:
         return r.json()
     except Exception:
-        print(f"  ✗ MEC028 {mep}{path}: JSON 파싱 실패")
+        print(f"  ✗ MEC028 {mep}{path}: JSON parse failed")
         return None
 
 
@@ -172,7 +172,7 @@ def link_state(mep: str, ue_name: str,
         return {"ue": ue_name, "verdict": "LOST", "ap": None,
                 "rssi": None, "ul_kbps": None, "dl_kbps": None,
                 "channel_util_pct": None,
-                "reasons": ["MEC028에서 단말이 보이지 않는다"]}
+                "reasons": ["terminal not visible in MEC028"]}
 
     assoc = sta.get("apAssociated") or {}
     bssid = (assoc.get("bssid") or "").lower()
@@ -191,15 +191,15 @@ def link_state(mep: str, ue_name: str,
 
     reasons: List[str] = []
     if not bssid:
-        reasons.append("붙어 있는 AP가 없다")
+        reasons.append("no associated AP")
     if rssi is not None and float(rssi) <= RSSI_BAD:
-        reasons.append(f"신호 {rssi}dBm (불량 기준 {RSSI_BAD:.0f})")
+        reasons.append(f"signal {rssi}dBm (bad threshold {RSSI_BAD:.0f})")
     elif rssi is not None and float(rssi) <= RSSI_WARN:
-        reasons.append(f"신호 {rssi}dBm (주의 기준 {RSSI_WARN:.0f})")
+        reasons.append(f"signal {rssi}dBm (warn threshold {RSSI_WARN:.0f})")
     if ul is not None and float(ul) < UL_MIN_KBPS:
-        reasons.append(f"상향 {ul}kbps (최소 {UL_MIN_KBPS:.0f})")
+        reasons.append(f"uplink {ul}kbps (min {UL_MIN_KBPS:.0f})")
     if chu is not None and chu >= CHU_WARN:
-        reasons.append(f"채널 점유 {chu:.0f}% (기준 {CHU_WARN:.0f}%)")
+        reasons.append(f"channel util {chu:.0f}% (threshold {CHU_WARN:.0f}%)")
 
     # No attached AP means LOST; crossing even one threshold means DEGRADED.
     # A signal below the bad threshold is already added to reasons above.
@@ -288,7 +288,7 @@ def best_target_ap(mep: str, ue_name: str,
 def main() -> None:
     import argparse
     ap = argparse.ArgumentParser(
-        description="MEC028으로 로봇 링크 상태를 본다")
+        description="Show robot link state via MEC028")
     ap.add_argument("--nodes", default=",".join(config.ALL_NODES))
     args = ap.parse_args()
 
@@ -302,15 +302,15 @@ def main() -> None:
 
         aps = ap_load_by_mac(mep)
         if aps:
-            print(f"  AP {len(aps)}개")
+            print(f"  {len(aps)} APs")
             for mac, info in aps.items():
                 chu = info["channel_util_pct"]
                 print(f"    {info['name']:22s} ch{info['channel']}  "
-                      f"점유 {chu:.0f}%  단말 {info['sta_count']}대"
+                      f"util {chu:.0f}%  stations {info['sta_count']}"
                       if chu is not None else
                       f"    {info['name']:22s} ch{info['channel']}")
         else:
-            print("  ⚠ AP 정보를 못 받았다 (mec028-1이 떠 있는지 확인)")
+            print("  ⚠ Could not get AP info (check that mec028-1 is up)")
 
         for st in site_link_states(node):
             mark = {"GOOD": "✓", "DEGRADED": "⚠", "LOST": "✗"}[st["verdict"]]

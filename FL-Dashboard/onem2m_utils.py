@@ -82,7 +82,7 @@ def set_endpoint(base_url: str, cse_name: str) -> None:
     _BASE_URL = base_url.rstrip("/")
     _CSE_NAME = cse_name
     if _VERBOSE_BIND:
-        print(f"  [oneM2M] 기본 CSE -> {_BASE_URL}/{_CSE_NAME}")
+        print(f"  [oneM2M] default CSE -> {_BASE_URL}/{_CSE_NAME}")
 
 
 def set_in_endpoint(base_url: str, cse_name: str) -> None:
@@ -91,7 +91,7 @@ def set_in_endpoint(base_url: str, cse_name: str) -> None:
     _IN_BASE_URL = base_url.rstrip("/")
     _IN_CSE_NAME = cse_name
     if _VERBOSE_BIND:
-        print(f"  [oneM2M] 중앙 CSE -> {_IN_BASE_URL}/{_IN_CSE_NAME}")
+        print(f"  [oneM2M] central CSE -> {_IN_BASE_URL}/{_IN_CSE_NAME}")
 
 
 def base_url() -> str:
@@ -137,7 +137,7 @@ def _verify():
     v = getattr(config, "TLS_VERIFY", True)
     if not v and not _WARNED_INSECURE:
         _WARNED_INSECURE = True
-        print("  ⚠ TLS 검증을 껐다 (FL_TLS_VERIFY=0). 중간자 공격을 막지 못한다.")
+        print("  ⚠ TLS verification is off (FL_TLS_VERIFY=0). Man-in-the-middle attacks are not prevented.")
         try:
             import urllib3
             urllib3.disable_warnings(
@@ -173,8 +173,8 @@ def _request_with_retry(method: str, url: str, **kwargs) -> requests.Response:
             return requests.request(method, url, **kwargs)
         except requests.exceptions.SSLError as e:
             # If the sandbox uses an IP-based self-signed certificate, it gets blocked here.
-            print(f"  ✗ TLS 검증 실패: {url}")
-            print("    자체 서명 인증서라면 FL_TLS_VERIFY=0 으로 실행하라.")
+            print(f"  ✗ TLS verification failed: {url}")
+            print("    If the certificate is self-signed, run with FL_TLS_VERIFY=0.")
             raise e
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             last_exc = e
@@ -332,13 +332,13 @@ def set_point_of_access(ae_path: str, poa: List[str],
         r = _request_with_retry("put", _url(ae_path), json=payload,
                                 headers=_headers(body=True), timeout=10)
     except Exception as e:
-        print(f"  ✗ poa 갱신 오류: {e}")
+        print(f"  ✗ poa update error: {e}")
         return False
 
     if r.status_code in (200, 204):
         print(f"  ✓ {strip_prefix(ae_path)} poa={poa}")
         return True
-    print(f"  ✗ poa 갱신 실패: {r.status_code} {r.text[:160]}")
+    print(f"  ✗ poa update failed: {r.status_code} {r.text[:160]}")
     return False
 
 
@@ -390,7 +390,7 @@ def create_container(
                     resource_path = f"{parent_path}/{container_name}"
                     ok = update_acpi(resource_path, acpi)
                     if not ok:
-                        print(f"  ⚠ acpi UPDATE 실패: {resource_path}")
+                        print(f"  ⚠ acpi UPDATE failed: {resource_path}")
 
             return result
         print(f"✗ CNT create failed: {r.status_code} - {r.text}")

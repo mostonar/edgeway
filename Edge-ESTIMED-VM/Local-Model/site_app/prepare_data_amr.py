@@ -133,8 +133,8 @@ def site_of_robot(robot: str) -> str:
     if prefix in NODE_OF_SITE:
         return NODE_OF_SITE[prefix]
     if not _fallback_warned:
-        print(f"  ⚠ 로봇 식별자로 사업장을 정할 수 없다 (예: {robot!r}) -> mn1로 보낸다.")
-        print("    siteA_* / siteB_* / siteC_* 규칙을 쓰거나 AMR_ROBOT_MAP을 지정하라.")
+        print(f"  ⚠ cannot map robot ID to a site (e.g. {robot!r}) -> sending to mn1.")
+        print("    Use the siteA_* / siteB_* / siteC_* naming or set AMR_ROBOT_MAP.")
         _fallback_warned = True
     return "mn1"
 
@@ -192,7 +192,7 @@ def iter_records(src: str):
         if os.path.exists(merged):
             yield from _iter_merged(merged)
             return
-        raise FileNotFoundError(f"{src} 아래에서 telemetry.json 도 merged.json 도 못 찾았다")
+        raise FileNotFoundError(f"neither telemetry.json nor merged.json found under {src}")
 
     name = os.path.basename(src).lower()
     if name.startswith("merged"):
@@ -387,7 +387,7 @@ def split_normals(idx: np.ndarray, run: np.ndarray,
     """
     if len(idx) == 0:
         e = idx[:0]
-        return e, e, e, "없음"
+        return e, e, e, "none"
 
     runs = np.unique(run[idx])
 
@@ -408,8 +408,8 @@ def split_normals(idx: np.ndarray, run: np.ndarray,
         in_val = np.isin(run[idx], list(val_runs))
         in_test = np.isin(run[idx], list(test_runs))
         return (idx[~(in_val | in_test)], idx[in_val], idx[in_test],
-                f"run 단위 ({len(runs)}개 run: 학습 "
-                f"{len(runs) - n_val - n_test} / 검증 {n_val} / 시험 {n_test})")
+                f"by run ({len(runs)} runs: train "
+                f"{len(runs) - n_val - n_test} / val {n_val} / test {n_test})")
 
     tr, va, te = [], [], []
     for r in runs:
@@ -420,7 +420,7 @@ def split_normals(idx: np.ndarray, run: np.ndarray,
 
     cat = lambda parts: (np.concatenate(parts) if parts else idx[:0])
     return (cat(tr), cat(va), cat(te),
-            f"run 내 시간순 블록 ({len(runs)}개 run, embargo {EMBARGO})")
+            f"time-ordered blocks within runs ({len(runs)} runs, embargo {EMBARGO})")
 
 
 # ── Per-node PKL ──────────────────────────────────────────
@@ -449,8 +449,8 @@ def build_node_pkl(d: dict, node: str, rng: np.random.Generator,
     if normal_cap > 0 and len(train_pool) > normal_cap:
         before = len(train_pool)
         train_pool = balance_indices(train_pool, robot, normal_cap)
-        print(f"    [{node}] 사업장 상한: 정상 {before} -> "
-              f"{len(train_pool)}개 (로봇별 균등)")
+        print(f"    [{node}] site cap: normal {before} -> "
+              f"{len(train_pool)} (even per robot)")
 
     # Split normal data into three. Validation is for threshold calibration; test is for evaluation only.
     tr_idx, val_idx, te_norm_idx, how = split_normals(train_pool, run, rng)
@@ -464,10 +464,10 @@ def build_node_pkl(d: dict, node: str, rng: np.random.Generator,
     # is not an independent evaluation.
     te = moving & (te_norm | ~is_normal | ~not_excluded)
 
-    print(f"    [{node}] 분할 방식: {how}")
+    print(f"    [{node}] split method: {how}")
     if va.any() and not te_norm.any():
-        print(f"    [{node}] ⚠ 시험용 정상 구간이 없다. "
-              f"AMR_TEST_NORMAL_RATIO를 올리거나 데이터를 늘려라.")
+        print(f"    [{node}] ⚠ no normal windows for test. "
+              f"Raise AMR_TEST_NORMAL_RATIO or collect more data.")
 
     if tr.any():
         mean = X[tr].mean(axis=(0, 2), keepdims=True)
@@ -508,24 +508,24 @@ def build_node_pkl(d: dict, node: str, rng: np.random.Generator,
 
 def main() -> int:
     if not os.path.exists(SRC):
-        print(f"✗ 데이터가 없다: {SRC}")
-        print("  AMR_DATA 로 telemetry.json 또는 그 상위 디렉터리를 지정하라.")
+        print(f"✗ no data: {SRC}")
+        print("  Set AMR_DATA to telemetry.json or its parent directory.")
         return 1
 
-    print(f"입력: {SRC}")
+    print(f"Input: {SRC}")
     d = parse(SRC)
     if not len(d["X"]):
-        print("✗ 유효한 윈도우가 없다")
+        print("✗ no valid windows")
         return 1
 
     moving = sch.moving_mask(d["X"])
-    print(f"  윈도우 {d['X'].shape}  (건너뜀 {d['skipped']}개)")
-    print(f"  이동 {int(moving.sum())} / 정지 {int((~moving).sum())}"
-          f"  (기준 속도 {sch.MIN_SPEED})")
+    print(f"  windows {d['X'].shape}  (skipped {d['skipped']})")
+    print(f"  moving {int(moving.sum())} / stopped {int((~moving).sum())}"
+          f"  (speed threshold {sch.MIN_SPEED})")
     u, c = np.unique(d["label"], return_counts=True)
-    print("  상태별:", dict(zip(u.tolist(), c.tolist())))
+    print("  By state:", dict(zip(u.tolist(), c.tolist())))
     u, c = np.unique(d["robot"], return_counts=True)
-    print("  로봇별:", dict(zip(u.tolist(), c.tolist())))
+    print("  By robot:", dict(zip(u.tolist(), c.tolist())))
 
     os.makedirs(OUT_DIR, exist_ok=True)
     rng = np.random.default_rng(SEED)
@@ -553,43 +553,43 @@ def main() -> int:
         lo, hi = min(counts.values()), max(counts.values())
         ratio = (lo / hi) if hi else 1.0
 
-        print(f"  사업장별 정상: "
+        print(f"  Normal per site: "
               + " / ".join(f"{SITE_OF_NODE.get(n, n)} {c}"
                            for n, c in counts.items())
-              + f"   (최소/최대 {ratio:.2f})")
+              + f"   (min/max {ratio:.2f})")
 
         if normal_cap > 0:
             if normal_cap < hi * MIN_BALANCE_RATIO:
-                print(f"  ⚠ 상한 {normal_cap}이 가장 많은 사업장({hi})의 "
-                      f"{normal_cap / hi * 100:.0f}%밖에 안 된다.")
-                print(f"    맞추려다 데이터 대부분을 버리게 된다. "
-                      f"수집이 고르게 될 때까지 끄는 편이 낫다.")
-                print(f"    그래도 쓰려면 AMR_MIN_BALANCE_RATIO 를 낮춰라. "
-                      f"지금은 상한을 적용하지 않는다.")
+                print(f"  ⚠ cap {normal_cap} is only "
+                      f"{normal_cap / hi * 100:.0f}% of the largest site ({hi}).")
+                print(f"    Balancing would discard most of the data. "
+                      f"Better to keep it off until collection is even.")
+                print(f"    To use it anyway, lower AMR_MIN_BALANCE_RATIO. "
+                      f"Not applying the cap now.")
                 normal_cap = 0
             else:
-                print(f"  → 상한 {normal_cap}개로 맞춘다 "
+                print(f"  → capping at {normal_cap} "
                       f"(AMR_MAX_NORMAL_PER_SITE={MAX_NORMAL_PER_SITE})")
         else:
-            print("  → 상한 없음 (맞추려면 AMR_MAX_NORMAL_PER_SITE=min)")
+            print("  → no cap (to balance, AMR_MAX_NORMAL_PER_SITE=min)")
             if ratio < MIN_BALANCE_RATIO:
-                print(f"    ⓘ 사업장 간 차이가 크다. FedAvg가 샘플 수로 "
-                      f"가중하므로 많이 가진 사업장의 영향이 커진다.")
+                print(f"    ⓘ sites differ a lot. FedAvg weights by sample count, "
+                      f"so larger sites have more influence.")
 
     for node in NODES:
         pkl = build_node_pkl(d, node, rng, normal_cap)
         if not pkl:
-            print(f"  ⚠ {node}({SITE_OF_NODE[node]}): 배정된 데이터가 없다")
+            print(f"  ⚠ {node}({SITE_OF_NODE[node]}): no data assigned")
             continue
         want = EXPECTED_ROBOTS.get(node)
         n_rb = len(pkl["robots"])
-        warn = "" if (want is None or n_rb == want) else f" ⚠예상{want}대"
+        warn = "" if (want is None or n_rb == want) else f" ⚠expected {want}"
         path = os.path.join(OUT_DIR, f"{node}.pkl")
         with open(path, "wb") as fp:
             pickle.dump(pkl, fp)
-        print(f"  ✓ {node}({pkl['site']}) 로봇{n_rb}대{warn}: "
-              f"학습 {len(pkl['train_signals'])} / 검증 {len(pkl['val_signals'])} / "
-              f"평가 {len(pkl['test_signals'])} (이상 {int(pkl['test_labels'].sum())})")
+        print(f"  ✓ {node}({pkl['site']}) {n_rb} robots{warn}: "
+              f"train {len(pkl['train_signals'])} / val {len(pkl['val_signals'])} / "
+              f"test {len(pkl['test_signals'])} (anomalies {int(pkl['test_labels'].sum())})")
 
     return 0
 

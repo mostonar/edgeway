@@ -74,27 +74,27 @@ def load_capture(d):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("capture", help="jsonl 들이 있는 폴더")
+    ap.add_argument("capture", help="folder containing jsonl files")
     ap.add_argument("-o", "--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "valset_amr.npz"))
     ap.add_argument("--anomaly", action="append",
-                    help="ROBOT:START-END (초). 여러 번 줄 수 있다")
+                    help="ROBOT:START-END (seconds). Can be repeated")
     ap.add_argument("--min-cell", type=int, default=10,
-                    help="조건 칸 하한. 이보다 적은 칸은 버린다")
+                    help="condition cell minimum. Smaller cells are dropped")
     ap.add_argument("--max-cell", type=int, default=40,
-                    help="조건 칸 상한. 넘으면 무작위로 줄인다")
+                    help="condition cell maximum. Larger cells are randomly downsampled")
     ap.add_argument("--only", default="",
-                    help="이 접두사로 시작하는 로봇만 쓴다 (예: siteC). "
-                         "글로벌 모델 학습에 쓰이는 사업장을 검증셋에 "
-                         "넣으면 점수가 부풀려지므로 기본은 로컬 전용 "
-                         "사업장만 쓰는 것이다")
+                    help="use only robots with this prefix (e.g. siteC). "
+                         "Including sites used to train the global model "
+                         "inflates scores, so normally use only local-only "
+                         "sites")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
 
     rows, skipped = load_capture(a.capture)
     if not rows:
-        print(f"✗ {a.capture} 에 쓸 창이 없다")
+        print(f"✗ {a.capture} : no usable windows")
         return 1
-    print(f"입력 {a.capture}: 창 {len(rows)}개 (건너뜀 {skipped})")
+    print(f"input {a.capture}: {len(rows)} windows (skipped {skipped})")
 
     X = np.stack([r["sig"] for r in rows]).astype(np.float32)
     robot = np.array([r["robot"] for r in rows])
@@ -111,26 +111,26 @@ def main() -> int:
         y = (fault_name != "normal").astype(np.int64)
         # exclude marks intervals Isaac Sim flagged as 'do not use'. Dropped entirely.
         drop_ex = fault_name == "exclude"
-        print(f"  라벨: lbl 의 cond 사용. "
+        print(f"  labels: cond from lbl. "
               + ", ".join(f"{k} {v}" for k, v in
                           collections.Counter(fault_name.tolist()).most_common()))
     elif has_field:
         y = np.array([1 if r["fault"] else 0 for r in rows], dtype=np.int64)
-        print(f"  라벨: CIN 의 fault 필드 사용 (이상 {int(y.sum())}창)")
+        print(f"  labels: CIN fault field (anomaly {int(y.sum())} windows)")
     else:
         spec = parse_anomaly(a.anomaly)
         if not spec:
-            print("✗ 라벨이 없다. CIN 에 fault 필드가 없으면 --anomaly 로 "
-                  "어느 로봇의 어느 구간이 이상인지 지정하라.")
-            print("  신호에서 라벨을 만들지는 않는다. 그러면 그 신호를 보는 "
-                  "모델이 무조건 맞히게 되어 측정이 무의미해진다.")
+            print("✗ No labels. Without a CIN fault field, use --anomaly "
+                  "to mark which robot and interval are anomalous.")
+            print("  Labels are not derived from signals: a model seeing that "
+                  "signal would always be right, making the measure meaningless.")
             return 1
         y = np.zeros(len(rows), dtype=np.int64)
         for rb, lo, hi in spec:
             m = (robot == rb) & (t >= lo) & (t <= hi)
             y[m] = 1
-            print(f"  라벨: {rb} {lo:.0f}~{hi if hi < 1e9 else float('inf'):.0f}초"
-                  f" -> 이상 {int(m.sum())}창")
+            print(f"  labels: {rb} {lo:.0f}~{hi if hi < 1e9 else float('inf'):.0f}s"
+                  f" -> anomaly {int(m.sum())} windows")
 
     if not has_cond:
         fault_name = np.where(y == 1, "anomaly", "normal")
@@ -143,12 +143,12 @@ def main() -> int:
     inc = np.ones(len(rows), dtype=bool)
     if a.only:
         inc = np.array([r.startswith(a.only) for r in robot])
-        print(f"  로봇 필터 '{a.only}': {int(inc.sum())}/{len(rows)}창 남김")
+        print(f"  robot filter '{a.only}': kept {int(inc.sum())}/{len(rows)} windows")
 
     # ── Driving only. Stopped windows are easy to reconstruct and make evaluation easy ──
     mov = sch.moving_mask(X)
     keep = mov & inc & ~drop_ex
-    print(f"  주행 {int(mov.sum())} / 정지 {int((~mov).sum())} -> 주행만 쓴다")
+    print(f"  moving {int(mov.sum())} / stopped {int((~mov).sum())} -> moving only")
 
     # ── Balance condition cells ───────────────────────────────
     cond = np.stack([sch.cond_vector(n, sch.speed_of(x), x)
@@ -174,11 +174,11 @@ def main() -> int:
         sel[nrm] = True
         sel[ano] = True
         kept += 1
-    print(f"  조건 칸: {kept}개 채택, {dropped}창 버림 "
-          f"(칸 하한 {a.min_cell} / 상한 {a.max_cell})")
+    print(f"  condition cells: {kept} kept, {dropped} windows dropped "
+          f"(cell min {a.min_cell} / max {a.max_cell})")
 
     if len(np.unique(y[sel])) < 2:
-        print("✗ 정상 또는 이상 한쪽이 비었다. valset.load() 가 거부한다.")
+        print("✗ Normal or anomaly class is empty. valset.load() will reject it.")
         return 1
 
     # ── Save ──────────────────────────────────────────────────
@@ -196,20 +196,20 @@ def main() -> int:
 
     # ── Report results ────────────────────────────────────────
     yy = y[sel]
-    print(f"\n저장: {a.out}")
-    print(f"  {int(sel.sum())}창   정상 {int((yy==0).sum())} / "
-          f"이상 {int((yy==1).sum())} ({yy.mean():.1%})")
-    print(f"  cond 폭 {cond.shape[1]}   로봇 {sorted(set(robot[sel].tolist()))}")
-    for name, arr, labels in (("nav 그룹", g[sel], sch.NAV_GROUPS),
-                              ("속도", sb[sel], ["느림", "보통", "빠름"]),
-                              ("적재", ld[sel], sch.LOAD_STATES)):
+    print(f"\nsaved: {a.out}")
+    print(f"  {int(sel.sum())} windows   normal {int((yy==0).sum())} / "
+          f"anomaly {int((yy==1).sum())} ({yy.mean():.1%})")
+    print(f"  cond width {cond.shape[1]}   robots {sorted(set(robot[sel].tolist()))}")
+    for name, arr, labels in (("nav group", g[sel], sch.NAV_GROUPS),
+                              ("speed", sb[sel], ["slow", "medium", "fast"]),
+                              ("load", ld[sel], sch.LOAD_STATES)):
         c = collections.Counter(arr.tolist())
         print(f"  {name}: " + " / ".join(
             f"{labels[k]} {v} ({v/sel.sum():.0%})" for k, v in sorted(c.items())))
     ft = collections.Counter(fault_name[sel].tolist())
-    print(f"  이상 종류: " + " / ".join(f"{k} {v}" for k, v in ft.most_common()))
+    print(f"  anomaly types: " + " / ".join(f"{k} {v}" for k, v in ft.most_common()))
     cc = collections.Counter(cell[sel].tolist())
-    print(f"  조건 칸 {len(cc)}/45, 10창 이상 {sum(1 for v in cc.values() if v>=10)}개")
+    print(f"  condition cells {len(cc)}/45, {sum(1 for v in cc.values() if v>=10)} with >=10 windows")
 
     # Runs of 3 consecutive. The verdict is K=3 consecutive, so this count is the real detection opportunity.
     runs = []
@@ -228,8 +228,8 @@ def main() -> int:
         if cur:
             runs.append(cur)
     runs = np.array(runs) if runs else np.array([0])
-    print(f"  이상 연속 덩어리 {len(runs)}개, 최장 {runs.max()}, "
-          f"3연속 이상 {int((runs>=3).sum())}개  <- 실제 판정 기회")
+    print(f"  anomaly runs {len(runs)}, longest {runs.max()}, "
+          f"{int((runs>=3).sum())} runs of 3+  <- actual detection chances")
     return 0
 
 
